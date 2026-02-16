@@ -129,7 +129,7 @@ class _PersonalInformationPageState extends State<PersonalInformationPage> {
                         borderRadius: BorderRadius.circular(12),
                       ),
                     ),
-                    child: const Text("Save Information"),
+                    child: const Text("Save Information",style: TextStyle(color: Colors.white,fontSize: 16,fontWeight: FontWeight.w600,),),
                   ),
                 ),
               ],

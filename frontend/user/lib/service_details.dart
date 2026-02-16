@@ -66,14 +66,18 @@ class ServiceDetailsPage extends StatelessWidget {
                               child: Text(
                                 "Relocation Experts",
                                 style: TextStyle(
-                                  fontSize: 18,
+                                  fontSize: 22,
                                   fontWeight: FontWeight.w600,
                                 ),
                               ),
                             ),
                             IconButton(
                               onPressed: () {},
-                              icon: Image.asset('assets/images/share.png',height: 18,width: 18,),
+                              icon: Image.asset(
+                                'assets/images/share.png',
+                                height: 18,
+                                width: 18,
+                              ),
                             ),
                           ],
                         ),
@@ -89,7 +93,7 @@ class ServiceDetailsPage extends StatelessWidget {
                             const Text(
                               "Munich, Bavaria",
                               style: TextStyle(
-                                fontSize: 13,
+                                fontSize: 14,
                                 color: Colors.grey,
                               ),
                             ),
@@ -107,7 +111,7 @@ class ServiceDetailsPage extends StatelessWidget {
                             const Text(
                               "4.5",
                               style: TextStyle(
-                                fontSize: 13,
+                                fontSize: 14,
                                 fontWeight: FontWeight.w500,
                               ),
                             ),
@@ -125,14 +129,18 @@ class ServiceDetailsPage extends StatelessWidget {
             /// DESCRIPTION
             const Text(
               "Description",
-              style: TextStyle(fontWeight: FontWeight.w600),
+              style: TextStyle(
+                fontWeight: FontWeight.w600,
+                fontSize: 22,
+              ),
             ),
             const SizedBox(height: 6),
             const Text(
-              "We are looking for a talented software developer to join our growing team. Experience with React, Node.js, and cloud technologies preferred.",
+              "We provide professional relocation services to help individuals and families settle smoothly. Our team assists with housing, paperwork, and local guidance.",
               style: TextStyle(
                 color: Colors.grey,
                 height: 1.4,
+                fontSize: 16,
               ),
             ),
 
@@ -141,7 +149,10 @@ class ServiceDetailsPage extends StatelessWidget {
             /// SERVICES OFFERED
             const Text(
               "Services Offered",
-              style: TextStyle(fontWeight: FontWeight.w600),
+              style: TextStyle(
+                fontWeight: FontWeight.w600,
+                fontSize: 22,
+              ),
             ),
             const SizedBox(height: 10),
             Wrap(
@@ -159,14 +170,17 @@ class ServiceDetailsPage extends StatelessWidget {
             /// LOCATION MAP
             const Text(
               "Location",
-              style: TextStyle(fontWeight: FontWeight.w600),
+              style: TextStyle(
+                fontWeight: FontWeight.w600,
+                fontSize: 22,
+              ),
             ),
             const SizedBox(height: 10),
             ClipRRect(
               borderRadius: BorderRadius.circular(12),
               child: Image.asset(
-                'assets/images/map.png',
-                height: 180,
+                'assets/images/map.jpeg',
+                height: 250,
                 width: double.infinity,
                 fit: BoxFit.cover,
               ),
@@ -180,8 +194,15 @@ class ServiceDetailsPage extends StatelessWidget {
                 Expanded(
                   child: ElevatedButton.icon(
                     onPressed: () {},
-                    icon: Image.asset('assets/images/call.png',height: 18,width: 18,),
-                    label: const Text("Call"),
+                    icon: Image.asset(
+                      'assets/images/call.png',
+                      height: 18,
+                      width: 18,
+                    ),
+                    label: const Text(
+                      "Call",
+                      style: TextStyle(color: Colors.white),
+                    ),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF4F7F67),
                       padding: const EdgeInsets.symmetric(vertical: 14),
@@ -195,8 +216,15 @@ class ServiceDetailsPage extends StatelessWidget {
                 Expanded(
                   child: ElevatedButton.icon(
                     onPressed: () {},
-                    icon: Image.asset('assets/images/whatsapp.png',height: 18,width: 18,),
-                    label: const Text("Whatsapp"),
+                    icon: Image.asset(
+                      'assets/images/whatsapp.png',
+                      height: 18,
+                      width: 18,
+                    ),
+                    label: const Text(
+                      "Whatsapp",
+                      style: TextStyle(color: Colors.white),
+                    ),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF4F7F67),
                       padding: const EdgeInsets.symmetric(vertical: 14),
@@ -226,7 +254,7 @@ class ServiceChip extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
       decoration: BoxDecoration(
         color: const Color(0xFFEFF5F1),
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(15),
       ),
       child: Text(
         title,

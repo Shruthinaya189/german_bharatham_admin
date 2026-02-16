@@ -157,10 +157,9 @@ Widget _header() {
   return Row(
     children: [
       const CircleAvatar(
-        radius: 22,
-        backgroundImage:
-            NetworkImage("https://randomuser.me/api/portraits/men/32.jpg"),
-      ),
+  radius: 22,
+  backgroundImage: AssetImage("assets/images/person.jpeg"),
+),
       const SizedBox(width: 12),
 
       const Expanded(
@@ -235,13 +234,13 @@ Widget _header() {
           ),
           const SizedBox(width: 12),
           ClipRRect(
-            borderRadius: BorderRadius.circular(12),
-            child: Image.network(
-              "https://i.imgur.com/BoN9kdC.png",
-              width: 90,
-              fit: BoxFit.cover,
-            ),
-          )
+  borderRadius: BorderRadius.circular(9),
+  child: Image.asset(
+    "assets/images/person.jpeg", // change to your image name
+    width: 90,
+    fit: BoxFit.cover,
+  ),
+)
         ],
       ),
     );

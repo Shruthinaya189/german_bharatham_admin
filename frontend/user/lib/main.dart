@@ -73,7 +73,7 @@ class WelcomeScreen extends StatelessWidget {
           // Background image with fallback for web + subtle overlay for contrast
           Positioned.fill(
             child: Image.asset(
-              'assets/images/german1.jpg',
+              'assets/images/german1.jpeg',
               fit: BoxFit.cover,
               gaplessPlayback: true,
               filterQuality: FilterQuality.high,
@@ -81,7 +81,7 @@ class WelcomeScreen extends StatelessWidget {
                 // If the primary background can't be decoded in browser, use a fallback image
                 // Fallback to the same PNG background (browser handles PNG reliably)
                 return Image.asset(
-                  'assets/images/german1.jpg',
+                  'assets/images/german1.jpeg',
                   fit: BoxFit.cover,
                   gaplessPlayback: true,
                 );
@@ -131,20 +131,21 @@ class WelcomeScreen extends StatelessWidget {
                           ),
                         ],
                       ),
-                      child: Padding(
-                        padding: const EdgeInsets.all(6),
-                        child: ClipOval(
-                          child: Image.asset(
-                            'assets/images/german_map.jpg',
-                            width: 32,
-                            height: 32,
-                            fit: BoxFit.cover,
-                            errorBuilder: (context, error, stack) {
-                              return const Center(child: Icon(Icons.location_on, color: Color(0xFF2E7D32), size: 20));
-                            },
-                          ),
-                        ),
-                      ),
+                      child:ClipOval(
+  child: Image.asset(
+    'assets/images/german_map.png',
+    width: 32,
+    height: 32,
+    fit: BoxFit.cover,
+    errorBuilder: (context, error, stackTrace) {
+      return const Icon(
+        Icons.location_on,
+        color: Color(0xFF2E7D32),
+        size: 20,
+      );
+    },
+  ),
+),
                     ),
 
                     const SizedBox(height: 14),
@@ -347,7 +348,7 @@ class _AuthPageState extends State<AuthPage> {
                 width: 36,
                 height: 36,
                 child: Image.asset(
-                  'assets/images/german_map.jpg',
+                  'assets/images/german_map.png',
                   fit: BoxFit.contain,
                   errorBuilder: (c, e, s) => const Icon(Icons.location_on, color: Color(0xFF2E7D32)),
                 ),
@@ -561,7 +562,7 @@ class _SignupPageState extends State<SignupPage> {
                 width: 36,
                 height: 36,
                 child: Image.asset(
-                  'assets/images/german_map.jpg',
+                  'assets/images/german_map.png',
                   fit: BoxFit.contain,
                   errorBuilder: (c, e, s) => const Icon(Icons.location_on, color: Color(0xFF2E7D32)),
                 ),
@@ -730,7 +731,7 @@ class LocationPermissionPage extends StatelessWidget {
               const Spacer(),
 
               Image.asset(
-                'assets/images/german_map.jpg',
+                'assets/images/loc.jpeg',
                 height: 260,
                 fit: BoxFit.contain,
               ),
@@ -772,7 +773,7 @@ class LocationPermissionPage extends StatelessWidget {
         borderRadius: BorderRadius.circular(6), // 👈 reduced radius here
       ),
     ),
-    child: const Text("Enable Location"),
+    child: const Text("Enable Location",style: TextStyle(color: Colors.white,),),
   ),
 ),
               const SizedBox(height: 14),
@@ -783,7 +784,7 @@ class LocationPermissionPage extends StatelessWidget {
                   MaterialPageRoute(builder: (_) => const HomePage()),
               );
             },
-            child: const Text("Not now"),
+            child: const Text("Not now",style: TextStyle(color: Colors.grey,),),
             ),
             const Spacer(),
             ],
@@ -823,7 +824,7 @@ class _SplashScreenState extends State<SplashScreen> {
           mainAxisSize: MainAxisSize.min,
           children: [
             Image.asset(
-              'assets/images/german_map.jpg',
+              'assets/images/german_map.png',
               width: 70,
               height: 70,
               fit: BoxFit.contain,

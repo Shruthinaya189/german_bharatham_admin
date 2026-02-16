@@ -21,7 +21,15 @@ class _SearchPageState extends State<SearchPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return WillPopScope(
+  onWillPop: () async {
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (_) => const HomePage()),
+    );
+    return false; // prevents default pop
+  },
+  child: Scaffold(
       backgroundColor: const Color(0xFFF6F8FA),
       appBar: AppBar(
   title: const Text("Search"),
@@ -73,6 +81,7 @@ class _SearchPageState extends State<SearchPage> {
         ),
       ),
       bottomNavigationBar: _bottomNav(),
+    ),
     );
   }
 

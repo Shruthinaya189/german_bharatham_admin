@@ -32,7 +32,7 @@ class FoodDetailPage extends StatelessWidget {
                       child: Image.asset(
                         image,
                         width: double.infinity,
-                        height: 300, // ⬆ increased
+                        height: 300,
                         fit: BoxFit.cover,
                       ),
                     ),
@@ -52,14 +52,10 @@ class FoodDetailPage extends StatelessWidget {
                       top: 42,
                       right: 16,
                       child: Row(
-                        children: [
-                          _circleBtn(
-                            iconPath: 'assets/images/bookmark.png',
-                          ),
-                          const SizedBox(width: 12),
-                          _circleBtn(
-                            iconPath: 'assets/images/share.png',
-                          ),
+                        children: const [
+                          _CircleIcon(iconPath: 'assets/images/bookmark.png'),
+                          SizedBox(width: 12),
+                          _CircleIcon(iconPath: 'assets/images/share.png'),
                         ],
                       ),
                     ),
@@ -79,7 +75,7 @@ class FoodDetailPage extends StatelessWidget {
                             child: Text(
                               name,
                               style: const TextStyle(
-                                fontSize: 22, // ⬆ increased
+                                fontSize: 22,
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
@@ -124,7 +120,7 @@ class FoodDetailPage extends StatelessWidget {
                       const Text(
                         "Services",
                         style: TextStyle(
-                          fontSize: 18, // ⬆ increased
+                          fontSize: 18,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
@@ -133,9 +129,9 @@ class FoodDetailPage extends StatelessWidget {
                         spacing: 12,
                         runSpacing: 12,
                         children: const [
-                          _chip("Dine-in"),
-                          _chip("Home Delivery"),
-                          _chip("Catering"),
+                          _Chip("Dine-in"),
+                          _Chip("Home Delivery"),
+                          _Chip("Catering"),
                         ],
                       ),
 
@@ -145,7 +141,7 @@ class FoodDetailPage extends StatelessWidget {
                       const Text(
                         "Location",
                         style: TextStyle(
-                          fontSize: 18, // ⬆ increased
+                          fontSize: 18,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
@@ -153,8 +149,8 @@ class FoodDetailPage extends StatelessWidget {
                       ClipRRect(
                         borderRadius: BorderRadius.circular(18),
                         child: Image.asset(
-                          'assets/images/map.png',
-                          height: 190, // ⬆ increased
+                          'assets/images/map.jpeg',
+                          height: 190,
                           width: double.infinity,
                           fit: BoxFit.cover,
                         ),
@@ -174,7 +170,7 @@ class FoodDetailPage extends StatelessWidget {
             left: 16,
             right: 16,
             child: SizedBox(
-              height: 58, // ⬆ slightly bigger
+              height: 58,
               child: ElevatedButton.icon(
                 onPressed: () {},
                 icon: Image.asset(
@@ -187,6 +183,7 @@ class FoodDetailPage extends StatelessWidget {
                   "Call",
                   style: TextStyle(
                     fontSize: 17,
+                    color: Colors.white, // ✅ FIXED HERE
                     fontWeight: FontWeight.bold,
                   ),
                 ),
@@ -273,10 +270,42 @@ class FoodDetailPage extends StatelessWidget {
   }
 }
 
+/// Reusable circle icon (for const usage)
+class _CircleIcon extends StatelessWidget {
+  final String iconPath;
+
+  const _CircleIcon({required this.iconPath});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 38,
+      width: 38,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        shape: BoxShape.circle,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.08),
+            blurRadius: 8,
+          ),
+        ],
+      ),
+      child: Center(
+        child: Image.asset(
+          iconPath,
+          height: 20,
+          width: 20,
+        ),
+      ),
+    );
+  }
+}
+
 /// SERVICE CHIP
-class _chip extends StatelessWidget {
+class _Chip extends StatelessWidget {
   final String label;
-  const _chip(this.label);
+  const _Chip(this.label);
 
   @override
   Widget build(BuildContext context) {

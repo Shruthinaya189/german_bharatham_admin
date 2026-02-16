@@ -3,7 +3,6 @@ import 'home.dart';
 import 'profile.dart';
 import 'search.dart';
 
-
 class SavedPage extends StatefulWidget {
   const SavedPage({super.key});
 
@@ -13,6 +12,7 @@ class SavedPage extends StatefulWidget {
 
 class _SavedPageState extends State<SavedPage> {
   int _currentIndex = 2;
+  int _selectedCategory = 0;
 
   @override
   Widget build(BuildContext context) {
@@ -20,14 +20,32 @@ class _SavedPageState extends State<SavedPage> {
       appBar: AppBar(
         title: const Text("Saved"),
         centerTitle: true,
-        automaticallyImplyLeading: false, // ✅ REMOVES BACK BUTTON
+        automaticallyImplyLeading: false,
       ),
 
-      // 🔹 BODY
+      /// BODY
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          SavedCard(
+          /// CATEGORY ROW
+          SizedBox(
+            height: 40,
+            child: ListView(
+              scrollDirection: Axis.horizontal,
+              children: [
+                _buildCategory("All", 0),
+                _buildCategory("Accommodation", 1),
+                _buildCategory("Food", 2),
+                _buildCategory("Jobs", 3),
+                _buildCategory("Services", 4),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 16),
+
+          /// SAVED CARDS
+          const SavedCard(
             title: "Studio Apartment near University",
             location: "Munich, Bavaria",
             rating: "4.5",
@@ -35,7 +53,7 @@ class _SavedPageState extends State<SavedPage> {
             statusColor: Colors.red,
             image: 'assets/images/room.jpg',
           ),
-          SavedCard(
+          const SavedCard(
             title: "Studio Apartment near University",
             location: "Munich, Bavaria",
             rating: "4.5",
@@ -43,13 +61,13 @@ class _SavedPageState extends State<SavedPage> {
             statusColor: Colors.green,
             image: 'assets/images/room.jpg',
           ),
-          SavedCard(
+          const SavedCard(
             title: "Relocation Experts",
             location: "Munich, Bavaria",
             rating: "4.5",
             image: 'assets/images/movers.jpg',
           ),
-          SavedCard(
+          const SavedCard(
             title: "Taj Mahal Restaurant",
             location: "Munich, Bavaria",
             rating: "4.5",
@@ -58,11 +76,13 @@ class _SavedPageState extends State<SavedPage> {
         ],
       ),
 
-      // 🔹 Bottom Navigation
+      /// BOTTOM NAVIGATION
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex,
         type: BottomNavigationBarType.fixed,
         onTap: (index) {
+          if (index == _currentIndex) return;
+
           setState(() => _currentIndex = index);
 
           if (index == 0) {
@@ -70,24 +90,15 @@ class _SavedPageState extends State<SavedPage> {
               context,
               MaterialPageRoute(builder: (_) => const HomePage()),
             );
-          }
-          if (index == 2) {
+          } else if (index == 1) {
             Navigator.pushReplacement(
               context,
-              MaterialPageRoute(builder: (_) => const SavedPage()),
+              MaterialPageRoute(builder: (_) => const SearchPage()),
             );
-          }
-          if (index == 3) {
+          } else if (index == 3) {
             Navigator.pushReplacement(
               context,
               MaterialPageRoute(builder: (_) => const ProfilePage()),
-            );
-          }
-          if (index == 1) {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(
-                  builder: (_) => SearchPage()),
             );
           }
         },
@@ -109,6 +120,36 @@ class _SavedPageState extends State<SavedPage> {
             label: "Profile",
           ),
         ],
+      ),
+    );
+  }
+
+  /// CATEGORY BUTTON
+  Widget _buildCategory(String title, int index) {
+    final bool isSelected = _selectedCategory == index;
+
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          _selectedCategory = index;
+        });
+      },
+      child: Container(
+        margin: const EdgeInsets.only(right: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        decoration: BoxDecoration(
+          color: isSelected ? const Color(0xFF3A7D6B) : Colors.grey.shade200,
+          borderRadius: BorderRadius.circular(20),
+        ),
+        alignment: Alignment.center,
+        child: Text(
+          title,
+          style: TextStyle(
+            color: isSelected ? Colors.white : Colors.grey,
+            fontSize: 13,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
       ),
     );
   }
@@ -192,8 +233,10 @@ class SavedCard extends StatelessWidget {
                     const SizedBox(width: 4),
                     Text(
                       location,
-                      style:
-                          const TextStyle(color: Colors.grey, fontSize: 12),
+                      style: const TextStyle(
+                        color: Colors.grey,
+                        fontSize: 12,
+                      ),
                     ),
                   ],
                 ),
@@ -223,14 +266,16 @@ class SavedCard extends StatelessWidget {
                         child: Text(
                           status!,
                           style: const TextStyle(
-                              color: Colors.white, fontSize: 11),
+                            color: Colors.white,
+                            fontSize: 11,
+                          ),
                         ),
                       ),
                   ],
                 ),
               ],
             ),
-          )
+          ),
         ],
       ),
     );

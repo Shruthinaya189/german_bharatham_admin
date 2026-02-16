@@ -19,7 +19,8 @@ class ReportProblemPage extends StatelessWidget {
             child: ElevatedButton(
               style: buttonStyle(),
               onPressed: () {},
-              child: const Text("Submit"),
+              child: const Text("Submit",style: TextStyle(color: Colors.white,fontSize: 16,fontWeight: FontWeight.w600,),),
+
             ),
           ),
         ],

@@ -28,7 +28,7 @@ class JobDetailsPage extends StatelessWidget {
         ),
         centerTitle: true,
       ),
-      body: Padding(
+      body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Container(
           padding: const EdgeInsets.all(16),
@@ -39,13 +39,13 @@ class JobDetailsPage extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              /// Company + share
+              /// Company + Share
               Row(
                 children: [
                   Image.asset(
                     'assets/images/google.png',
-                    height: 44,
-                    width: 44,
+                    height: 50,
+                    width: 50,
                   ),
                   const SizedBox(width: 12),
                   Expanded(
@@ -55,36 +55,48 @@ class JobDetailsPage extends StatelessWidget {
                         Text(
                           "Software Developer",
                           style: TextStyle(
-                            fontSize: 18,
+                            fontSize: 22,
                             fontWeight: FontWeight.w600,
                           ),
                         ),
-                        SizedBox(height: 5),
+                        SizedBox(height: 4),
                         Text(
                           "Google",
-                          style: TextStyle(color: Colors.grey),
+                          style: TextStyle(
+                            color: Colors.grey,
+                            fontSize: 16,
+                          ),
                         ),
                       ],
                     ),
                   ),
-                  Image.asset(
-                    'assets/images/share.png',
-                    height: 24,
-                    width: 24,
-                  )
+                  IconButton(
+                    onPressed: () {},
+                    icon: Image.asset(
+                      'assets/images/share.png',
+                      height: 22,
+                      width: 22,
+                    ),
+                  ),
                 ],
               ),
 
-              const SizedBox(height: 12),
+              const SizedBox(height: 16),
 
-              /// Location + salary + time
+              /// Location + Salary
               Row(
                 children: [
-                  Image.asset('assets/images/location.png', height: 16),
+                  Image.asset(
+                    'assets/images/location.png',
+                    height: 16,
+                  ),
                   const SizedBox(width: 6),
                   const Text(
                     "Munich, Bavaria",
-                    style: TextStyle(color: Colors.grey),
+                    style: TextStyle(
+                      color: Colors.grey,
+                      fontSize: 14,
+                    ),
                   ),
                   const Spacer(),
                   const Text(
@@ -92,36 +104,43 @@ class JobDetailsPage extends StatelessWidget {
                     style: TextStyle(
                       color: Colors.green,
                       fontWeight: FontWeight.w600,
+                      fontSize: 14,
                     ),
                   ),
                 ],
               ),
 
-              const SizedBox(height: 16),
+              const SizedBox(height: 20),
 
+              /// Description
               const Text(
                 "Description",
                 style: TextStyle(
                   fontWeight: FontWeight.w600,
-                  fontSize: 15,
+                  fontSize: 20,
                 ),
               ),
-              const SizedBox(height: 7),
+              const SizedBox(height: 8),
               const Text(
                 "We are looking for a talented software developer to join our growing team. Experience with React, Node.js, and cloud technologies preferred.",
-                style: TextStyle(color: Colors.grey),
+                style: TextStyle(
+                  color: Colors.grey,
+                  fontSize: 15,
+                  height: 1.5,
+                ),
               ),
 
-              const SizedBox(height: 16),
+              const SizedBox(height: 20),
 
+              /// Requirements
               const Text(
                 "Requirements",
                 style: TextStyle(
                   fontWeight: FontWeight.w600,
-                  fontSize: 15,
+                  fontSize: 20,
                 ),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 10),
 
               Wrap(
                 spacing: 10,
@@ -133,13 +152,14 @@ class JobDetailsPage extends StatelessWidget {
                 ],
               ),
 
-              const SizedBox(height: 16),
+              const SizedBox(height: 20),
 
+              /// Benefits
               const Text(
                 "Benefits",
                 style: TextStyle(
                   fontWeight: FontWeight.w600,
-                  fontSize: 15,
+                  fontSize: 20,
                 ),
               ),
               const SizedBox(height: 10),
@@ -155,8 +175,9 @@ class JobDetailsPage extends StatelessWidget {
                 ],
               ),
 
-              const Spacer(),
+              const SizedBox(height: 30),
 
+              /// Apply Button
               SizedBox(
                 width: double.infinity,
                 height: 50,
@@ -171,7 +192,7 @@ class JobDetailsPage extends StatelessWidget {
                   child: const Text(
                     "Apply Now",
                     style: TextStyle(
-                      fontSize: 15,
+                      fontSize: 18,
                       fontWeight: FontWeight.w600,
                       color: Colors.white,
                     ),
@@ -196,11 +217,13 @@ class _Chip extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
       decoration: BoxDecoration(
         color: const Color(0xFFF1F5F3),
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(12),
       ),
       child: Text(
         label,
-        style: const TextStyle(fontSize: 14),
+        style: const TextStyle(
+          fontSize: 14,
+        ),
       ),
     );
   }

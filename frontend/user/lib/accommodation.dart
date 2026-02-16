@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'accommodation_details.dart';
+import 'filter_page.dart';
 
 /// =======================
 /// DATA MODEL
@@ -10,6 +11,7 @@ class Accommodation {
   final String image;
   final double rating;
   final int price;
+  final List<String> features;   // 👈 ADD THIS
   bool isSaved;
 
   Accommodation({
@@ -18,35 +20,43 @@ class Accommodation {
     required this.image,
     required this.rating,
     required this.price,
+    required this.features,      // 👈 ADD THIS
     this.isSaved = false,
   });
 }
+
 
 /// =======================
 /// SAMPLE DATA
 /// =======================
 final List<Accommodation> accommodations = [
   Accommodation(
-    title: "Studio Apartment near University",
-    location: "Munich, Bavaria",
-    image: "assets/images/room.jpg",
-    rating: 4.5,
-    price: 24,
-  ),
+  title: "Studio Apartment near University",
+  location: "Munich, Bavaria",
+  image: "assets/images/room.jpg",
+  rating: 4.5,
+  price: 24,
+  features: ["Furnished", "Kitchen", "Balcony"], // 👈 ADD
+),
+
   Accommodation(
-    title: "Modern Studio Apartment",
-    location: "Berlin, Germany",
-    image: "assets/images/room.jpg",
-    rating: 4.3,
-    price: 30,
-  ),
+  title: "Studio Apartment near University",
+  location: "Munich, Bavaria",
+  image: "assets/images/room.jpg",
+  rating: 4.5,
+  price: 24,
+  features: ["Furnished", "Kitchen", "Balcony"], // 👈 ADD
+),
+
   Accommodation(
-    title: "Luxury Apartment",
-    location: "Hamburg, Germany",
-    image: "assets/images/room.jpg",
-    rating: 4.8,
-    price: 45,
-  ),
+  title: "Studio Apartment near University",
+  location: "Munich, Bavaria",
+  image: "assets/images/room.jpg",
+  rating: 4.5,
+  price: 24,
+  features: ["Furnished", "Kitchen", "Balcony"], // 👈 ADD
+),
+
 ];
 
 /// =======================
@@ -107,18 +117,28 @@ class _AccommodationPageState extends State<AccommodationPage> {
                   ),
                 ),
                 const SizedBox(width: 10),
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Image.asset(
-                    'assets/images/sort.png',
-                    height: 22,
-                    width: 22,
-                  ),
-                )
+                GestureDetector(
+  onTap: () {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => const FilterPage(),
+      ),
+    );
+  },
+  child: Container(
+    padding: const EdgeInsets.all(12),
+    decoration: BoxDecoration(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(10),
+    ),
+    child: Image.asset(
+      'assets/images/sort.png',
+      height: 22,
+      width: 22,
+    ),
+  ),
+)
               ],
             ),
           ),
@@ -210,10 +230,7 @@ class AccommodationCard extends StatelessWidget {
                       Expanded(
                         child: Text(
                           accommodation.title,
-                          style: const TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                          ),
+                          style: const TextStyle(fontSize: 15,fontWeight: FontWeight.w600,letterSpacing: 0.2,),
                         ),
                       ),
                       InkWell(
@@ -244,16 +261,37 @@ class AccommodationCard extends StatelessWidget {
                       const SizedBox(width: 4),
                       Text(
                         accommodation.location,
-                        style: const TextStyle(
-                          color: Colors.grey,
-                          fontSize: 12,
-                        ),
+                        style: const TextStyle(color: Color(0xFF6B7280),fontSize: 12,fontWeight: FontWeight.w400,),
                       ),
                     ],
                   ),
 
                   const SizedBox(height: 6),
-
+                  /// FEATURES
+Wrap(
+  spacing: 6,
+  runSpacing: 6,
+  children: accommodation.features.map((feature) {
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: 10,
+        vertical: 4,
+      ),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF1F3F5),
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Text(
+        feature,
+        style: const TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.w500,
+          color: Colors.black87,
+        ),
+      ),
+    );
+  }).toList(),
+),
                   /// RATING + PRICE
                   Row(
                     children: [
@@ -270,11 +308,7 @@ class AccommodationCard extends StatelessWidget {
                       const Spacer(),
                       Text(
                         "€${accommodation.price} / month",
-                        style: const TextStyle(
-                          color: Colors.green,
-                          fontWeight: FontWeight.w600,
-                          fontSize: 12,
-                        ),
+                        style: const TextStyle(color: Color(0xFF16A34A),fontWeight: FontWeight.w700,fontSize: 13,),
                       ),
                     ],
                   ),
