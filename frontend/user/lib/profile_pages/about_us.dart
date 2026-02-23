@@ -17,16 +17,4 @@ class AboutUsPage extends StatelessWidget {
   }
 }
 
-Widget _basePage({required String title, required Widget child}) {
-  return Scaffold(
-    backgroundColor: const Color(0xFFF7F8FA),
-    appBar: AppBar(
-      title: Text(title),
-      centerTitle: true,
-      backgroundColor: Colors.white,
-      foregroundColor: Colors.black,
-      elevation: 0,
-    ),
-    body: Padding(padding: const EdgeInsets.all(16), child: child),
-  );
-}
+// Use shared `basePage` from `ui_common.dart`.

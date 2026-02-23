@@ -1,7 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class GuideDetailsPage extends StatelessWidget {
-  const GuideDetailsPage({super.key});
+  final dynamic guide;
+  
+  const GuideDetailsPage({
+    super.key,
+    required this.guide,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -56,9 +62,9 @@ class GuideDetailsPage extends StatelessWidget {
                       color: const Color(0xFFE6F2EC),
                       borderRadius: BorderRadius.circular(20),
                     ),
-                    child: const Text(
-                      "Guide",
-                      style: TextStyle(
+                    child: Text(
+                      guide["category"] ?? "Guide",
+                      style: const TextStyle(
                         color: Color(0xFF3B8F6A),
                         fontSize: 12,
                         fontWeight: FontWeight.w500,
@@ -67,29 +73,29 @@ class GuideDetailsPage extends StatelessWidget {
                   ),
                   const SizedBox(height: 12),
 
-                  const Text(
-                    "Complete Guide to German Registration (Anmeldung)",
-                    style: TextStyle(
+                  Text(
+                    guide["title"] ?? "Guide Title",
+                    style: const TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.w700,
                     ),
                   ),
                   const SizedBox(height: 6),
 
-                  const Text(
-                    "Admin • Jan 20, 2026 • 5 min read",
-                    style: TextStyle(
+                  Text(
+                    "${guide["author"] ?? "Admin"} • ${guide["date"] ?? "Jan 20, 2026"} • 5 min read",
+                    style: const TextStyle(
                       fontSize: 13.5,
                       color: Colors.grey,
                     ),
                   ),
                   const SizedBox(height: 12),
 
-                  const Text(
-                    "This is a comprehensive guide that will help you understand the process and requirements. The information provided here is up-to-date as of Jan 20, 2026.",
-                    style: TextStyle(
-                      fontSize: 17.5,
-                      height: 2.5,
+                  Text(
+                    guide["description"] ?? "This is a comprehensive guide that will help you understand the process and requirements.",
+                    style: const TextStyle(
+                      fontSize: 15,
+                      height: 1.6,
                     ),
                   ),
 
@@ -103,9 +109,7 @@ class GuideDetailsPage extends StatelessWidget {
                   ),
                   const SizedBox(height: 12),
 
-                  _pointTile("Detailed step-by-step instructions"),
-                  _pointTile("Important documents you'll need"),
-                  _pointTile("Common pitfalls to avoid"),
+                  ..._buildKeyPoints(guide["keyPoints"] ?? ""),
 
                   const SizedBox(height: 18),
                   const Text(
@@ -116,11 +120,27 @@ class GuideDetailsPage extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 12),
-                  _resourceButton(image: Image.asset('assets/images/link.png',width: 20,height: 20,color: Colors.white,),
+                  _resourceButton(
+                    context: context,
+                    url: guide["officialWebsites"] ?? "",
+                    image: Image.asset(
+                      'assets/images/link.png',
+                      width: 20,
+                      height: 20,
+                      color: Colors.white,
+                    ),
                     text: "Official Government Website",
                   ),
                   const SizedBox(height: 12),
-                  _resourceButton(image: Image.asset('assets/images/link.png',width: 20,height: 20,color: Colors.white,),
+                  _resourceButton(
+                    context: context,
+                    url: guide["communityDiscussions"] ?? "",
+                    image: Image.asset(
+                      'assets/images/link.png',
+                      width: 20,
+                      height: 20,
+                      color: Colors.white,
+                    ),
                     text: "Community Forum Discussion",
                   ),
                 ],
@@ -130,6 +150,15 @@ class GuideDetailsPage extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  List<Widget> _buildKeyPoints(String keyPointsText) {
+    if (keyPointsText.isEmpty) {
+      return [_pointTile("Information not available")];
+    }
+    
+    List<String> points = keyPointsText.split(',');
+    return points.map((point) => _pointTile(point.trim())).toList();
   }
 
   Widget _pointTile(String text) {
@@ -149,15 +178,57 @@ class GuideDetailsPage extends StatelessWidget {
   }
 
   Widget _resourceButton({
+  required BuildContext context,
   IconData? icon,
   Widget? image,
   required String text,
+  required String url,
 }) {
   return SizedBox(
     width: double.infinity,
     height: 46,
     child: ElevatedButton(
-      onPressed: () {},
+      onPressed: () async {
+        if (url.isEmpty) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Link not available')),
+          );
+          return;
+        }
+
+        try {
+          // Add https:// if no protocol is specified
+          String urlToLaunch = url;
+          if (!urlToLaunch.startsWith('http://') && !urlToLaunch.startsWith('https://')) {
+            urlToLaunch = 'https://$urlToLaunch';
+          }
+          
+          final Uri uri = Uri.parse(urlToLaunch);
+          print("Attempting to launch: $urlToLaunch");
+          
+          // Try to launch the URL
+          bool launched = await launchUrl(
+            uri,
+            mode: LaunchMode.externalApplication,
+          );
+
+          if (!launched) {
+            print("Could not launch $urlToLaunch");
+            if (context.mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('Could not open: $text')),
+              );
+            }
+          }
+        } catch (e) {
+          print("Error launching URL: $e");
+          if (context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Error: ${e.toString()}')),
+            );
+          }
+        }
+      },
       style: ElevatedButton.styleFrom(
         backgroundColor: const Color(0xFF4F8F75),
         foregroundColor: Colors.white,

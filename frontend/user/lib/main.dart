@@ -3,6 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'home.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -311,7 +314,7 @@ class InfoPage extends StatelessWidget {
 
 // Authentication page (Get Started / Login / Sign up)
 class AuthPage extends StatefulWidget {
-  const AuthPage({super.key});
+  const AuthPage({Key? key}) : super(key: key);
 
   @override
   State<AuthPage> createState() => _AuthPageState();
@@ -323,6 +326,7 @@ class _AuthPageState extends State<AuthPage> {
   bool _remember = false;
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  String? _loginError;
 
   @override
   void dispose() {
@@ -330,7 +334,41 @@ class _AuthPageState extends State<AuthPage> {
     _passwordController.dispose();
     super.dispose();
   }
+  Future<void> loginUser() async {
+  setState(() {
+    _loginError = null; // clear old error
+  });
 
+  try {
+    final response = await http.post(
+      Uri.parse("http://10.166.137.12:5000/api/auth/login"),
+      headers: {"Content-Type": "application/json"},
+      body: jsonEncode({
+        "email": _emailController.text.trim(),
+        "password": _passwordController.text.trim(),
+      }),
+    );
+
+    if (response.statusCode == 200) {
+      // ✅ Login Success
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (_) => const LocationPermissionPage(),
+        ),
+      );
+    } else {
+      // ❌ Wrong credentials
+      setState(() {
+        _loginError = "Username or Password is wrong. Try again.";
+      });
+    }
+  } catch (e) {
+    setState(() {
+      _loginError = "Server error. Please try again.";
+    });
+  }
+}
   @override
   Widget build(BuildContext context) {
     const Color primaryGreen = Color(0xFF4E7F6D);
@@ -450,14 +488,22 @@ class _AuthPageState extends State<AuthPage> {
               ),
 
               const SizedBox(height: 12),
+              if (_loginError != null)
+  Padding(
+    padding: const EdgeInsets.only(bottom: 10),
+    child: Text(
+      _loginError!,
+      style: const TextStyle(
+        color: Colors.red,
+        fontSize: 14,
+      ),
+    ),
+  ),
               SizedBox(
                 width: double.infinity,
                 height: 52,
                 child: ElevatedButton(
-                  onPressed: () {
-                    // Replace with actual auth logic
-                    Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (_) => const LocationPermissionPage()),);
-                  },
+                  onPressed: loginUser,
                   style: ElevatedButton.styleFrom(backgroundColor: primaryGreen, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))),
                   child: const Text('Login', style: TextStyle(fontSize: 17,color: Colors.white, fontWeight: FontWeight.w600)),
                 ),
@@ -533,6 +579,7 @@ class _SignupPageState extends State<SignupPage> {
 
   // 🔹 Password visibility
   bool _obscure = true;
+  String? _passwordError;
 
   // 🔹 Theme color
   final Color primaryGreen = const Color(0xFF4F7F67);
@@ -546,6 +593,71 @@ class _SignupPageState extends State<SignupPage> {
     super.dispose();
   }
 
+  String? validatePassword(String password) {
+  if (password.length < 6) {
+    return "Password must be at least 6 characters long";
+  }
+
+  if (!RegExp(r'[A-Za-z]').hasMatch(password)) {
+    return "Password must contain at least one alphabet";
+  }
+
+  if (!RegExp(r'[0-9]').hasMatch(password)) {
+    return "Password must contain at least one number";
+  }
+
+  if (!RegExp(r'[!@#\$&*~%^()_\-+=]').hasMatch(password)) {
+    return "Password must contain at least one special character";
+  }
+
+  return null;
+}
+  Future<void> registerUser() async {
+
+  final password = _passwordController.text.trim();
+  final error = validatePassword(password);
+
+  if (error != null) {
+    setState(() {
+      _passwordError = error;
+    });
+    return;
+  }
+
+  setState(() {
+    _passwordError = null;
+  });
+
+  try {
+    final response = await http.post(
+      Uri.parse("http://10.166.137.12:5000/api/auth/register"),
+      headers: {"Content-Type": "application/json"},
+      body: jsonEncode({
+        "name": _nameController.text.trim(),
+        "email": _emailController.text.trim(),
+        "phone": _phoneController.text.trim(),
+        "password": password,
+      }),
+    );
+
+    if (response.statusCode == 201) {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (_) => const LocationPermissionPage(),
+        ),
+      );
+    } else {
+      setState(() {
+        _passwordError = "Signup failed. Try again.";
+      });
+    }
+  } catch (e) {
+    setState(() {
+      _passwordError = "Server error. Try again.";
+    });
+  }
+}
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -583,18 +695,25 @@ class _SignupPageState extends State<SignupPage> {
                 child: Row(
                   children: [
                     Expanded(
-                      child: GestureDetector(
-                        onTap: () => setState(() => _isLogin = true),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                          decoration: BoxDecoration(
-                            color: _isLogin ? Colors.white : Colors.transparent,
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: const Text('Login', textAlign: TextAlign.center),
-                        ),
-                      ),
-                    ),
+  child: GestureDetector(
+    onTap: () {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => AuthPage(),
+        ),
+      );
+},
+    child: Container(
+      padding: const EdgeInsets.symmetric(vertical: 12),
+      decoration: BoxDecoration(
+        color: _isLogin ? Colors.white : Colors.transparent,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: const Text('Login', textAlign: TextAlign.center),
+    ),
+  ),
+),
                     Expanded(
                       child: GestureDetector(
                         onTap: () {
@@ -656,17 +775,22 @@ class _SignupPageState extends State<SignupPage> {
               ),
 
               const SizedBox(height: 22),
-
+              if (_passwordError != null)
+  Padding(
+    padding: const EdgeInsets.only(bottom: 10),
+    child: Text(
+      _passwordError!,
+      style: const TextStyle(
+        color: Colors.red,
+        fontSize: 14,
+      ),
+    ),
+  ),
               SizedBox(
                 width: double.infinity,
                 height: 52,
                 child: ElevatedButton(
-                  onPressed: () {
-                    Navigator.pushReplacement(
-                     context,
-                     MaterialPageRoute(builder: (_) => const LocationPermissionPage()),
-                    );
-                  },
+                  onPressed: registerUser,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: primaryGreen,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
