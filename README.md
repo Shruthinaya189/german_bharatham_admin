@@ -11,6 +11,22 @@ In the project directory, you can run:
 Runs the app in the development mode.\
 Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
 
+> ⚠️ **Backend required** – the admin panel talks to an API on port 5000.  Make sure
+> you also start the Node server (`cd backend && npm install && node server.js`).
+> If you see **"Error: Failed to fetch"** on pages such as Community, the client
+> was unable to reach the API.  You can adjust the address by setting
+> `REACT_APP_API_URL` in a `.env.local` file (defaults to `http://localhost:5000`).
+> See `src/api.js` for the constant used by the components.
+
+### Local development tips
+
+- The application stores an `adminToken` in `localStorage` when you sign in.  If
+  you launch the front‑end and are taken straight to the dashboard the token is
+  still present; hit **Log out** at the bottom of the sidebar or clear the key in
+  the browser devtools to see the login form again.
+- Expired or invalid tokens automatically clear and force a redirect back to the
+  login screen when a 401/403 response is received.
+
 The page will reload when you make changes.\
 You may also see any lint errors in the console.
 

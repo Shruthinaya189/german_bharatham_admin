@@ -56,21 +56,20 @@ class GuideDetailsPage extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFE6F2EC),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Text(
-                      guide["category"] ?? "Guide",
-                      style: const TextStyle(
-                        color: Color(0xFF3B8F6A),
-                        fontSize: 12,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ),
+  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+  decoration: BoxDecoration(
+    color: const Color(0xFFE6F2EC),
+    borderRadius: BorderRadius.circular(25),
+  ),
+  child: Text(
+    guide["category"] ?? "Guide",
+    style: const TextStyle(
+      color: Color(0xFF3B8F6A),
+      fontSize: 12.5,
+      fontWeight: FontWeight.w600,
+    ),
+  ),
+),
                   const SizedBox(height: 12),
 
                   Text(
@@ -109,7 +108,7 @@ class GuideDetailsPage extends StatelessWidget {
                   ),
                   const SizedBox(height: 12),
 
-                  ..._buildKeyPoints(guide["keyPoints"] ?? ""),
+                  ..._buildKeyPoints(guide["keyPoints"]),
 
                   const SizedBox(height: 18),
                   const Text(
@@ -152,27 +151,72 @@ class GuideDetailsPage extends StatelessWidget {
     );
   }
 
-  List<Widget> _buildKeyPoints(String keyPointsText) {
-    if (keyPointsText.isEmpty) {
-      return [_pointTile("Information not available")];
+  List<Widget> _buildKeyPoints(dynamic keyPointsData) {
+    if (keyPointsData == null) {
+      return [];
     }
-    
-    List<String> points = keyPointsText.split(',');
-    return points.map((point) => _pointTile(point.trim())).toList();
+
+    List<String> points = [];
+
+    // ✅ If backend sends List (Array)
+    if (keyPointsData is List) {
+      points = keyPointsData
+          .map((e) => e.toString().trim())
+          .where((e) => e.isNotEmpty)
+          .toList();
+    }
+    // ✅ If backend sends String (Semicolon-separated)
+    else if (keyPointsData is String) {
+      points = keyPointsData
+          .split(';')  // 🔹 Split by semicolon only
+          .map((e) => e.trim())
+          .where((e) => e.isNotEmpty)
+          .toList();
+    }
+
+    if (points.isEmpty) {
+      return [];
+    }
+
+    // Return each point as a separate widget
+    return points.map((point) => _pointTile(point)).toList();
   }
 
   Widget _pointTile(String text) {
     return Container(
       width: double.infinity,
-      margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
         color: const Color(0xFFF3F6F9),
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: Colors.grey.withOpacity(0.1),
+          width: 1,
+        ),
       ),
-      child: Text(
-        text,
-        style: const TextStyle(fontSize: 14),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            "• ",
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF4F8F75),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              text,
+              style: const TextStyle(
+                fontSize: 14,
+                height: 1.5,
+                color: Colors.black87,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -186,12 +230,15 @@ class GuideDetailsPage extends StatelessWidget {
 }) {
   return SizedBox(
     width: double.infinity,
-    height: 46,
+    height: 52,
     child: ElevatedButton(
       onPressed: () async {
         if (url.isEmpty) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Link not available')),
+            const SnackBar(
+              content: Text('Link not available'),
+              duration: Duration(seconds: 2),
+            ),
           );
           return;
         }
@@ -204,7 +251,7 @@ class GuideDetailsPage extends StatelessWidget {
           }
           
           final Uri uri = Uri.parse(urlToLaunch);
-          print("Attempting to launch: $urlToLaunch");
+          debugPrint("🔗 Launching URL: $urlToLaunch");
           
           // Try to launch the URL
           bool launched = await launchUrl(
@@ -213,18 +260,26 @@ class GuideDetailsPage extends StatelessWidget {
           );
 
           if (!launched) {
-            print("Could not launch $urlToLaunch");
+            debugPrint("❌ Could not launch $urlToLaunch");
             if (context.mounted) {
               ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('Could not open: $text')),
+                SnackBar(
+                  content: Text('Could not open: $text'),
+                  duration: const Duration(seconds: 2),
+                ),
               );
             }
+          } else {
+            debugPrint("✅ Successfully launched URL");
           }
         } catch (e) {
-          print("Error launching URL: $e");
+          debugPrint("⚠️ Error launching URL: $e");
           if (context.mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('Error: ${e.toString()}')),
+              SnackBar(
+                content: Text('Error: ${e.toString()}'),
+                duration: const Duration(seconds: 2),
+              ),
             );
           }
         }
@@ -232,6 +287,7 @@ class GuideDetailsPage extends StatelessWidget {
       style: ElevatedButton.styleFrom(
         backgroundColor: const Color(0xFF4F8F75),
         foregroundColor: Colors.white,
+        elevation: 2,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),
         ),
@@ -239,10 +295,23 @@ class GuideDetailsPage extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          if (icon != null) Icon(icon, size: 18),
-          if (image != null) image,
-          const SizedBox(width: 8),
-          Text(text),
+          if (image != null) 
+            SizedBox(
+              width: 20,
+              height: 20,
+              child: image,
+            )
+          else if (icon != null) 
+            Icon(icon, size: 20),
+          const SizedBox(width: 10),
+          Text(
+            text,
+            style: const TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 0.3,
+            ),
+          ),
         ],
       ),
     ),

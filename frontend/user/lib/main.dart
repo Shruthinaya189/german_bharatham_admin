@@ -9,40 +9,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
-
-  runZonedGuarded(() {
-    // Global Flutter error handler
-    ErrorWidget.builder = (FlutterErrorDetails details) {
-      return MaterialApp(
-        home: Scaffold(
-          body: Center(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Text(
-                'Error:\n${details.exceptionAsString()}',
-                style: const TextStyle(color: Colors.red),
-                textAlign: TextAlign.center,
-              ),
-            ),
-          ),
-        ),
-      );
-    };
-
-    FlutterError.onError = (details) {
-      FlutterError.presentError(details);
-      if (kDebugMode) {
-        debugPrint('FlutterError: ${details.exceptionAsString()}');
-      }
-    };
-
-    runApp(const MyApp());
-  }, (error, stack) {
-    if (kDebugMode) {
-      debugPrint('Uncaught error: $error');
-      debugPrint('$stack');
-    }
-  });
+  runApp(const MyApp());
 }
 
 class MyApp extends StatelessWidget {
@@ -60,7 +27,6 @@ class MyApp extends StatelessWidget {
     );
   }
 }
-
 class WelcomeScreen extends StatelessWidget {
   const WelcomeScreen({super.key});
   static const Color primaryGreen = Color(0xFF4E7F6D);
@@ -341,7 +307,7 @@ class _AuthPageState extends State<AuthPage> {
 
   try {
     final response = await http.post(
-      Uri.parse("http://10.166.137.12:5000/api/auth/login"),
+      Uri.parse("http://10.166.137.12:5000/api/user/login"),
       headers: {"Content-Type": "application/json"},
       body: jsonEncode({
         "email": _emailController.text.trim(),
@@ -630,7 +596,7 @@ class _SignupPageState extends State<SignupPage> {
 
   try {
     final response = await http.post(
-      Uri.parse("http://10.166.137.12:5000/api/auth/register"),
+      Uri.parse("http://10.166.137.12:5000/api/user/register"),
       headers: {"Content-Type": "application/json"},
       body: jsonEncode({
         "name": _nameController.text.trim(),
