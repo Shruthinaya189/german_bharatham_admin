@@ -11,6 +11,10 @@ const userSchema = new mongoose.Schema(
       enum: ["user", "admin"],  // Only 'user' or 'admin' allowed
       default: "user",
     },
+    isActive: {
+  type: Boolean,
+  default: true,
+},
   },
   { timestamps: true }
 );

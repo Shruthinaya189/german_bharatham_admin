@@ -142,7 +142,7 @@ onClose();
 
           <div className="form-group">
             <label>Content</label>
-            <textarea value={postData.content}onChange={(e) =>setPostData({ ...postData, content: e.target.value })}/>
+            <textarea rows={10} value={postData.content} onChange={(e) =>setPostData({ ...postData, content: e.target.value })}/>
           </div>
 
           <div className="form-actions">

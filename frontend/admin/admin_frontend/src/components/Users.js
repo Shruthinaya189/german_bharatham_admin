@@ -1,103 +1,53 @@
-import React, { useState } from 'react';
-
+import React, { useState, useEffect } from 'react';
 const Users = () => {
   const [sortBy, setSortBy] = useState('newest');
   const [filterBy, setFilterBy] = useState('all');
+  const [users, setUsers] = useState([]);
+  const BASE = "http://10.166.137.12:5000";
+  useEffect(() => {
+  fetchUsers();
+}, []);
 
-  const users = [
-    { 
-      id: 1, 
-      name: 'Finn', 
-      email: 'finn@gmail.com', 
-      joinedDate: '2024-11-02', 
-      status: 'Active',
-      avatar: 'https://ui-avatars.com/api/?name=Finn&background=6b9976&color=fff'
-    },
-    { 
-      id: 2, 
-      name: 'Priti', 
-      email: 'priti@gmail.com', 
-      joinedDate: '2024-11-02', 
-      status: 'Active',
-      avatar: 'https://ui-avatars.com/api/?name=Priti&background=6b9976&color=fff'
-    },
-    { 
-      id: 3, 
-      name: 'Jay Sri', 
-      email: 'jai@gmail.com', 
-      joinedDate: '2024-11-02', 
-      status: 'Active',
-      avatar: 'https://ui-avatars.com/api/?name=Jay+Sri&background=6b9976&color=fff'
-    },
-    { 
-      id: 4, 
-      name: 'Priyanka', 
-      email: 'priti@gmail.com', 
-      joinedDate: '2024-11-02', 
-      status: 'Inactive',
-      avatar: 'https://ui-avatars.com/api/?name=Priyanka&background=6b9976&color=fff'
-    },
-    { 
-      id: 5, 
-      name: 'Ferno', 
-      email: 'pritxyz@gmail.com', 
-      joinedDate: '2024-11-02', 
-      status: 'Active',
-      avatar: 'https://ui-avatars.com/api/?name=Ferno&background=6b9976&color=fff'
-    },
-    { 
-      id: 6, 
-      name: 'Ken', 
-      email: 'servebiz@gmail.com', 
-      joinedDate: '2024-11-01', 
-      status: 'Inactive',
-      avatar: 'https://ui-avatars.com/api/?name=Ken&background=6b9976&color=fff'
-    },
-    { 
-      id: 7, 
-      name: 'Priya', 
-      email: 'priyak@gmail.com', 
-      joinedDate: '2024-11-01', 
-      status: 'Active',
-      avatar: 'https://ui-avatars.com/api/?name=Priya&background=6b9976&color=fff'
-    },
-    { 
-      id: 8, 
-      name: 'Saran Kumar', 
-      email: 'sarankq@gmail.com', 
-      joinedDate: '2024-11-02', 
-      status: 'Inactive',
-      avatar: 'https://ui-avatars.com/api/?name=Saran+Kumar&background=6b9976&color=fff'
-    },
-    { 
-      id: 9, 
-      name: 'Hari', 
-      email: 'priti@gmail.com', 
-      joinedDate: '2024-11-02', 
-      status: 'Active',
-      avatar: 'https://ui-avatars.com/api/?name=Hari&background=6b9976&color=fff'
-    },
-    { 
-      id: 10, 
-      name: 'Abc', 
-      email: 'abc@gmail.com', 
-      joinedDate: '2024-11-01', 
-      status: 'Inactive',
-      avatar: 'https://ui-avatars.com/api/?name=Abc&background=6b9976&color=fff'
-    },
-    { 
-      id: 11, 
-      name: 'Kiran', 
-      email: 'kiran@gmail.com', 
-      joinedDate: '2024-11-01', 
-      status: 'Active',
-      avatar: 'https://ui-avatars.com/api/?name=Kiran&background=6b9976&color=fff'
+const fetchUsers = async () => {
+  try {
+    const token = localStorage.getItem("adminToken");
+
+    const response = await fetch(`${BASE}/api/user/all-users`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      alert(data.message);
+      return;
     }
-  ];
 
-  const handleUserAction = (userId, action) => {
-    console.log(`${action} user:`, userId);
-  };
+    setUsers(data);
+
+  } catch (error) {
+    console.error("Error fetching users:", error);
+  }
+};
+  const handleUserAction = async (userId, action) => {
+  try {
+    const token = localStorage.getItem("adminToken");
+
+    await fetch(`${BASE}/api/user/${action}/${userId}`, {
+      method: "PUT",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    fetchUsers(); // refresh table
+
+  } catch (error) {
+    console.error("Error updating user:", error);
+  }
+};
 
   return (
     <div className="users">
@@ -144,40 +94,48 @@ const Users = () => {
             </tr>
           </thead>
           <tbody>
-            {users.map((user) => (
-              <tr key={user.id}>
-                <td>
-                  <div className="user-info">
-                    <img src={user.avatar} alt={user.name} className="user-avatar" />
-                    <span className="user-name">{user.name}</span>
-                  </div>
-                </td>
-                <td>{user.email}</td>
-                <td>{user.joinedDate}</td>
-                <td>
-                  <span className={`status ${user.status.toLowerCase()}`}>
-                    {user.status}
-                  </span>
-                </td>
-                <td>
-                  {user.status === 'Active' ? (
-                    <button 
-                      className="action-btn deactivate-btn"
-                      onClick={() => handleUserAction(user.id, 'deactivate')}
-                    >
-                      Deactivate
-                    </button>
-                  ) : (
-                    <button 
-                      className="action-btn activate-btn"
-                      onClick={() => handleUserAction(user.id, 'activate')}
-                    >
-                      Activate
-                    </button>
-                  )}
-                </td>
-              </tr>
-            ))}
+           {users.map((user) => (
+  <tr key={user._id}>
+    <td>
+      <div className="user-info">
+        <img 
+          src={`https://ui-avatars.com/api/?name=${user.name}&background=6b9976&color=fff`} 
+          alt={user.name} 
+          className="user-avatar" 
+        />
+        <span className="user-name">{user.name}</span>
+      </div>
+    </td>
+
+    <td>{user.email}</td>
+
+    <td>{new Date(user.createdAt).toLocaleDateString()}</td>
+
+    <td>
+      <span className={`status ${user.isActive ? "active" : "inactive"}`}>
+        {user.isActive ? "Active" : "Inactive"}
+      </span>
+    </td>
+
+    <td>
+      {user.isActive ? (
+        <button 
+          className="action-btn deactivate-btn"
+          onClick={() => handleUserAction(user._id, 'deactivate')}
+        >
+          Deactivate
+        </button>
+      ) : (
+        <button 
+          className="action-btn activate-btn"
+          onClick={() => handleUserAction(user._id, 'activate')}
+        >
+          Activate
+        </button>
+      )}
+    </td>
+  </tr>
+))}
           </tbody>
         </table>
       </div>

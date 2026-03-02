@@ -1,10 +1,15 @@
-import React, { useState, useEffect } from 'react';
-import { Plus, ChevronRight } from 'lucide-react';
-import CreatePostModal from './CreatePostModal';
+import React, { useState, useEffect } from "react";
+import { Plus, ChevronRight } from "lucide-react";
+import CreatePostModal from "./CreatePostModal";
+import EditPostModal from "./EditPostModal";
 
 const Community = () => {
-  const [view, setView] = useState('list');
+  const [view, setView] = useState("list");
   const [posts, setPosts] = useState([]);
+  const [selectedPost, setSelectedPost] = useState(null);
+  const [showEditModal, setShowEditModal] = useState(false);
+
+  const BASE = "http://10.166.137.12:5000";
 
   useEffect(() => {
     fetchPosts();
@@ -12,7 +17,7 @@ const Community = () => {
 
   const fetchPosts = async () => {
     try {
-      const response = await fetch("http://10.166.137.12:5000/api/community");
+      const response = await fetch(`${BASE}/api/community`);
       const data = await response.json();
       setPosts(data);
     } catch (error) {
@@ -20,13 +25,26 @@ const Community = () => {
     }
   };
 
-  if (view === 'create') {
+  // 🔥 Open Edit Modal
+  const handleEditClick = (post) => {
+    setSelectedPost(post);
+    setShowEditModal(true);
+  };
+
+  // 🔥 Close Edit Modal
+  const closeEditModal = () => {
+    setShowEditModal(false);
+    setSelectedPost(null);
+  };
+
+  // 🔥 CREATE VIEW
+  if (view === "create") {
     return (
-      <CreatePostModal 
+      <CreatePostModal
         onClose={() => {
-          setView('list');
-          fetchPosts(); // refresh after create
-        }} 
+          setView("list");
+          fetchPosts();
+        }}
       />
     );
   }
@@ -38,9 +56,10 @@ const Community = () => {
           <h1>Posts by you</h1>
           <p>Posts for the community</p>
         </div>
-        <button 
+
+        <button
           className="new-post-btn"
-          onClick={() => setView('create')}
+          onClick={() => setView("create")}
         >
           <Plus size={20} />
           New Post
@@ -50,13 +69,18 @@ const Community = () => {
       <div className="posts-list">
         {posts.map((post) => (
           <div key={post._id} className="post-item">
+
+            {/* Main Post Info */}
             <div className="post-content">
               <div className="post-header">
                 <h3 className="post-title">{post.title}</h3>
-                <span className={`post-category ${post.category?.toLowerCase()}`}>
+                <span
+                  className={`post-category ${post.category?.toLowerCase()}`}
+                >
                   {post.category}
                 </span>
               </div>
+
               <div className="post-meta">
                 <span className="post-date">
                   {new Date(post.createdAt).toDateString()}
@@ -67,14 +91,29 @@ const Community = () => {
                 </span>
               </div>
             </div>
+
+            {/* Edit Button */}
             <div className="post-actions">
-              <button className="action-btn chevron-btn">
+              <button
+                className="action-btn chevron-btn"
+                onClick={() => handleEditClick(post)}
+              >
                 <ChevronRight size={20} />
               </button>
             </div>
+
           </div>
         ))}
       </div>
+
+      {/* 🔥 EDIT MODAL */}
+      {showEditModal && selectedPost && (
+        <EditPostModal
+          post={selectedPost}
+          onClose={closeEditModal}
+          onPostUpdated={fetchPosts}
+        />
+      )}
     </div>
   );
 };
