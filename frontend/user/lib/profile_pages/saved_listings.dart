@@ -9,8 +9,8 @@ class SavedListingsPage extends StatelessWidget {
     return basePage(
       context: context,
       title: "Saved Listings",
-      child: Column(
-        children: const [
+      child: const Column(
+        children: [
           _savedItem("Studio Apartment", "Munich"),
           _savedItem("Software Developer Job", "Berlin"),
           _savedItem("Indian Restaurant", "Hamburg"),

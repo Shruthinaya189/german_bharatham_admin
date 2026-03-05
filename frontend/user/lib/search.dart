@@ -2,9 +2,6 @@ import 'package:flutter/material.dart';
 import 'home.dart';
 import 'saved.dart';
 import 'profile.dart';
-import 'job_details.dart';
-import 'accommodation_details.dart';
-import 'food_details.dart';
 
 class SearchPage extends StatefulWidget {
   const SearchPage({super.key});

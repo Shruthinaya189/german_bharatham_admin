@@ -70,3 +70,20 @@ desktop.ini
 # ── Logs ──────────────────────────────────────────────────────
 *.log
 logs/
+
+# ── Python ────────────────────────────────────────────────────
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# ── Temporary / Test files ────────────────────────────────────
+temp_*.js
+*_old.*
+*_new.*
+*_clean.*
+*_backup.*
+*.tmp

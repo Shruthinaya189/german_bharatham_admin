@@ -7,7 +7,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 // Use machine IP for real device, 10.0.2.2 for emulator
-const String apiBaseUrl = 'http://10.233.141.31:5000';
+const String apiBaseUrl = 'http://10.96.191.169:5000';
 
 /// =======================
 /// DATA MODEL
@@ -408,15 +408,15 @@ class AccommodationCard extends StatelessWidget {
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(12),
         ),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             /// IMAGE
             ClipRRect(
-              borderRadius: BorderRadius.circular(10),
-              child: _buildListingImage(accommodation.image, 90, 90),
+              borderRadius: BorderRadius.circular(8),
+              child: _buildListingImage(accommodation.image, 100, 100),
             ),
 
             const SizedBox(width: 12),
@@ -432,18 +432,25 @@ class AccommodationCard extends StatelessWidget {
                       Expanded(
                         child: Text(
                           accommodation.title,
-                          style: const TextStyle(fontSize: 15,fontWeight: FontWeight.w600,letterSpacing: 0.2,),
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.black,
+                            letterSpacing: 0.1,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
+                      const SizedBox(width: 8),
                       InkWell(
                         onTap: onBookmarkTap,
-                        child: Image.asset(
-                          'assets/images/bookmark.png',
-                          width: 18,
-                          height: 18,
+                        child: Icon(
+                          accommodation.isSaved ? Icons.bookmark : Icons.bookmark_border,
+                          size: 16,
                           color: accommodation.isSaved
-                              ? Colors.black
-                              : Colors.grey,
+                              ? const Color(0xFF4E7F6D)
+                              : Colors.grey.shade400,
                         ),
                       ),
                     ],
@@ -454,67 +461,83 @@ class AccommodationCard extends StatelessWidget {
                   /// LOCATION
                   Row(
                     children: [
-                      Image.asset(
-                        'assets/images/location.png',
-                        width: 16,
-                        height: 16,
-                        errorBuilder: (_, __, ___) => const Icon(Icons.location_on, size: 16, color: Color(0xFF4F7F67)),
+                      const Icon(
+                        Icons.location_on,
+                        size: 14,
+                        color: Color(0xFF9CA3AF),
                       ),
                       const SizedBox(width: 4),
-                      Text(
-                        accommodation.location,
-                        style: const TextStyle(color: Color(0xFF6B7280),fontSize: 12,fontWeight: FontWeight.w400,),
+                      Expanded(
+                        child: Text(
+                          accommodation.location,
+                          style: const TextStyle(
+                            color: Color(0xFF6B7280),
+                            fontSize: 13,
+                            fontWeight: FontWeight.w400,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
                     ],
                   ),
 
-                  const SizedBox(height: 6),
+                  const SizedBox(height: 8),
                   
                   /// AMENITIES
                   Wrap(
                     spacing: 6,
-                    runSpacing: 6,
-                    children: accommodation.amenities.map((amenity) {
+                    runSpacing: 4,
+                    children: accommodation.amenities.take(3).map((amenity) {
                       return Container(
                         padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
+                          horizontal: 8,
                           vertical: 4,
                         ),
                         decoration: BoxDecoration(
-                          color: const Color(0xFFF1F3F5),
-                          borderRadius: BorderRadius.circular(6),
+                          color: const Color(0xFFF3F4F6),
+                          borderRadius: BorderRadius.circular(4),
                         ),
                         child: Text(
                           amenity,
                           style: const TextStyle(
                             fontSize: 11,
                             fontWeight: FontWeight.w500,
-                            color: Colors.black87,
+                            color: Color(0xFF4B5563),
                           ),
                         ),
                       );
                     }).toList(),
                   ),
                   
-                  const SizedBox(height: 6),
+                  const SizedBox(height: 8),
                   /// RATING + PRICE
                   Row(
                     children: [
                       Image.asset(
                         'assets/images/star.png',
-                        width: 14,
-                        height: 14,
-                        color: const Color(0xFFF59E0B),
+                        width: 16,
+                        height: 16,
                       ),
                       const SizedBox(width: 4),
                       Text(
-                        (accommodation.averageRating ?? 0.0).toStringAsFixed(1),
-                        style: const TextStyle(fontSize: 12),
+                        (accommodation.averageRating != null && accommodation.averageRating! > 0)
+                            ? accommodation.averageRating!.toStringAsFixed(1)
+                            : '4.5',
+                        style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.black87,
+                        ),
                       ),
                       const Spacer(),
                       Text(
-                        "€${accommodation.price} / month",
-                        style: const TextStyle(color: Color(0xFF16A34A),fontWeight: FontWeight.w700,fontSize: 13,),
+                        "€${accommodation.price} / per month",
+                        style: const TextStyle(
+                          color: Color(0xFF4E7F6D),
+                          fontWeight: FontWeight.w600,
+                          fontSize: 13,
+                        ),
                       ),
                     ],
                   ),
@@ -531,7 +554,12 @@ class AccommodationCard extends StatelessWidget {
         width: 90,
         height: 90,
         color: const Color(0xFFE8F5E9),
-        child: const Icon(Icons.home, color: Color(0xFF4F7F67), size: 36),
+        child: Image.asset(
+          'assets/images/accommodation.png',
+          width: 36,
+          height: 36,
+          color: const Color(0xFF4F7F67),
+        ),
       );
 
   /// Handles URL, base64 data-URI and asset images
@@ -540,14 +568,14 @@ class AccommodationCard extends StatelessWidget {
       try {
         final Uint8List bytes = base64Decode(src.split(',').last);
         return Image.memory(bytes, width: w, height: h, fit: BoxFit.cover,
-            errorBuilder: (_, __, ___) => _placeholderImage());
+            errorBuilder: (_, _, _) => _placeholderImage());
       } catch (_) {}
     }
     if (src.startsWith('http')) {
       return Image.network(src, width: w, height: h, fit: BoxFit.cover,
-          errorBuilder: (_, __, ___) => _placeholderImage());
+          errorBuilder: (_, _, _) => _placeholderImage());
     }
     return Image.asset(src, width: w, height: h, fit: BoxFit.cover,
-        errorBuilder: (_, __, ___) => _placeholderImage());
+        errorBuilder: (_, _, _) => _placeholderImage());
   }
 }

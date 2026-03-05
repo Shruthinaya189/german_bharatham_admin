@@ -2,16 +2,15 @@ const mongoose = require("mongoose");
 
 const connectDB = async () => {
   try {
-    const mongoUri = process.env.MONGODB_URI;
-    const mongoUriFallback = process.env.MONGODB_URI_FALLBACK;
-    const dbName = process.env.MONGODB_DB_NAME || "german";
+    const mongoUri = process.env.MONGO_URI;
+    const mongoUriFallback = process.env.MONGO_URI_FALLBACK;
 
     if (!mongoUri) {
-      throw new Error("MONGODB_URI is not set. Create backend/.env from backend/.env.example and provide a valid URI.");
+      throw new Error("MONGO_URI is not set. Create backend/.env from backend/.env.example and provide a valid URI.");
     }
 
     try {
-      await mongoose.connect(mongoUri, { dbName });
+      await mongoose.connect(mongoUri);
     } catch (primaryError) {
       const isSrvDnsError =
         primaryError &&
@@ -19,17 +18,17 @@ const connectDB = async () => {
         primaryError.syscall === "querySrv";
 
       if (isSrvDnsError && mongoUriFallback) {
-        console.warn("Primary SRV Mongo URI failed. Retrying with MONGODB_URI_FALLBACK...");
-        await mongoose.connect(mongoUriFallback, { dbName });
+        console.warn("Primary SRV Mongo URI failed. Retrying with MONGO_URI_FALLBACK...");
+        await mongoose.connect(mongoUriFallback);
       } else if (isSrvDnsError && !mongoUriFallback) {
-        console.error("SRV DNS resolution failed for MONGODB_URI. Set MONGODB_URI_FALLBACK with a non-SRV mongodb:// URI.");
+        console.error("SRV DNS resolution failed for MONGO_URI. Set MONGO_URI_FALLBACK with a non-SRV mongodb:// URI.");
         throw primaryError;
       } else {
         throw primaryError;
       }
     }
     
-    console.log(`MongoDB connected successfully (db: ${dbName})`);
+    console.log(`MongoDB connected successfully (db: ${mongoose.connection.db.databaseName})`);
     
     // Ensure accommodation database and collection
     const db = mongoose.connection.db;

@@ -46,7 +46,7 @@ class _CommunityPageState extends State<CommunityPage> {
       // Backend runs on port 5000 (see backend/.env). Include port so
       // requests reach the Express server instead of defaulting to port 80.
       final response = await http.get(
-        Uri.parse("http://10.233.141.31:5000/api/community"),
+        Uri.parse("http://10.96.191.169:5000/api/community"),
       );
 
       print("Status Code: ${response.statusCode}");

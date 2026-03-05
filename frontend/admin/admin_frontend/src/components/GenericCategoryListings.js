@@ -3,7 +3,7 @@ import { Plus, Trash2, Edit, Eye, ArrowLeft } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import AddListingModal from './AddListingModal';
 
-const BASE = 'http://10.233.141.31:5000';
+const BASE = 'http://localhost:5000';
 
 const STATUS_COLORS = {
   active: { bg: '#d1fae5', color: '#065f46' },

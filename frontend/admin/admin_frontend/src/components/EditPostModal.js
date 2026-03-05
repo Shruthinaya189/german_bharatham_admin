@@ -9,7 +9,7 @@ const EditPostModal = ({ post, onClose, onPostUpdated }) => {
     content: "",
   });
 
-  const BASE = "http://10.233.141.31:5000";
+  const BASE = "http://localhost:5000";
 
   // 🔥 Convert DB data back into textarea format
   const buildContentString = (post) => {

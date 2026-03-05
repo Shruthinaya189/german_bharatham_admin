@@ -1,325 +1,414 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:share_plus/share_plus.dart';
+import 'models/food_grocery_model.dart';
+import 'saved_food_manager.dart';
 
-class FoodDetailPage extends StatelessWidget {
-  final String name;
-  final String image;
-  final String rating;
+class FoodDetailPage extends StatefulWidget {
+  final FoodGrocery item;
+  final VoidCallback? onRefresh;
 
   const FoodDetailPage({
     super.key,
-    required this.name,
-    required this.image,
-    required this.rating,
+    required this.item,
+    this.onRefresh,
   });
+
+  @override
+  State<FoodDetailPage> createState() => _FoodDetailPageState();
+}
+
+class _FoodDetailPageState extends State<FoodDetailPage> {
+  late bool isSaved;
+
+  @override
+  void initState() {
+    super.initState();
+    isSaved = SavedFoodManager.instance.isSaved(widget.item.id);
+  }
+
+  Future<void> _toggleSave() async {
+    final nowSaved = await SavedFoodManager.instance.toggle(widget.item);
+    setState(() {
+      isSaved = nowSaved;
+    });
+    
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(nowSaved ? 'Saved to bookmarks' : 'Removed from bookmarks'),
+          duration: const Duration(seconds: 1),
+          backgroundColor: const Color(0xFF4E7F6D),
+        ),
+      );
+    }
+    
+    if (widget.onRefresh != null) {
+      widget.onRefresh!();
+    }
+  }
+
+  Future<void> _shareRestaurant() async {
+    final String shareText = '''
+${widget.item.title}
+${widget.item.address}
+Rating: ${widget.item.averageRating > 0 ? widget.item.averageRating.toStringAsFixed(1) : '4.5'} ⭐
+${widget.item.phone != null && widget.item.phone!.isNotEmpty ? 'Phone: ${widget.item.phone}' : ''}
+''';
+    
+    try {
+      await Share.share(shareText, subject: widget.item.title);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Could not share'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _makePhoneCall(BuildContext context) async {
+    if (widget.item.phone == null || widget.item.phone!.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Phone number not available'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+    
+    final Uri phoneUri = Uri(scheme: 'tel', path: widget.item.phone);
+    if (await canLaunchUrl(phoneUri)) {
+      await launchUrl(phoneUri);
+    } else {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Could not launch phone dialer'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-      body: Stack(
-        children: [
-          SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+      body: SafeArea(
+        child: Column(
+          children: [
+            /// IMAGE HEADER
+            Stack(
               children: [
-                /// IMAGE HEADER
-                Stack(
-                  children: [
-                    ClipRRect(
-                      borderRadius: const BorderRadius.vertical(
-                        bottom: Radius.circular(28),
-                      ),
-                      child: Image.asset(
-                        image,
-                        width: double.infinity,
-                        height: 300,
-                        fit: BoxFit.cover,
-                      ),
-                    ),
-
-                    /// BACK BUTTON
-                    Positioned(
-                      top: 42,
-                      left: 16,
-                      child: _circleBtn(
-                        iconPath: 'assets/images/left-arrow.png',
-                        onTap: () => Navigator.pop(context),
-                      ),
-                    ),
-
-                    /// BOOKMARK + SHARE
-                    Positioned(
-                      top: 42,
-                      right: 16,
-                      child: Row(
-                        children: const [
-                          _CircleIcon(iconPath: 'assets/images/bookmark.png'),
-                          SizedBox(width: 12),
-                          _CircleIcon(iconPath: 'assets/images/share.png'),
-                        ],
-                      ),
-                    ),
-                  ],
+                _buildImage(widget.item.image, 300),
+                Positioned(
+                  top: 12,
+                  left: 12,
+                  child: _circleIcon(
+                    icon: Icons.arrow_back,
+                    onTap: () => Navigator.pop(context),
+                  ),
                 ),
-
-                /// CONTENT
-                Padding(
-                  padding: const EdgeInsets.all(18),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      /// TITLE + RATING
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              name,
-                              style: const TextStyle(
-                                fontSize: 22,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                          Image.asset(
-                            'assets/images/star.png',
-                            height: 18,
-                            width: 18,
-                          ),
-                          const SizedBox(width: 6),
-                          Text(
-                            rating,
-                            style: const TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ],
-                      ),
-
-                      const SizedBox(height: 18),
-
-                      /// ADDRESS
-                      _infoRow(
-                        icon: 'assets/images/location.png',
-                        title: "Address",
-                        value: "Marienplatz 45, 80331 Munich",
-                      ),
-
-                      const SizedBox(height: 16),
-
-                      /// TIME
-                      _infoRow(
-                        icon: 'assets/images/time.png',
-                        title: "Time",
-                        value: "Daily: 11:00 AM - 11:00 PM",
-                      ),
-
-                      const SizedBox(height: 26),
-
-                      /// SERVICES
-                      const Text(
-                        "Services",
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 14),
-                      Wrap(
-                        spacing: 12,
-                        runSpacing: 12,
-                        children: const [
-                          _Chip("Dine-in"),
-                          _Chip("Home Delivery"),
-                          _Chip("Catering"),
-                        ],
-                      ),
-
-                      const SizedBox(height: 28),
-
-                      /// MAP
-                      const Text(
-                        "Location",
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 14),
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(18),
-                        child: Image.asset(
-                          'assets/images/map.jpeg',
-                          height: 190,
-                          width: double.infinity,
-                          fit: BoxFit.cover,
-                        ),
-                      ),
-
-                      const SizedBox(height: 100),
-                    ],
+                Positioned(
+                  top: 12,
+                  right: 60,
+                  child: _circleIcon(
+                    icon: isSaved ? Icons.bookmark : Icons.bookmark_border,
+                    onTap: _toggleSave,
+                  ),
+                ),
+                Positioned(
+                  top: 12,
+                  right: 12,
+                  child: _circleIcon(
+                    icon: Icons.share,
+                    onTap: _shareRestaurant,
                   ),
                 ),
               ],
             ),
-          ),
 
-          /// CALL BUTTON
-          Positioned(
-            bottom: 16,
-            left: 16,
-            right: 16,
-            child: SizedBox(
-              height: 58,
-              child: ElevatedButton.icon(
-                onPressed: () {},
-                icon: Image.asset(
-                  'assets/images/call.png',
-                  height: 20,
-                  width: 20,
-                  color: Colors.white,
+            /// CONTENT
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    /// TITLE + RATING
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            widget.item.title,
+                            style: GoogleFonts.roboto(
+                              fontSize: 22,
+                              fontWeight: FontWeight.w600,
+                              height: 1.18,
+                              color: Colors.black,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Row(
+                          children: [
+                            const Icon(Icons.star, color: Color(0xFFFBBF24), size: 18),
+                            const SizedBox(width: 4),
+                            Text(
+                              widget.item.averageRating > 0
+                                  ? widget.item.averageRating.toStringAsFixed(1)
+                                  : '4.5',
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+
+                    const SizedBox(height: 16),
+
+                    /// ADDRESS
+                    _infoRow(
+                      icon: Icons.location_on,
+                      label: 'Address',
+                      value: widget.item.address,
+                    ),
+
+                    if (widget.item.openingHours != null && widget.item.openingHours!.isNotEmpty) ...[
+                      const SizedBox(height: 14),
+                      _infoRow(
+                        icon: Icons.access_time,
+                        label: 'Time',
+                        value: widget.item.openingHours!,
+                      ),
+                    ],
+
+                    if (widget.item.priceRange != null && widget.item.priceRange!.isNotEmpty) ...[
+                      const SizedBox(height: 14),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFFF3E0),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          widget.item.priceRange!.replaceAll('\$', ''),
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFFE65100),
+                          ),
+                        ),
+                      ),
+                    ],
+
+                    const SizedBox(height: 20),
+
+                    /// SERVICES
+                    const Text(
+                      "Services",
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+
+                    const SizedBox(height: 10),
+
+                    Wrap(
+                      spacing: 10,
+                      runSpacing: 10,
+                      children: [
+                        if (widget.item.dineInAvailable) const _ServiceChip(text: "Dine-in"),
+                        if (widget.item.deliveryAvailable) const _ServiceChip(text: "Home Delivery"),
+                        if (widget.item.takeoutAvailable) const _ServiceChip(text: "Takeout"),
+                        if (widget.item.cateringAvailable) const _ServiceChip(text: "Catering"),
+                      ],
+                    ),
+
+                    const SizedBox(height: 20),
+
+                    /// LOCATION MAP
+                    const Text(
+                      "Location",
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+
+                    const SizedBox(height: 10),
+
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(12),
+                      child: Image.asset(
+                        'assets/images/map.jpeg',
+                        height: 160,
+                        width: double.infinity,
+                        fit: BoxFit.cover,
+                      ),
+                    ),
+                  ],
                 ),
-                label: const Text(
-                  "Call",
-                  style: TextStyle(
-                    fontSize: 17,
-                    color: Colors.white, // ✅ FIXED HERE
-                    fontWeight: FontWeight.bold,
+              ),
+            ),
+
+            /// CALL BUTTON
+            Padding(
+              padding: const EdgeInsets.all(12),
+              child: SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: () => _makePhoneCall(context),
+                  icon: const Icon(
+                    Icons.phone,
+                    color: Colors.white,
+                    size: 20,
                   ),
-                ),
-                style: ElevatedButton.styleFrom(
-                  elevation: 6,
-                  backgroundColor: const Color(0xFF4F7F67),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(18),
+                  label: const Text(
+                    "Call",
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 16,
+                    ),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF4E7F6D),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
                   ),
                 ),
               ),
             ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  /// CIRCULAR ICON BUTTON
-  Widget _circleBtn({
-    required String iconPath,
-    VoidCallback? onTap,
-  }) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(50),
-      child: Container(
-        height: 38,
-        width: 38,
-        decoration: BoxDecoration(
-          color: Colors.white,
-          shape: BoxShape.circle,
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.08),
-              blurRadius: 8,
-            ),
           ],
         ),
-        child: Center(
-          child: Image.asset(
-            iconPath,
-            height: 20,
-            width: 20,
-          ),
-        ),
       ),
     );
   }
 
-  /// INFO ROW
-  static Widget _infoRow({
-    required String icon,
-    required String title,
+  Widget _circleIcon({required IconData icon, VoidCallback? onTap}) {
+    return InkWell(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(8),
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          shape: BoxShape.circle,
+        ),
+        child: Icon(icon, size: 20, color: Colors.black),
+      ),
+    );
+  }
+
+  Widget _buildImage(String? imageUrl, double height) {
+    if (imageUrl == null || imageUrl.isEmpty) {
+      return _placeholderImage(height);
+    }
+
+    if (imageUrl.startsWith('http')) {
+      return Image.network(
+        imageUrl,
+        width: double.infinity,
+        height: height,
+        fit: BoxFit.cover,
+        errorBuilder: (context, error, stackTrace) => _placeholderImage(height),
+      );
+    } else {
+      return Image.asset(
+        imageUrl,
+        width: double.infinity,
+        height: height,
+        fit: BoxFit.cover,
+        errorBuilder: (context, error, stackTrace) => _placeholderImage(height),
+      );
+    }
+  }
+
+  Widget _placeholderImage(double height) {
+    return Container(
+      width: double.infinity,
+      height: height,
+      color: const Color(0xFFE8F5E9),
+      child: const Icon(
+        Icons.restaurant,
+        color: Color(0xFF4E7F6D),
+        size: 80,
+      ),
+    );
+  }
+
+  Widget _infoRow({
+    required IconData icon,
+    required String label,
     required String value,
   }) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Image.asset(icon, height: 20, width: 20),
-        const SizedBox(width: 12),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              title,
-              style: const TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
+        Icon(icon, size: 18, color: const Color(0xFF4E7F6D)),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                style: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                  color: Color(0xFF9CA3AF),
+                ),
               ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              value,
-              style: const TextStyle(
-                fontSize: 14,
-                color: Colors.grey,
+              const SizedBox(height: 2),
+              Text(
+                value,
+                style: const TextStyle(
+                  fontSize: 14,
+                  color: Color(0xFF374151),
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ],
     );
   }
 }
 
-/// Reusable circle icon (for const usage)
-class _CircleIcon extends StatelessWidget {
-  final String iconPath;
-
-  const _CircleIcon({required this.iconPath});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: 38,
-      width: 38,
-      decoration: BoxDecoration(
-        color: Colors.white,
-        shape: BoxShape.circle,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.08),
-            blurRadius: 8,
-          ),
-        ],
-      ),
-      child: Center(
-        child: Image.asset(
-          iconPath,
-          height: 20,
-          width: 20,
-        ),
-      ),
-    );
-  }
-}
-
 /// SERVICE CHIP
-class _Chip extends StatelessWidget {
-  final String label;
-  const _Chip(this.label);
+class _ServiceChip extends StatelessWidget {
+  final String text;
+
+  const _ServiceChip({required this.text});
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
       decoration: BoxDecoration(
-        color: const Color(0xFFF1F3F5),
-        borderRadius: BorderRadius.circular(22),
+        color: const Color(0xFFF3F4F6),
+        borderRadius: BorderRadius.circular(8),
       ),
       child: Text(
-        label,
+        text,
         style: const TextStyle(
-          fontSize: 14,
+          fontSize: 13,
           fontWeight: FontWeight.w500,
+          color: Colors.black87,
         ),
       ),
     );

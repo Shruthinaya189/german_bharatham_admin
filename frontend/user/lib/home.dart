@@ -47,7 +47,7 @@ class _HomePageState extends State<HomePage> {
   onTap: () {
     Navigator.push(
       context,
-      MaterialPageRoute(builder: (_) => AccommodationPage()),
+      MaterialPageRoute(builder: (_) => const AccommodationPage()),
     );
   },
 ),
@@ -71,7 +71,7 @@ CategoryTile(
   onTap: () {
     Navigator.push(
       context,
-      MaterialPageRoute(builder: (_) => JobsPage()),
+      MaterialPageRoute(builder: (_) => const JobsPage()),
     );
   },
 ),
@@ -83,7 +83,7 @@ CategoryTile(
   onTap: () {
     Navigator.push(
       context,
-      MaterialPageRoute(builder: (_) => ServicesPage()),
+      MaterialPageRoute(builder: (_) => const ServicesPage()),
     );
   },
 ),
@@ -95,7 +95,7 @@ CategoryTile(
   onTap: () {
     Navigator.push(
       context,
-      MaterialPageRoute(builder: (_) => CommunityPage()),
+      MaterialPageRoute(builder: (_) => const CommunityPage()),
     );
   },
 ),
@@ -119,7 +119,7 @@ CategoryTile(
             Navigator.pushReplacement(
               context,
               MaterialPageRoute(
-                  builder: (_) => SearchPage()),
+                  builder: (_) => const SearchPage()),
             );
           }
           if (index == 3) {

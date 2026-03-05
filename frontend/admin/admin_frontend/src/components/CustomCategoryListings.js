@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Plus, Edit, Trash2, ArrowLeft, Eye } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 
-const BASE = 'http://10.233.141.31:5000';
+const BASE = 'http://localhost:5000';
 
 const STATUS_COLORS = {
   active:   { bg: '#d1fae5', color: '#065f46' },

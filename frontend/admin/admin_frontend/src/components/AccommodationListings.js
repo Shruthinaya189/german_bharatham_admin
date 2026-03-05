@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Edit, Trash2, ArrowLeft, Eye } from 'lucide-react';
+import { Plus, Edit, Trash2, ArrowLeft, Eye, Search } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import AddAccommodationModal from './AddAccommodationModal';
 import ViewAccommodationModal from './ViewAccommodationModal';
 import EditAccommodationModal from './EditAccommodationModal';
 
-const API = 'http://10.233.141.31:5000/api/accommodation/admin';
+const API = 'http://localhost:5000/api/accommodation/admin';
 
 const STATUS_COLORS = {
   active:   { bg: '#d1fae5', color: '#065f46' },
@@ -23,6 +23,7 @@ const AccommodationListings = () => {
   const [stats, setStats] = useState({ count: 0, activeCount: 0 });
   const [selectedAccommodation, setSelectedAccommodation] = useState(null);
   const [statusFilter, setStatusFilter] = useState('all');
+  const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => { fetchAccommodations(); }, []);
 
@@ -91,9 +92,17 @@ const AccommodationListings = () => {
     return s || 'inactive';
   };
 
-  const filtered = statusFilter === 'all'
-    ? accommodations
-    : accommodations.filter(a => normalizeStatus(a.status || (a.adminControls?.isActive ? 'active' : 'inactive')) === statusFilter);
+  const filtered = accommodations
+    .filter(a => statusFilter === 'all' || normalizeStatus(a.status || (a.adminControls?.isActive ? 'active' : 'inactive')) === statusFilter)
+    .filter(a => {
+      if (!searchQuery.trim()) return true;
+      const query = searchQuery.toLowerCase();
+      return (
+        (a.title || '').toLowerCase().includes(query) ||
+        (a.city || '').toLowerCase().includes(query) ||
+        (a.propertyType || '').toLowerCase().includes(query)
+      );
+    });
 
   return (
     <div className="listings">
@@ -110,6 +119,26 @@ const AccommodationListings = () => {
           <p>Total: {stats.count} | Active: {stats.activeCount}</p>
         </div>
         <div className="header-actions" style={{ display:'flex', gap:10, alignItems:'center' }}>
+          <div className="search-box" style={{ position: 'relative' }}>
+            <Search size={20} style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: '#9ca3af' }} />
+            <input
+              type="text"
+              placeholder="Search by name, location, or type..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              style={{
+                paddingLeft: '44px',
+                paddingRight: '16px',
+                paddingTop: '10px',
+                paddingBottom: '10px',
+                border: '1px solid #e5e7eb',
+                borderRadius: '8px',
+                fontSize: '15px',
+                width: '320px',
+                outline: 'none'
+              }}
+            />
+          </div>
           <select
             value={statusFilter}
             onChange={e => setStatusFilter(e.target.value)}

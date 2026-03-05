@@ -2,11 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { Plus, Edit2, Trash2, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
-const BASE = 'http://10.233.141.31:5000';
+const BASE = 'http://localhost:5000';
 
 const DEFAULT_CATEGORIES = [
   { id: 'accommodation', name: 'Accommodation', icon: '🏠', description: 'Housing, apartments, student housing, and shared accommodations', api: `${BASE}/api/accommodation/admin`, route: '/accommodation-listings', status: 'active' },
-  { id: 'food', name: 'Food', icon: '🍴', description: 'Indian grocery stores, restaurants, and food delivery services', api: `${BASE}/api/food/admin`, route: '/food-listings', status: 'active' },
+  { id: 'food', name: 'Food', icon: '🍴', description: 'Indian grocery stores, restaurants, and food delivery services', api: `${BASE}/api/admin/foodgrocery`, route: '/food-listings', status: 'active' },
   { id: 'services', name: 'Services', icon: '🔧', description: 'Immigration, legal, financial, and consultation services', api: `${BASE}/api/services/admin`, route: '/services-listings', status: 'disabled' },
   { id: 'jobs', name: 'Jobs', icon: '💼', description: 'Job listings, career opportunities, and employment services', api: `${BASE}/api/jobs/admin`, route: '/jobs-listings', status: 'active' },
 ];

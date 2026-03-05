@@ -24,7 +24,7 @@ export default function ServicesListings() {
   return (
     <GenericCategoryListings
       category="Services"
-      apiBase="http://10.233.141.31:5000/api/services/admin"
+      apiBase="http://localhost:5000/api/services/admin"
       icon="🔧"
       viewFields={SERVICES_FIELDS}
     />

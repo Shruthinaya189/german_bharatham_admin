@@ -2,10 +2,10 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Plus, TrendingUp, FolderOpen, Users, Clock } from 'lucide-react';
 import SimpleAddListingModal from './SimpleAddListingModal';
 
-const BASE = 'http://10.233.141.31:5000';
+const BASE = 'http://localhost:5000';
 const CATEGORY_APIS = {
   Accommodation: `${BASE}/api/accommodation/admin`,
-  Food:          `${BASE}/api/food/admin`,
+  Food:          `${BASE}/api/admin/foodgrocery`,
   Jobs:          `${BASE}/api/jobs/admin`,
   Services:      `${BASE}/api/services/admin`,
 };
@@ -36,13 +36,17 @@ const Dashboard = () => {
     const counts   = { Accommodation: 0, Food: 0, Jobs: 0, Services: 0 };
     const allItems = [];
     listingResults.forEach(r => {
-      if (r.status !== 'fulfilled') return;
+      if (r.status !== 'fulfilled') {
+        console.log('API call failed:', r.reason);
+        return;
+      }
       const { cat, count, data } = r.value;
+      console.log(`${cat}: count=${count}, data length=${data?.length || 0}`);
       counts[cat] = count;
       data.forEach(item => allItems.push({
         title:     item.title || item.name || item.jobTitle || item.serviceName || 'Untitled',
         category:  cat,
-        status:    (item.status === 'active' || item.adminControls?.isActive) ? 'Active' : 'Inactive',
+        status:    (item.status === 'Active' || item.status === 'active' || item.adminControls?.isActive) ? 'Active' : (item.status === 'Pending' ? 'Pending' : 'Inactive'),
         createdAt: item.createdAt,
       }));
     });

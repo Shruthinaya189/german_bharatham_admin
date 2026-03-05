@@ -156,7 +156,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
                           width: 16,
                           height: 16,
                           color: Colors.white,
-                          errorBuilder: (_, __, ___) => const Icon(
+                          errorBuilder: (_, _, _) => const Icon(
                             Icons.camera_alt,
                             size: 16,
                             color: Colors.white,

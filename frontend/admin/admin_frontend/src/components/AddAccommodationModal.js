@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { X } from 'lucide-react';
 
-const BASE = 'http://10.233.141.31:5000';
+const BASE = 'http://localhost:5000';
 const DEFAULT_AMENITIES = ['WiFi', 'Parking', 'Balcony', 'Garden', 'Elevator'];
 
 const AddAccommodationModal = ({ onClose, onSuccess }) => {

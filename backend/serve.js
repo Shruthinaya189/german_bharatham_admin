@@ -20,13 +20,21 @@ app.use("/api/accommodation/admin", protect, require("./accommodationModule/admi
 app.use("/api/accommodation/user", require("./accommodationModule/user"));
 
 // ── Food & Grocery Module ────────────────────────────────────
-app.use("/api/food/admin", protect, require("./foodGroceryModule/admin"));
+const foodGroceryRoutes = require("./foodGroceryModule/admin/routes/foodGroceryRoutes");
+console.log("Food Grocery routes loaded:", typeof foodGroceryRoutes);
+app.use("/api/admin/foodgrocery", (req, res, next) => {
+  console.log(`📍 Food Grocery route accessed: ${req.method} ${req.path}`);
+  next();
+}, protect, foodGroceryRoutes);
+app.use("/api/user/foodgrocery", require("./foodGroceryModule/user"));
 
 // ── Jobs Module ──────────────────────────────────────────────
 app.use("/api/jobs/admin", protect, require("./jobsModule/admin"));
+app.use("/api/jobs/user", require("./jobsModule/user"));
 
 // ── Services Module ────────────────────────────────────────
 app.use("/api/services/admin", protect, require("./servicesModule/admin"));
+app.use("/api/services/user", require("./servicesModule/user"));
 
 // ── Community Module ─────────────────────────────────────────────────────────
 app.use("/api/community", require("./communityModule/user/routes/communityRoutes"));

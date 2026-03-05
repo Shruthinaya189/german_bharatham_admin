@@ -5,7 +5,6 @@ import 'package:google_fonts/google_fonts.dart';
 import 'home.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'user_session.dart';
 import 'saved_manager.dart';
 
@@ -282,7 +281,7 @@ class InfoPage extends StatelessWidget {
 
 // Authentication page (Get Started / Login / Sign up)
 class AuthPage extends StatefulWidget {
-  const AuthPage({Key? key}) : super(key: key);
+  const AuthPage({super.key});
 
   @override
   State<AuthPage> createState() => _AuthPageState();
@@ -309,7 +308,7 @@ class _AuthPageState extends State<AuthPage> {
 
   try {
     final response = await http.post(
-      Uri.parse("http://10.233.141.31:5000/api/user/login"),
+      Uri.parse("http://10.96.191.169:5000/api/user/login"),
       headers: {"Content-Type": "application/json"},
       body: jsonEncode({
         "email": _emailController.text.trim(),
@@ -372,7 +371,7 @@ class _AuthPageState extends State<AuthPage> {
               const SizedBox(height: 18),
               const Text('Get Started now',style: TextStyle(fontSize: 25, fontWeight: FontWeight.w800),),
               const SizedBox(height: 8),
-              Text('Create an account or log in to explore the app',style: TextStyle(fontSize: 22,color: Colors.grey,),),
+              const Text('Create an account or log in to explore the app',style: TextStyle(fontSize: 22,color: Colors.grey,),),
               const SizedBox(height: 18),
 
               // segmented control (Login / Sign up)
@@ -399,7 +398,11 @@ class _AuthPageState extends State<AuthPage> {
                     Expanded(
                       child: GestureDetector(
                         onTap: () {
-                                    Navigator.push(context,MaterialPageRoute(builder: (_) => SignupPage()),);},
+                          Navigator.pushReplacement(
+                            context,
+                            MaterialPageRoute(builder: (_) => const SignupPage()),
+                          );
+                        },
                         child: Container(
                           padding: const EdgeInsets.symmetric(vertical: 12),
                           decoration: BoxDecoration(
@@ -538,7 +541,7 @@ class _AuthPageState extends State<AuthPage> {
 // ===== ADD SIGNUP PAGE HERE =====
 
 class SignupPage extends StatefulWidget {
-  SignupPage({Key? key}) : super(key: key);
+  const SignupPage({super.key});
 
   @override
   State<SignupPage> createState() => _SignupPageState();
@@ -547,7 +550,7 @@ class SignupPage extends StatefulWidget {
 class _SignupPageState extends State<SignupPage> {
 
   // 🔹 Toggle (Login / Signup)
-  bool _isLogin = false;
+  final bool _isLogin = false;
 
   // 🔹 Text Controllers
   final TextEditingController _nameController = TextEditingController();
@@ -608,7 +611,7 @@ class _SignupPageState extends State<SignupPage> {
 
   try {
     final response = await http.post(
-      Uri.parse("http://10.233.141.31:5000/api/user/register"),
+      Uri.parse("http://10.96.191.169:5000/api/user/register"),
       headers: {"Content-Type": "application/json"},
       body: jsonEncode({
         "name": _nameController.text.trim(),
@@ -685,29 +688,33 @@ class _SignupPageState extends State<SignupPage> {
                 child: Row(
                   children: [
                     Expanded(
-  child: GestureDetector(
-    onTap: () {
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => AuthPage(),
-        ),
-      );
-},
-    child: Container(
-      padding: const EdgeInsets.symmetric(vertical: 12),
-      decoration: BoxDecoration(
-        color: _isLogin ? Colors.white : Colors.transparent,
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: const Text('Login', textAlign: TextAlign.center),
-    ),
-  ),
-),
+                      child: GestureDetector(
+                        onTap: () {
+                          Navigator.pushReplacement(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const AuthPage(),
+                            ),
+                          );
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          decoration: BoxDecoration(
+                            color: _isLogin ? Colors.white : Colors.transparent,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: const Text('Login', textAlign: TextAlign.center),
+                        ),
+                      ),
+                    ),
                     Expanded(
                       child: GestureDetector(
                         onTap: () {
-                                    Navigator.push(context,MaterialPageRoute(builder: (_) => SignupPage()),);},
+                          Navigator.pushReplacement(
+                            context,
+                            MaterialPageRoute(builder: (_) => const SignupPage()),
+                          );
+                        },
                         child: Container(
                           padding: const EdgeInsets.symmetric(vertical: 12),
                           decoration: BoxDecoration(

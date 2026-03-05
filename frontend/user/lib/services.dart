@@ -1,8 +1,86 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+import 'models/service_model.dart';
+import 'saved_service_manager.dart';
 import 'service_details.dart';
 
-class ServicesPage extends StatelessWidget {
+const String baseUrl = 'http://10.96.191.169:5000'; // Physical device on local network
+// const String baseUrl = 'http://10.0.2.2:5000'; // Android emulator
+
+class ServicesPage extends StatefulWidget {
   const ServicesPage({super.key});
+
+  @override
+  State<ServicesPage> createState() => _ServicesPageState();
+}
+
+class _ServicesPageState extends State<ServicesPage> {
+  List<Service> allItems = [];
+  List<Service> filteredItems = [];
+  bool isLoading = true;
+  String searchQuery = '';
+
+  @override
+  void initState() {
+    super.initState();
+    SavedServiceManager.instance.initialize();
+    _loadServices();
+  }
+
+  Future<void> _loadServices() async {
+    setState(() => isLoading = true);
+    
+    try {
+      final response = await http.get(Uri.parse('$baseUrl/api/services/user'));
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        
+        List<dynamic> itemsList;
+        if (data is Map && data.containsKey('data')) {
+          itemsList = data['data'];
+        } else if (data is List) {
+          itemsList = data;
+        } else {
+          itemsList = [];
+        }
+
+        setState(() {
+          allItems = itemsList
+              .map((json) => Service.fromJson(json))
+              .where((item) => item.status == 'Active')
+              .toList();
+          filteredItems = allItems;
+          isLoading = false;
+        });
+      }
+    } catch (e) {
+      setState(() => isLoading = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error loading services: $e'), backgroundColor: Colors.red),
+        );
+      }
+    }
+  }
+
+  void _filterItems(String query) {
+    setState(() {
+      searchQuery = query;
+      if (query.isEmpty) {
+        filteredItems = allItems;
+      } else {
+        filteredItems = allItems.where((item) {
+          final titleMatch = item.title.toLowerCase().contains(query.toLowerCase());
+          final typeMatch = item.serviceType.toLowerCase().contains(query.toLowerCase());
+          final cityMatch = item.city.toLowerCase().contains(query.toLowerCase());
+          final providerMatch = (item.provider ?? '').toLowerCase().contains(query.toLowerCase());
+          return titleMatch || typeMatch || cityMatch || providerMatch;
+        }).toList();
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -13,115 +91,41 @@ class ServicesPage extends StatelessWidget {
         elevation: 0,
         leading: IconButton(
           onPressed: () => Navigator.pop(context),
-          icon: Image.asset(
-            'assets/images/left-arrow.png',
-            height: 22,
-            width: 22,
-            color: Colors.black,
-          ),
+          icon: Image.asset('assets/images/left-arrow.png', height: 22, width: 22, color: Colors.black),
         ),
-        title: const Text(
-          "Services",
-          style: TextStyle(
-            color: Colors.black,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
+        title: const Text("Services", style: TextStyle(color: Colors.black, fontWeight: FontWeight.w600)),
         centerTitle: true,
       ),
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
-            /// 🔍 Search + filter
-            Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    decoration: InputDecoration(
-                      hintText: "Search Services",
-                      prefixIcon: Padding(
-                        padding: const EdgeInsets.all(12),
-                        child: Image.asset(
-                          'assets/images/search.png',
-                          height: 20,
-                          width: 20,
-                        ),
-                      ),
-                      filled: true,
-                      fillColor: Colors.white,
-                      contentPadding:
-                          const EdgeInsets.symmetric(vertical: 0),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide.none,
-                      ),
-                    ),
-                  ),
+            TextField(
+              onChanged: _filterItems,
+              decoration: InputDecoration(
+                hintText: "Search Services",
+                prefixIcon: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Image.asset('assets/images/search.png', height: 20, width: 20),
                 ),
-                const SizedBox(width: 12),
-                Container(
-                  height: 50,
-                  width: 50,
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Image.asset(
-                    'assets/images/sort.png',
-                    height: 22,
-                    width: 22,
-                  ),
-                ),
-              ],
-            ),
-
-            const SizedBox(height: 14),
-
-            /// 🏷 Category Chips
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                children: const [
-                  CategoryChip(title: "All", isSelected: true),
-                  CategoryChip(title: "Home Services"),
-                  CategoryChip(title: "Tuition & Coaching"),
-                ],
+                filled: true,
+                fillColor: Colors.white,
+                contentPadding: const EdgeInsets.symmetric(vertical: 0),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
               ),
             ),
-
             const SizedBox(height: 16),
-
-            /// 📋 Services list
             Expanded(
-              child: ListView(
-                children: const [
-                  ServiceCard(
-                    image:
-                        "https://images.unsplash.com/photo-1524995997946-a1c2e315a42f",
-                    title: "German Language Academy",
-                    category: "Education",
-                  ),
-                  ServiceCard(
-                    image:
-                        "https://images.unsplash.com/photo-1581578731548-c64695cc6952",
-                    title: "Relocation Experts",
-                    category: "Relocation",
-                  ),
-                  ServiceCard(
-                    image:
-                        "https://images.unsplash.com/photo-1581578731548-c64695cc6952",
-                    title: "Relocation Experts",
-                    category: "Relocation",
-                  ),
-                  ServiceCard(
-                    image:
-                        "https://images.unsplash.com/photo-1581578731548-c64695cc6952",
-                    title: "Relocation Experts",
-                    category: "Relocation",
-                  ),
-                ],
-              ),
+              child: isLoading
+                  ? const Center(child: CircularProgressIndicator(color: Color(0xFF4E7F6D)))
+                  : filteredItems.isEmpty
+                      ? const Center(child: Text('No services available'))
+                      : ListView.builder(
+                          itemCount: filteredItems.length,
+                          itemBuilder: (context, index) {
+                            return ServiceCard(item: filteredItems[index], onRefresh: _loadServices);
+                          },
+                        ),
             ),
           ],
         ),
@@ -130,148 +134,103 @@ class ServicesPage extends StatelessWidget {
   }
 }
 
-/// 🟢 Category Chip Widget
-class CategoryChip extends StatelessWidget {
-  final String title;
-  final bool isSelected;
+class ServiceCard extends StatefulWidget {
+  final Service item;
+  final VoidCallback onRefresh;
 
-  const CategoryChip({
-    super.key,
-    required this.title,
-    this.isSelected = false,
-  });
+  const ServiceCard({super.key, required this.item, required this.onRefresh});
 
   @override
-  Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(right: 10),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      decoration: BoxDecoration(
-        color: isSelected ? const Color(0xFF4F7F67) : const Color(0xFFEFF3F2),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Text(
-        title,
-        style: TextStyle(
-          color: isSelected ? Colors.white : Colors.grey.shade700,
-          fontWeight: FontWeight.w500,
-        ),
+  State<ServiceCard> createState() => _ServiceCardState();
+}
+
+class _ServiceCardState extends State<ServiceCard> {
+  late bool isSaved;
+  
+  @override
+  void initState() {
+    super.initState();
+    isSaved = SavedServiceManager.instance.isSaved(widget.item.id);
+  }
+  
+  void _toggleSave() async {
+    final nowSaved = await SavedServiceManager.instance.toggle(widget.item);
+    setState(() => isSaved = nowSaved);
+    
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(nowSaved ? 'Saved to bookmarks' : 'Removed from bookmarks'),
+        duration: const Duration(seconds: 1),
+        backgroundColor: const Color(0xFF4E7F6D),
       ),
     );
   }
-}
-
-/// 📄 Service Card Widget
-class ServiceCard extends StatelessWidget {
-  final String image;
-  final String title;
-  final String category;
-
-  const ServiceCard({
-    super.key,
-    required this.image,
-    required this.title,
-    required this.category,
-  });
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTap: () {
-        Navigator.push(
+      onTap: () async {
+        await Navigator.push(
           context,
-          MaterialPageRoute(
-            builder: (_) => const ServiceDetailsPage(),
-          ),
+          MaterialPageRoute(builder: (_) => ServiceDetailsPage(item: widget.item, onRefresh: widget.onRefresh)),
         );
+        setState(() => isSaved = SavedServiceManager.instance.isSaved(widget.item.id));
       },
       child: Container(
         margin: const EdgeInsets.only(bottom: 14),
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(14),
-        ),
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(14)),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            /// Image
-            ClipRRect(
-              borderRadius: BorderRadius.circular(10),
-              child: Image.network(
-                image,
-                height: 70,
-                width: 70,
-                fit: BoxFit.cover,
-              ),
+            Container(
+              height: 60, width: 60,
+              decoration: BoxDecoration(borderRadius: BorderRadius.circular(10), color: Colors.grey.shade200),
+              child: widget.item.image != null && widget.item.image!.isNotEmpty
+                  ? ClipRRect(
+                      borderRadius: BorderRadius.circular(10),
+                      child: Image.network(widget.item.image!, fit: BoxFit.cover, errorBuilder: (_, _, _) => const Icon(Icons.business, color: Colors.grey)),
+                    )
+                  : const Icon(Icons.business, color: Colors.grey, size: 30),
             ),
-
             const SizedBox(width: 12),
-
-            /// Details
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    title,
-                    style: const TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
+                  Text(widget.item.title, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+                  const SizedBox(height: 4),
+                  if (widget.item.provider != null)
+                    Text(widget.item.provider!, style: const TextStyle(color: Colors.grey, fontSize: 13)),
                   const SizedBox(height: 6),
                   Row(
                     children: [
-                      Image.asset(
-                        'assets/images/location.png',
-                        height: 14,
-                        width: 14,
-                      ),
+                      Image.asset('assets/images/location.png', width: 16, height: 16),
                       const SizedBox(width: 4),
-                      const Text(
-                        "Munich, Bavaria",
-                        style: TextStyle(color: Colors.grey),
-                      ),
+                      Expanded(child: Text(widget.item.city, style: const TextStyle(color: Colors.grey, fontSize: 12))),
                     ],
                   ),
-                  const SizedBox(height: 6),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 10, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFEFF5F1),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Text(
-                      category,
-                      style: const TextStyle(
-                        color: Colors.green,
-                        fontSize: 12,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 6),
+                  const SizedBox(height: 8),
                   Row(
                     children: [
-                      Image.asset(
-                        'assets/images/star.png',
-                        height: 14,
-                        width: 14,
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        decoration: BoxDecoration(color: const Color(0xFFEFF5F1), borderRadius: BorderRadius.circular(20)),
+                        child: Text(widget.item.serviceType, style: const TextStyle(color: Colors.green, fontSize: 11)),
                       ),
-                      const SizedBox(width: 4),
-                      const Text("4.5"),
+                      const SizedBox(width: 8),
+                      if (widget.item.priceRange != null)
+                        Flexible(
+                          child: Text(widget.item.priceRange!, style: const TextStyle(color: Colors.green, fontWeight: FontWeight.w600, fontSize: 11), overflow: TextOverflow.ellipsis),
+                        ),
                     ],
                   ),
                 ],
               ),
             ),
-
-            /// Bookmark
-            Image.asset(
-              'assets/images/bookmark.png',
-              height: 20,
-              width: 20,
+            InkWell(
+              onTap: _toggleSave,
+              child: Icon(isSaved ? Icons.bookmark : Icons.bookmark_border, color: isSaved ? const Color(0xFF4E7F6D) : Colors.grey, size: 22),
             ),
           ],
         ),

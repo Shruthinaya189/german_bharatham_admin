@@ -2,11 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { Plus, Trash2 } from 'lucide-react';
 import SimpleAddListingModal from './SimpleAddListingModal';
 
-const BASE = 'http://10.233.141.31:5000';
+const BASE = 'http://localhost:5000';
 
 const APIS = {
   Accommodation: { get: `${BASE}/api/accommodation/admin`, patch: (id) => `${BASE}/api/accommodation/admin/${id}/status`, del: (id) => `${BASE}/api/accommodation/admin/${id}`, titleKey: 'title' },
-  Food:          { get: `${BASE}/api/food/admin`,          patch: (id) => `${BASE}/api/food/admin/${id}/status`,          del: (id) => `${BASE}/api/food/admin/${id}`,          titleKey: 'name' },
+  Food:          { get: `${BASE}/api/admin/foodgrocery`,          patch: (id) => `${BASE}/api/admin/foodgrocery/${id}/status`,          del: (id) => `${BASE}/api/admin/foodgrocery/${id}`,          titleKey: 'title' },
   Jobs:          { get: `${BASE}/api/jobs/admin`,          patch: (id) => `${BASE}/api/jobs/admin/${id}/status`,          del: (id) => `${BASE}/api/jobs/admin/${id}`,          titleKey: 'jobTitle' },
   Services:      { get: `${BASE}/api/services/admin`,      patch: (id) => `${BASE}/api/services/admin/${id}/status`,      del: (id) => `${BASE}/api/services/admin/${id}`,      titleKey: 'serviceName' },
 };

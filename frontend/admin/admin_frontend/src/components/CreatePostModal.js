@@ -38,7 +38,7 @@ const handleSubmit = async (e) => {
 
   const token = localStorage.getItem("adminToken");
   console.log("TOKEN:", token);
-  const BASE = "http://10.233.141.31:5000";
+  const BASE = "http://localhost:5000";
 
   const parsed = parseContent(postData.content);
 

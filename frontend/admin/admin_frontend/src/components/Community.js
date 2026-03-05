@@ -9,7 +9,7 @@ const Community = () => {
   const [selectedPost, setSelectedPost] = useState(null);
   const [showEditModal, setShowEditModal] = useState(false);
 
-  const BASE = "http://10.233.141.31:5000";
+  const BASE = "http://localhost:5000";
 
   useEffect(() => {
     fetchPosts();

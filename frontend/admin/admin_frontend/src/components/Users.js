@@ -7,7 +7,7 @@ const Users = () => {
   const [filterBy, setFilterBy] = useState('all');
   const [users, setUsers]     = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
-  const BASE = "http://10.233.141.31:5000";
+  const BASE = "http://localhost:5000";
   useEffect(() => {
   fetchUsers();
 }, []);
