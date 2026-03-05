@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:share_plus/share_plus.dart';
 
 class GuideDetailsPage extends StatelessWidget {
   final dynamic guide;
@@ -55,20 +56,39 @@ class GuideDetailsPage extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Container(
-  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-  decoration: BoxDecoration(
-    color: const Color(0xFFE6F2EC),
-    borderRadius: BorderRadius.circular(25),
-  ),
-  child: Text(
-    guide["category"] ?? "Guide",
-    style: const TextStyle(
-      color: Color(0xFF3B8F6A),
-      fontSize: 12.5,
-      fontWeight: FontWeight.w600,
+                  Row(
+  children: [
+    Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+      decoration: BoxDecoration(
+        color: const Color(0xFFE6F2EC),
+        borderRadius: BorderRadius.circular(25),
+      ),
+      child: Text(
+        guide["category"] ?? "Guide",
+        style: const TextStyle(
+          color: Color(0xFF3B8F6A),
+          fontSize: 12.5,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
     ),
-  ),
+
+    const Spacer(),
+
+    IconButton(
+      onPressed: () {
+        Share.share(
+          "${guide["title"]}\n\n${guide["description"]}\n\nOfficial Website: ${guide["officialWebsites"]}",
+        );
+      },
+      icon: Image.asset(
+        'assets/images/share.png',
+        height: 22,
+        width: 22,
+      ),
+    ),
+  ],
 ),
                   const SizedBox(height: 12),
 

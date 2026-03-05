@@ -5,9 +5,9 @@ import 'saved_manager.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'dart:typed_data';
-import 'services/api_config.dart';
 
-final String apiBaseUrl = ApiConfig.baseUrl;
+// Use machine IP for real device, 10.0.2.2 for emulator
+const String apiBaseUrl = 'http://10.166.137.12:5000';
 
 /// =======================
 /// DATA MODEL
@@ -78,20 +78,6 @@ class Accommodation {
   });
 
   factory Accommodation.fromJson(Map<String, dynamic> json) {
-    String normalizeImage(dynamic value) {
-      if (value == null) return 'assets/images/room.jpg';
-      final raw = value.toString().trim();
-      if (raw.isEmpty || raw.toLowerCase() == 'null') return 'assets/images/room.jpg';
-      if (raw.startsWith('http') || raw.startsWith('data:image') || raw.startsWith('assets/')) {
-        return raw;
-      }
-      // Handle relative upload paths like /uploads/.. or uploads/..
-      if (raw.startsWith('/uploads/') || raw.startsWith('uploads/')) {
-        return ApiConfig.getImageUrl(raw);
-      }
-      return raw;
-    }
-
     // Extract amenities from the amenities object
     List<String> extractedAmenities = [];
     if (json['amenities'] != null) {
@@ -134,14 +120,15 @@ class Accommodation {
       title: (json['title'] ?? 'Untitled').toString(),
       description: (json['description'] ?? '').toString(),
       location: location.isNotEmpty ? location : 'Location not specified',
-      image: (json['media']?['images'] != null && (json['media']['images'] as List).isNotEmpty)
+      image: (json['media']?['images'] != null && 
+             (json['media']['images'] as List).isNotEmpty)
           ? (() {
               final img = json['media']['images'][0];
-              if (img is String) return normalizeImage(img);
-              if (img is Map) return normalizeImage(img['url'] ?? img['uri']);
+              if (img is String) return img;
+              if (img is Map) return (img['url'] ?? img['uri'] ?? 'assets/images/room.jpg').toString();
               return 'assets/images/room.jpg';
             })()
-          : normalizeImage(json['image']),
+          : 'assets/images/room.jpg',
       rating: 4.5, // Default rating since it's not in schema
       price: displayPrice,
       amenities: extractedAmenities.take(3).toList(),
@@ -194,9 +181,8 @@ class _AccommodationPageState extends State<AccommodationPage> {
   }
 
   Future<void> fetchAccommodations() async {
-    if (!mounted) return;
     setState(() => isLoading = true);
-
+    
     try {
       final response = await http.get(
         Uri.parse('$apiBaseUrl/api/accommodation/user'),
@@ -227,28 +213,29 @@ class _AccommodationPageState extends State<AccommodationPage> {
         for (final acc in loaded) {
           acc.isSaved = SavedManager.instance.isSaved(acc.id);
         }
-        if (!mounted) return;
         setState(() {
           accommodations = loaded;
           filteredAccommodations = accommodations;
           isLoading = false;
         });
       } else {
-        if (!mounted) return;
         setState(() => isLoading = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Server error ${response.statusCode}: ${response.body}')),
-        );
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Server error ${response.statusCode}: ${response.body}')),
+          );
+        }
       }
     } catch (e) {
-      if (!mounted) return;
       setState(() => isLoading = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Connection error: $e'),
-          duration: const Duration(seconds: 6),
-        ),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Connection error: $e'),
+            duration: const Duration(seconds: 6),
+          ),
+        );
+      }
     }
   }
 
@@ -331,7 +318,6 @@ class _AccommodationPageState extends State<AccommodationPage> {
         builder: (_) => FilterPage(allAccommodations: accommodations),
       ),
     );
-    if (!mounted) return;
     if (result != null) {
       setState(() {
         filteredAccommodations = result;
@@ -422,15 +408,15 @@ class AccommodationCard extends StatelessWidget {
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(14),
         ),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             /// IMAGE
             ClipRRect(
-              borderRadius: BorderRadius.circular(8),
-              child: _buildListingImage(accommodation.image, 100, 100),
+              borderRadius: BorderRadius.circular(10),
+              child: _buildListingImage(accommodation.image, 90, 90),
             ),
 
             const SizedBox(width: 12),
@@ -446,25 +432,18 @@ class AccommodationCard extends StatelessWidget {
                       Expanded(
                         child: Text(
                           accommodation.title,
-                          style: const TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.black,
-                            letterSpacing: 0.1,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(fontSize: 15,fontWeight: FontWeight.w600,letterSpacing: 0.2,),
                         ),
                       ),
-                      const SizedBox(width: 8),
                       InkWell(
                         onTap: onBookmarkTap,
-                        child: Icon(
-                          accommodation.isSaved ? Icons.bookmark : Icons.bookmark_border,
-                          size: 16,
+                        child: Image.asset(
+                          'assets/images/bookmark.png',
+                          width: 18,
+                          height: 18,
                           color: accommodation.isSaved
-                              ? const Color(0xFF4E7F6D)
-                              : Colors.grey.shade400,
+                              ? Colors.black
+                              : Colors.grey,
                         ),
                       ),
                     ],
@@ -475,83 +454,67 @@ class AccommodationCard extends StatelessWidget {
                   /// LOCATION
                   Row(
                     children: [
-                      const Icon(
-                        Icons.location_on,
-                        size: 14,
-                        color: Color(0xFF9CA3AF),
+                      Image.asset(
+                        'assets/images/location.png',
+                        width: 16,
+                        height: 16,
+                        errorBuilder: (_, __, ___) => const Icon(Icons.location_on, size: 16, color: Color(0xFF4F7F67)),
                       ),
                       const SizedBox(width: 4),
-                      Expanded(
-                        child: Text(
-                          accommodation.location,
-                          style: const TextStyle(
-                            color: Color(0xFF6B7280),
-                            fontSize: 13,
-                            fontWeight: FontWeight.w400,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
+                      Text(
+                        accommodation.location,
+                        style: const TextStyle(color: Color(0xFF6B7280),fontSize: 12,fontWeight: FontWeight.w400,),
                       ),
                     ],
                   ),
 
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 6),
                   
                   /// AMENITIES
                   Wrap(
                     spacing: 6,
-                    runSpacing: 4,
-                    children: accommodation.amenities.take(3).map((amenity) {
+                    runSpacing: 6,
+                    children: accommodation.amenities.map((amenity) {
                       return Container(
                         padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
+                          horizontal: 10,
                           vertical: 4,
                         ),
                         decoration: BoxDecoration(
-                          color: const Color(0xFFF3F4F6),
-                          borderRadius: BorderRadius.circular(4),
+                          color: const Color(0xFFF1F3F5),
+                          borderRadius: BorderRadius.circular(6),
                         ),
                         child: Text(
                           amenity,
                           style: const TextStyle(
                             fontSize: 11,
                             fontWeight: FontWeight.w500,
-                            color: Color(0xFF4B5563),
+                            color: Colors.black87,
                           ),
                         ),
                       );
                     }).toList(),
                   ),
                   
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 6),
                   /// RATING + PRICE
                   Row(
                     children: [
                       Image.asset(
                         'assets/images/star.png',
-                        width: 16,
-                        height: 16,
+                        width: 14,
+                        height: 14,
+                        color: const Color(0xFFF59E0B),
                       ),
                       const SizedBox(width: 4),
                       Text(
-                        (accommodation.averageRating != null && accommodation.averageRating! > 0)
-                            ? accommodation.averageRating!.toStringAsFixed(1)
-                            : '4.5',
-                        style: const TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.black87,
-                        ),
+                        (accommodation.averageRating ?? 0.0).toStringAsFixed(1),
+                        style: const TextStyle(fontSize: 12),
                       ),
                       const Spacer(),
                       Text(
-                        "€${accommodation.price} / per month",
-                        style: const TextStyle(
-                          color: Color(0xFF4E7F6D),
-                          fontWeight: FontWeight.w600,
-                          fontSize: 13,
-                        ),
+                        "€${accommodation.price} / month",
+                        style: const TextStyle(color: Color(0xFF16A34A),fontWeight: FontWeight.w700,fontSize: 13,),
                       ),
                     ],
                   ),
@@ -568,12 +531,7 @@ class AccommodationCard extends StatelessWidget {
         width: 90,
         height: 90,
         color: const Color(0xFFE8F5E9),
-        child: Image.asset(
-          'assets/images/accommodation.png',
-          width: 36,
-          height: 36,
-          color: const Color(0xFF4F7F67),
-        ),
+        child: const Icon(Icons.home, color: Color(0xFF4F7F67), size: 36),
       );
 
   /// Handles URL, base64 data-URI and asset images
@@ -582,14 +540,14 @@ class AccommodationCard extends StatelessWidget {
       try {
         final Uint8List bytes = base64Decode(src.split(',').last);
         return Image.memory(bytes, width: w, height: h, fit: BoxFit.cover,
-            errorBuilder: (_, _, _) => _placeholderImage());
+            errorBuilder: (_, __, ___) => _placeholderImage());
       } catch (_) {}
     }
     if (src.startsWith('http')) {
       return Image.network(src, width: w, height: h, fit: BoxFit.cover,
-          errorBuilder: (_, _, _) => _placeholderImage());
+          errorBuilder: (_, __, ___) => _placeholderImage());
     }
     return Image.asset(src, width: w, height: h, fit: BoxFit.cover,
-        errorBuilder: (_, _, _) => _placeholderImage());
+        errorBuilder: (_, __, ___) => _placeholderImage());
   }
 }

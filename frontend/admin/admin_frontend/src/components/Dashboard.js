@@ -1,96 +1,107 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Plus, TrendingUp, FolderOpen, Users, Clock } from 'lucide-react';
-import axios from 'axios';
-import AddListingModal from './AddListingModal';
+import SimpleAddListingModal from './SimpleAddListingModal';
+
+const BASE = 'http://10.166.137.12:5000';
+const CATEGORY_APIS = {
+  Accommodation: `${BASE}/api/accommodation/admin`,
+  Food:          `${BASE}/api/food/admin`,
+  Jobs:          `${BASE}/api/jobs/admin`,
+  Services:      `${BASE}/api/services/admin`,
+};
 
 const Dashboard = () => {
-  const [showAddModal, setShowAddModal] = useState(false);
-  const [jobCount, setJobCount] = useState(3);
-  const [recentJobs, setRecentJobs] = useState([]);
-  const [pendingJobsCount, setPendingJobsCount] = useState(0);
-  const [totalListingsCount, setTotalListingsCount] = useState(1284);
+  const [showAddModal, setShowAddModal]     = useState(false);
+  const [totalCount, setTotalCount]         = useState(0);
+  const [categoryCounts, setCategoryCounts] = useState({ Accommodation: 0, Food: 0, Jobs: 0, Services: 0 });
+  const [userCount, setUserCount]           = useState(0);
+  const [categoryCount, setCategoryCount]   = useState(4);
+  const [recentListings, setRecentListings] = useState([]);
 
-  // Fetch jobs and update counts
-  useEffect(() => {
-    fetchJobs();
-  }, []);
+  useEffect(() => { fetchAll(); }, []);
 
-  // Set up auto-refresh interval
-  useEffect(() => {
-    const interval = setInterval(fetchJobs, 5000); // Refresh every 5 seconds
-    return () => clearInterval(interval);
-  }, []);
+  const fetchAll = useCallback(async () => {
+    const token   = localStorage.getItem('adminToken');
+    const headers = { Authorization: `Bearer ${token}` };
 
-  const fetchJobs = async () => {
-    try {
-      const response = await axios.get("http://localhost:5000/api/jobs");
-      const jobs = response.data;
-      setJobCount(jobs.length);
-      
-      // Count pending jobs
-      const pendingJobs = jobs.filter(job => job.status && job.status.toLowerCase() === 'pending');
-      setPendingJobsCount(pendingJobs.length);
-      
-      // Calculate total listings (static categories + dynamic jobs)
-      const staticListingsCount = 29 + 14 + 7; // Accommodation + Food + Services
-      setTotalListingsCount(staticListingsCount + jobs.length);
-      
-      // Get recent 6 jobs, converted to listing format
-      const recentJobsList = jobs.slice(0, 6).map((job) => ({
-        title: job.title,
-        category: 'Job',
-        status: job.status || 'Active',
-        added: job.createdAt ? getTimeAgo(new Date(job.createdAt)) : 'Recently'
+    // ── 1. Listing counts + data for built-in categories ───────────────────
+    const listingResults = await Promise.allSettled(
+      Object.entries(CATEGORY_APIS).map(([cat, url]) =>
+        fetch(url, { headers })
+          .then(r => r.json())
+          .then(d => ({ cat, count: d.count || 0, data: d.data || [] }))
+      )
+    );
+
+    const counts   = { Accommodation: 0, Food: 0, Jobs: 0, Services: 0 };
+    const allItems = [];
+    listingResults.forEach(r => {
+      if (r.status !== 'fulfilled') return;
+      const { cat, count, data } = r.value;
+      counts[cat] = count;
+      data.forEach(item => allItems.push({
+        title:     item.title || item.name || item.jobTitle || item.serviceName || 'Untitled',
+        category:  cat,
+        status:    (item.status === 'active' || item.adminControls?.isActive) ? 'Active' : 'Inactive',
+        createdAt: item.createdAt,
       }));
-      setRecentJobs(recentJobsList);
-    } catch (error) {
-      console.error("Error fetching jobs:", error);
-    }
-  };
+    });
 
-  // Helper function to calculate time ago
-  const getTimeAgo = (date) => {
-    const seconds = Math.floor((new Date() - date) / 1000);
-    let interval = seconds / 31536000;
-    if (interval > 1) return Math.floor(interval) + ' year ago';
-    interval = seconds / 2592000;
-    if (interval > 1) return Math.floor(interval) + ' month ago';
-    interval = seconds / 86400;
-    if (interval > 1) return Math.floor(interval) + ' day ago';
-    interval = seconds / 3600;
-    if (interval > 1) return Math.floor(interval) + ' hour ago';
-    interval = seconds / 60;
-    if (interval > 1) return Math.floor(interval) + ' minute ago';
-    return Math.floor(seconds) + ' second ago';
-  };
+    // ── 2. Custom category listings ──────────────────────────────────────────
+    try {
+      const catsRes = await fetch(`${BASE}/api/custom-categories`, { headers });
+      if (catsRes.ok) {
+        const customCats = await catsRes.json();
+        // Fetch each category's listing count
+        const customResults = await Promise.allSettled(
+          customCats.map(c =>
+            fetch(`${BASE}/api/custom-categories/${c._id}/listings`, { headers })
+              .then(r => r.json())
+              .then(d => ({ cat: c.name, count: d.count || 0, data: d.data || [] }))
+          )
+        );
+        customResults.forEach(r => {
+          if (r.status !== 'fulfilled') return;
+          const { cat, count, data } = r.value;
+          counts[cat] = count;
+          data.forEach(item => allItems.push({
+            title: item.title || 'Untitled', category: cat,
+            status: item.status === 'active' ? 'Active' : 'Inactive',
+            createdAt: item.createdAt,
+          }));
+        });
+        // Update category count (4 built-in + customs)
+        setCategoryCount(4 + customCats.length);
+      }
+    } catch {}
+
+    allItems.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+    setCategoryCounts(counts);
+    setTotalCount(Object.values(counts).reduce((s, c) => s + c, 0));
+    setRecentListings(allItems.slice(0, 6));
+
+    // ── 3. User count (customers only, no admins) ────────────────────────────
+    try {
+      const ur = await fetch(`${BASE}/api/user/all-users`, { headers });
+      if (ur.ok) {
+        const ud = await ur.json();
+        setUserCount(Array.isArray(ud) ? ud.length : 0);
+      }
+    } catch {}
+  }, []);
 
   const stats = [
-    { label: 'Total Listings', value: totalListingsCount.toLocaleString(), change: '+12% from last month', icon: TrendingUp },
-    { label: 'Categories', value: '4', change: '', icon: FolderOpen },
-    { label: 'Total Users', value: '1,284', change: '+6% from last month', icon: Users },
-    { label: 'Pending Reviews', value: pendingJobsCount.toString(), change: '', icon: Clock },
-  ];
-
-  const recentListings = [
-    { title: 'Cozy Studio Apartment', category: 'Accommodation', status: 'Pending', added: '2 hour ago' },
-    { title: 'Italian Restaurant Opening', category: 'Food', status: 'Active', added: '12 hour ago' },
-    ...recentJobs,
-  ];
-
-  const recentActivity_static = [
-    { action: 'New listing added', detail: 'Luxury Villa', time: '1 hour ago' },
-    { action: 'Category updated', detail: 'Accommodation', time: '2 hour ago' },
-    { action: 'User registered', detail: 'finn@example.com', time: '2 hour ago' },
-    { action: 'Listing approved', detail: 'Tech Startup', time: '1 day ago' },
-    { action: 'User Registered', detail: 'gill@gmail.com', time: '2 day ago' },
-    { action: 'Listing approved', detail: 'Tech Startup', time: '1 day ago' },
+    { label: 'Total Listings', value: totalCount,    icon: TrendingUp },
+    { label: 'Categories',     value: categoryCount, icon: FolderOpen },
+    { label: 'Total Users',    value: userCount,     icon: Users      },
+    { label: 'Pending Reviews',value: 0,             icon: Clock      },
   ];
 
   const categoryStats = [
-    { name: 'Accommodation', count: 29, icon: '🏠' },
-    { name: 'Food', count: 14, icon: '🍴' },
-    { name: 'Services', count: 7, icon: '🔧' },
-    { name: 'Jobs', count: jobCount, icon: '💼' },
+    { name: 'Accommodation', count: categoryCounts.Accommodation, icon: '🏠' },
+    { name: 'Food',          count: categoryCounts.Food,          icon: '🍴' },
+    { name: 'Services',      count: categoryCounts.Services,      icon: '🔧' },
+    { name: 'Jobs',          count: categoryCounts.Jobs,          icon: '💼' },
   ];
 
   return (
@@ -119,7 +130,6 @@ const Dashboard = () => {
               <div className="stat-info">
                 <p className="stat-label">{stat.label}</p>
                 <h3 className="stat-value">{stat.value}</h3>
-                {stat.change && <p className="stat-change">{stat.change}</p>}
               </div>
             </div>
           </div>
@@ -146,7 +156,6 @@ const Dashboard = () => {
           <div className="dashboard-section">
             <div className="section-header">
               <h2>Recent Listings</h2>
-              <button className="see-all">See all</button>
             </div>
             <div className="listings-table">
               <table>
@@ -159,7 +168,9 @@ const Dashboard = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {recentListings.map((listing, index) => (
+                  {recentListings.length === 0 ? (
+                    <tr><td colSpan={4} style={{ textAlign: 'center', color: '#6b7280', padding: 16 }}>No listings yet.</td></tr>
+                  ) : recentListings.map((listing, index) => (
                     <tr key={index}>
                       <td>{listing.title}</td>
                       <td>{listing.category}</td>
@@ -168,7 +179,7 @@ const Dashboard = () => {
                           {listing.status}
                         </span>
                       </td>
-                      <td>{listing.added}</td>
+                      <td>{listing.createdAt ? new Date(listing.createdAt).toLocaleDateString('en-GB') : '—'}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -179,16 +190,15 @@ const Dashboard = () => {
           <div className="dashboard-section">
             <div className="section-header">
               <h2>Recent Activity</h2>
-              <button className="see-all">See all</button>
             </div>
             <div className="activity-list">
-              {recentActivity_static.map((activity, index) => (
+              {recentListings.slice(0, 5).map((listing, index) => (
                 <div key={index} className="activity-item">
                   <div className="activity-content">
-                    <p className="activity-action">{activity.action}</p>
-                    <p className="activity-detail">{activity.detail}</p>
+                    <p className="activity-action">Listing added</p>
+                    <p className="activity-detail">{listing.title}</p>
                   </div>
-                  <span className="activity-time">{activity.time}</span>
+                  <span className="activity-time">{listing.createdAt ? new Date(listing.createdAt).toLocaleDateString('en-GB') : '—'}</span>
                 </div>
               ))}
             </div>
@@ -197,9 +207,9 @@ const Dashboard = () => {
       </div>
 
       {showAddModal && (
-        <AddListingModal 
-          onClose={() => setShowAddModal(false)} 
-          refreshDashboard={fetchJobs}
+        <SimpleAddListingModal
+          onClose={() => setShowAddModal(false)}
+          onSuccess={() => { setShowAddModal(false); fetchAll(); }}
         />
       )}
     </div>

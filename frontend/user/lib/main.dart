@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -7,10 +6,8 @@ import 'home.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'services/api_config.dart';
 import 'user_session.dart';
 import 'saved_manager.dart';
-import 'saved_job_manager.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -310,94 +307,45 @@ class _AuthPageState extends State<AuthPage> {
     _loginError = null; // clear old error
   });
 
-  final payload = jsonEncode({
-    "email": _emailController.text.trim(),
-    "password": _passwordController.text.trim(),
-  });
+  try {
+    final response = await http.post(
+      Uri.parse("http://10.166.137.12:5000/api/user/login"),
+      headers: {"Content-Type": "application/json"},
+      body: jsonEncode({
+        "email": _emailController.text.trim(),
+        "password": _passwordController.text.trim(),
+      }),
+    );
 
-  final endpoint = ApiConfig.loginEndpoint;
-
-    try {
-      if (kDebugMode) {
-        print('Attempting login to: $endpoint (base: ${ApiConfig.baseUrl})');
-      }
-
-      final response = await http
-          .post(
-            Uri.parse(endpoint),
-            headers: {"Content-Type": "application/json"},
-            body: payload,
-          )
-          .timeout(const Duration(seconds: 12));
-
-      if (kDebugMode) {
-        print('Response status: ${response.statusCode}');
-      }
-
-      if (response.statusCode == 200) {
-        try {
-          final decoded = jsonDecode(response.body);
-          final token = decoded['token'] as String?;
-          final user = decoded['user'];
-          final userId = (user is Map)
-              ? (user['_id'] ?? user['id'])?.toString()
-              : null;
-          final name = (user is Map) ? (user['name']?.toString() ?? '') : '';
-          final email = (user is Map) ? (user['email']?.toString() ?? '') : '';
-          final phone = (user is Map) ? (user['phone']?.toString()) : null;
-
-          if (token != null && userId != null && name.isNotEmpty && email.isNotEmpty) {
-            await UserSession.instance.save(
-              userId: userId,
-              token: token,
-              name: name,
-              email: email,
-              phone: phone,
-            );
-            SavedManager.instance.switchUser(userId);
-            await SavedJobManager.instance.switchUser(userId);
-          }
-        } catch (_) {
-          // If parsing fails, still allow navigation; UI will behave like guest.
-        }
-        if (!mounted) return;
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      final user = data['user'];
+      await UserSession.instance.save(
+        userId: user['_id'].toString(),
+        token: data['token'].toString(),
+        name: user['name'].toString(),
+        email: user['email'].toString(),
+        phone: user['phone']?.toString(),
+      );
+      SavedManager.instance.switchUser(user['_id'].toString());
+      if (mounted) {
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
             builder: (_) => const LocationPermissionPage(),
           ),
         );
-        return;
       }
-
-      if (response.statusCode == 400 || response.statusCode == 401) {
-        if (!mounted) return;
-        setState(() {
-          _loginError = "Username or Password is wrong. Try again.";
-        });
-        return;
-      }
-    } on TimeoutException catch (e) {
-      if (kDebugMode) {
-        print('Timeout at $endpoint: $e');
-      }
-      // Fall through to final error message.
-    } on SocketException catch (e) {
-      if (kDebugMode) {
-        print('Network error at $endpoint: $e');
-      }
-      // Fall through to final error message.
-    } catch (e) {
-      if (kDebugMode) {
-        print('Login error at $endpoint: $e');
-      }
-      // Fall through to final error message.
+    } else {
+      setState(() {
+        _loginError = "Username or Password is wrong. Try again.";
+      });
     }
-
-  if (!mounted) return;
-  setState(() {
-    _loginError = "Cannot reach server at ${ApiConfig.baseUrl}. If using a phone, run adb reverse or set --dart-define=API_BASE_URL.";
-  });
+  } catch (e) {
+    setState(() {
+      _loginError = "Server error. Please try again.";
+    });
+  }
 }
   @override
   Widget build(BuildContext context) {
@@ -624,28 +572,24 @@ class _SignupPageState extends State<SignupPage> {
   }
 
   String? validatePassword(String password) {
-    if (password.isEmpty) {
-      return "Password cannot be empty";
-    }
-  
-    if (password.length < 6) {
-      return "Password must be at least 6 characters long";
-    }
-
-    if (!RegExp(r'[A-Za-z]').hasMatch(password)) {
-      return "Password must contain at least one letter";
-    }
-
-    if (!RegExp(r'[0-9]').hasMatch(password)) {
-      return "Password must contain at least one number";
-    }
-
-    if (!RegExp(r'[!@#\$&*~%^()_\-+=]').hasMatch(password)) {
-      return "Password must contain at least one special character (!@#\$&*~%^()_-+=)";
-    }
-
-    return null;
+  if (password.length < 6) {
+    return "Password must be at least 6 characters long";
   }
+
+  if (!RegExp(r'[A-Za-z]').hasMatch(password)) {
+    return "Password must contain at least one alphabet";
+  }
+
+  if (!RegExp(r'[0-9]').hasMatch(password)) {
+    return "Password must contain at least one number";
+  }
+
+  if (!RegExp(r'[!@#\$&*~%^()_\-+=]').hasMatch(password)) {
+    return "Password must contain at least one special character";
+  }
+
+  return null;
+}
   Future<void> registerUser() async {
 
   final password = _passwordController.text.trim();
@@ -664,7 +608,7 @@ class _SignupPageState extends State<SignupPage> {
 
   try {
     final response = await http.post(
-      Uri.parse(ApiConfig.registerEndpoint),
+      Uri.parse("http://10.166.137.12:5000/api/user/register"),
       headers: {"Content-Type": "application/json"},
       body: jsonEncode({
         "name": _nameController.text.trim(),
@@ -672,51 +616,33 @@ class _SignupPageState extends State<SignupPage> {
         "phone": _phoneController.text.trim(),
         "password": password,
       }),
-    ).timeout(const Duration(seconds: 10));
+    );
 
     if (response.statusCode == 201) {
-      try {
-        final decoded = jsonDecode(response.body);
-        final token = decoded['token'] as String?;
-        final user = decoded['user'];
-        final userId = (user is Map)
-            ? (user['_id'] ?? user['id'])?.toString()
-            : null;
-        final name = (user is Map) ? (user['name']?.toString() ?? '') : '';
-        final email = (user is Map) ? (user['email']?.toString() ?? '') : '';
-        final phone = (user is Map) ? (user['phone']?.toString()) : null;
-        if (token != null && userId != null && name.isNotEmpty && email.isNotEmpty) {
-          await UserSession.instance.save(
-            userId: userId,
-            token: token,
-            name: name,
-            email: email,
-            phone: phone,
-          );
-          SavedManager.instance.switchUser(userId);
-          await SavedJobManager.instance.switchUser(userId);
-        }
-      } catch (_) {
-        // ignore parse errors; allow navigation
-      }
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder: (_) => const LocationPermissionPage(),
-        ),
+      final data = jsonDecode(response.body);
+      final user = data['user'];
+      await UserSession.instance.save(
+        userId: user['_id'].toString(),
+        token: data['token'].toString(),
+        name: user['name'].toString(),
+        email: user['email'].toString(),
+        phone: user['phone']?.toString(),
       );
-    } else {
-      if (kDebugMode) {
-        print('Signup failed: ${response.statusCode} - ${response.body}');
+      SavedManager.instance.switchUser(user['_id'].toString());
+      if (mounted) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (_) => const LocationPermissionPage(),
+          ),
+        );
       }
+    } else {
       setState(() {
         _passwordError = "Signup failed. Try again.";
       });
     }
   } catch (e) {
-    if (kDebugMode) {
-      print('Signup error: $e');
-    }
     setState(() {
       _passwordError = "Server error. Try again.";
     });
@@ -912,16 +838,20 @@ class LocationPermissionPage extends StatelessWidget {
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24),
           child: Column(
             children: [
+              const Spacer(),
+
               Image.asset(
                 'assets/images/loc.jpeg',
                 height: 260,
                 fit: BoxFit.contain,
               ),
+
               const SizedBox(height: 24),
+
               const Text(
                 'Location',
                 style: TextStyle(
@@ -940,41 +870,37 @@ class LocationPermissionPage extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 32),
+
               SizedBox(
-                width: double.infinity,
-                height: 56,
-                child: ElevatedButton(
-                  onPressed: () {
-                    Navigator.pushReplacement(
-                      context,
-                      MaterialPageRoute(builder: (_) => const HomePage()),
-                    );
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: primaryGreen,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                  ),
-                  child: const Text(
-                    'Enable Location',
-                    style: TextStyle(color: Colors.white),
-                  ),
-                ),
-              ),
+  width: double.infinity,
+  height: 56,
+  child: ElevatedButton(
+    onPressed: () {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const HomePage()),
+      );
+    },
+    style: ElevatedButton.styleFrom(
+      backgroundColor: primaryGreen,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(6), // 👈 reduced radius here
+      ),
+    ),
+    child: const Text("Enable Location",style: TextStyle(color: Colors.white,),),
+  ),
+),
               const SizedBox(height: 14),
               TextButton(
-                onPressed: () {
-                  Navigator.pushReplacement(
-                    context,
-                    MaterialPageRoute(builder: (_) => const HomePage()),
-                  );
-                },
-                child: const Text(
-                  'Not now',
-                  style: TextStyle(color: Colors.grey),
-                ),
-              ),
+               onPressed: () {
+                Navigator.pushReplacement(
+                 context,
+                  MaterialPageRoute(builder: (_) => const HomePage()),
+              );
+            },
+            child: const Text("Not now",style: TextStyle(color: Colors.grey,),),
+            ),
+            const Spacer(),
             ],
           ),
         ),
@@ -994,26 +920,25 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   void initState() {
     super.initState();
-
-    _boot();
+    _initAndNavigate();
   }
 
-  Future<void> _boot() async {
-    await UserSession.instance.load();
-    if (UserSession.instance.userId != null) {
-      SavedManager.instance.switchUser(UserSession.instance.userId!);
-      await SavedJobManager.instance.switchUser(UserSession.instance.userId!);
-    }
+  Future<void> _initAndNavigate() async {
     await Future.delayed(const Duration(seconds: 3));
-    if (!mounted) return;
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(
-        builder: (_) => UserSession.instance.isLoggedIn
-            ? const HomePage()
-            : const WelcomeScreen(),
-      ),
-    );
+    await UserSession.instance.load();
+    if (UserSession.instance.isLoggedIn) {
+      SavedManager.instance.switchUser(UserSession.instance.userId!);
+    }
+    if (mounted) {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (_) => UserSession.instance.isLoggedIn
+              ? const HomePage()
+              : const WelcomeScreen(),
+        ),
+      );
+    }
   }
 
   @override

@@ -1,9 +1,10 @@
-require("dotenv").config();
+require("dotenv").config({ path: "../../.env" });
+
 const mongoose = require("mongoose");
 const bcrypt = require("bcryptjs");
 const User = require("../user/models/User");
 
-mongoose.connect(process.env.MONGO_URI)
+mongoose.connect(process.env.MONGODB_URI)
   .then(async () => {
 
     const existingAdmin = await User.findOne({ email: "admin@german.com" });

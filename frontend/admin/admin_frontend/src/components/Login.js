@@ -10,7 +10,7 @@ const Login = ({ onLogin }) => {
   e.preventDefault();
 
   try {
-    const response = await fetch("http://localhost:5000/api/admin/login", {
+    const response = await fetch("http://10.166.137.12:5000/api/admin/login", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -26,15 +26,11 @@ const Login = ({ onLogin }) => {
     }
 
     // Store token
-    localStorage.setItem("adminToken", data.token);
+    // Login success
+localStorage.setItem("adminToken", data.token);
 
     // Optionally fetch protected admin data right after login
-    try {
-      await fetchProtectedData();
-    } catch (dashboardError) {
-      console.warn("Dashboard fetch warning:", dashboardError);
-      // Continue with login even if dashboard fetch fails
-    }
+    await fetchProtectedData();
 
     // Login success
     onLogin();
@@ -47,7 +43,7 @@ const fetchProtectedData = async () => {
 
   const token = localStorage.getItem("adminToken");
 
-const response = await fetch("http://localhost:5000/api/admin/dashboard", {
+const response = await fetch("http://10.166.137.12:5000/api/admin/dashboard", {
   method: "GET",
   headers: {
     "Content-Type": "application/json",

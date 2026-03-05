@@ -2,21 +2,19 @@ import React from 'react';
 import GenericCategoryListings from './GenericCategoryListings';
 
 const JOBS_FIELDS = {
-  title: 'title',
-  subKey: 'companyName',
-  locationKey: 'location',
-  contactKey: 'contact',
+  title: 'jobTitle',
+  subKey: 'company',
   subLabel: 'COMPANY',
   rows: [
-    ['Job Title', 'title'],
-    ['Company', 'companyName'],
+    ['Job Title', 'jobTitle'],
+    ['Company', 'company'],
     ['Job Type', 'jobType'],
-    ['Location', 'location'],
+    ['City', 'city'],
     ['Area', 'area'],
     ['Address', 'address'],
-    ['Contact', 'contact'],
+    ['Contact Phone', 'contactPhone'],
     ['Salary', 'salary'],
-    ['Requirements', 'requirements'],
+    ['Skills', 'skills'],
     ['Description', 'description'],
     ['Status', 'status'],
   ],
@@ -26,7 +24,7 @@ export default function JobsListings() {
   return (
     <GenericCategoryListings
       category="Jobs"
-      apiBase="http://localhost:5000/api/admin/jobs"
+      apiBase="http://10.166.137.12:5000/api/jobs/admin"
       icon="💼"
       viewFields={JOBS_FIELDS}
     />

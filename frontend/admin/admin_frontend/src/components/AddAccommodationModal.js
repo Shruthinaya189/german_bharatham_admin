@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { X } from 'lucide-react';
 
-const BASE = 'http://localhost:5000';
+const BASE = 'http://10.166.137.12:5000';
 const DEFAULT_AMENITIES = ['WiFi', 'Parking', 'Balcony', 'Garden', 'Elevator'];
 
 const AddAccommodationModal = ({ onClose, onSuccess }) => {
@@ -73,19 +73,16 @@ const AddAccommodationModal = ({ onClose, onSuccess }) => {
       const token = localStorage.getItem('adminToken');
       const base64Images = await Promise.all(images.map(toBase64));
       const payload = {
-        title: form.title.trim(),
-        category: 'Accommodation',
-        type: form.propertyType,
-        address: form.location.trim(),
-        city: form.location.trim(),
-        phone: form.contact.trim(),
-        description: form.description.trim(),
-        rent: parseFloat(String(form.price).replace(/[^0-9.]/g, '')) || 0,
-        status: form.status === 'active' ? 'Active' : form.status === 'inactive' ? 'Inactive' : 'Pending',
-        furnished: selectedAmenities.includes('Furnished'),
-        petsAllowed: selectedAmenities.includes('Pets Allowed'),
-        parkingAvailable: selectedAmenities.includes('Parking'),
-        image: base64Images[0] || '',
+        title:        form.title.trim(),
+        propertyType: form.propertyType,
+        city:         form.location.trim(),
+        contactPhone: form.contact.trim(),
+        description:  form.description.trim(),
+        status:       form.status === 'inactive' ? 'disabled' : form.status,
+        rentDetails:  { warmRent: parseFloat(form.price) || 0 },
+        amenities:    selectedAmenities.reduce((acc, a) => { acc[a.toLowerCase().replace(/\s+/g, '_')] = true; return acc; }, {}),
+        media:        { images: base64Images },
+        adminControls: { isActive: form.status === 'active' },
       };
       const res = await fetch(`${BASE}/api/accommodation/admin`, {
         method: 'POST',

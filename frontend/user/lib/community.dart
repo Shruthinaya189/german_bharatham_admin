@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'guide_details.dart';
+import 'saved_guides_manager.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
-import 'services/api_config.dart';
 
 class CommunityPage extends StatefulWidget {
   const CommunityPage({super.key});
@@ -47,7 +47,7 @@ class _CommunityPageState extends State<CommunityPage> {
       // Backend runs on port 5000 (see backend/.env). Include port so
       // requests reach the Express server instead of defaulting to port 80.
       final response = await http.get(
-        Uri.parse('${ApiConfig.baseUrl}/api/community'),
+        Uri.parse("http://10.166.137.12:5000/api/community"),
       );
 
       print("Status Code: ${response.statusCode}");
@@ -235,11 +235,21 @@ class _CommunityPageState extends State<CommunityPage> {
                   ),
                 ),
               ),
-              Image.asset(
-                'assets/images/bookmark.png',
-                height: 20,
-                width: 20,
-              ),
+              GestureDetector(
+  onTap: () {
+    setState(() {
+      SavedGuidesManager.instance.toggle(guide);
+    });
+  },
+  child: Image.asset(
+    'assets/images/bookmark.png',
+    height: 20,
+    width: 20,
+    color: SavedGuidesManager.instance.isSaved(guide)
+        ? Colors.black
+        : Colors.grey,
+  ),
+),
             ],
           ),
           const SizedBox(height: 6),
