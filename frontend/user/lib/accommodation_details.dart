@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'dart:typed_data';
 import 'accommodation.dart';
 import 'saved_manager.dart';
 
@@ -16,18 +16,6 @@ class AccommodationDetailPage extends StatefulWidget {
 }
 
 class _AccommodationDetailPageState extends State<AccommodationDetailPage> {
-  int _selectedRating = 0;
-  bool _reviewSubmitted = false;
-
-  double get _displayRating {
-    if (_reviewSubmitted && _selectedRating > 0) {
-      final cnt = widget.item.reviews.length;
-      final sum = (widget.item.avgRating ?? widget.item.rating) *
-          (cnt > 0 ? cnt : 1);
-      return (sum + _selectedRating) / (cnt + 1);
-    }
-    return widget.item.avgRating ?? widget.item.rating;
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -47,21 +35,7 @@ class _AccommodationDetailPageState extends State<AccommodationDetailPage> {
                       borderRadius: const BorderRadius.vertical(
                         bottom: Radius.circular(28),
                       ),
-                      child: item.image.startsWith('http')
-                          ? Image.network(
-                              item.image,
-                              width: double.infinity,
-                              height: 300,
-                              fit: BoxFit.cover,
-                              errorBuilder: (_, __, ___) => _placeholderImage(),
-                            )
-                          : Image.asset(
-                              item.image,
-                              width: double.infinity,
-                              height: 300,
-                              fit: BoxFit.cover,
-                              errorBuilder: (_, __, ___) => _placeholderImage(),
-                            ),
+                      child: _buildHeaderImage(item.image),
                     ),
 
                     /// BACK BUTTON
@@ -127,6 +101,7 @@ class _AccommodationDetailPageState extends State<AccommodationDetailPage> {
                     children: [
                       /// TITLE + RATING
                       Row(
+                        crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
                           Expanded(
                             child: Text(
@@ -137,17 +112,20 @@ class _AccommodationDetailPageState extends State<AccommodationDetailPage> {
                               ),
                             ),
                           ),
+                          const SizedBox(width: 12),
                           Image.asset(
                             'assets/images/star.png',
                             height: 18,
                             width: 18,
+                            color: const Color(0xFFF59E0B),
                           ),
-                          const SizedBox(width: 6),
+                          const SizedBox(width: 4),
                           Text(
-                            _displayRating.toStringAsFixed(1),
+                            (item.averageRating ?? 0.0).clamp(0.0, 5.0).toStringAsFixed(1),
                             style: const TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w600,
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.black87,
                             ),
                           ),
                         ],
@@ -156,19 +134,33 @@ class _AccommodationDetailPageState extends State<AccommodationDetailPage> {
                       const SizedBox(height: 18),
 
                       /// LOCATION
-                      _infoRow(
-                        icon: 'assets/images/location.png',
-                        title: "Location",
-                        value: item.location,
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Image.asset('assets/images/location.png', height: 22, width: 22,
+                              errorBuilder: (_, __, ___) => const Icon(Icons.location_on, size: 22, color: Color(0xFF4F7F67))),
+                          const SizedBox(width: 12),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text('Location',
+                                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+                              const SizedBox(height: 4),
+                              Text(item.location,
+                                  style: const TextStyle(fontSize: 14, color: Colors.grey)),
+                            ],
+                          ),
+                        ],
                       ),
 
                       const SizedBox(height: 16),
 
-                      /// RENT / PRICE  — euro icon
+                      /// RENT / PRICE
                       Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Icon(Icons.euro_rounded, size: 22, color: Color(0xFF4F7F67)),
+                          Image.asset('assets/images/rent.png', height: 22, width: 22,
+                              errorBuilder: (_, __, ___) => const Icon(Icons.euro_rounded, size: 22, color: Color(0xFF4F7F67))),
                           const SizedBox(width: 12),
                           Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -178,7 +170,7 @@ class _AccommodationDetailPageState extends State<AccommodationDetailPage> {
                               const SizedBox(height: 4),
                               Text(
                                 item.warmRent != null
-                                    ? '€${item.warmRent} / month (warm rent)'
+                                    ? '€${item.warmRent} / month'
                                     : '€${item.price} / month',
                                 style: const TextStyle(fontSize: 14, color: Colors.grey),
                               ),
@@ -189,11 +181,12 @@ class _AccommodationDetailPageState extends State<AccommodationDetailPage> {
 
                       const SizedBox(height: 16),
 
-                      /// PROPERTY TYPE — home icon
+                      /// PROPERTY TYPE
                       Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Icon(Icons.home_work_outlined, size: 22, color: Color(0xFF4F7F67)),
+                          Image.asset('assets/images/propertytype.png', height: 22, width: 22,
+                              errorBuilder: (_, __, ___) => const Icon(Icons.home_work_outlined, size: 22, color: Color(0xFF4F7F67))),
                           const SizedBox(width: 12),
                           Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -351,7 +344,10 @@ class _AccommodationDetailPageState extends State<AccommodationDetailPage> {
                         ),
                         const SizedBox(height: 10),
                         Text(
-                          item.description,
+                          item.description
+                              .replaceAll(RegExp(r'^\s*Description\s*\*?\s*\n?', caseSensitive: false), '')
+                              .replaceAll(RegExp(r'^\*+|\*+$'), '')
+                              .trim(),
                           style: const TextStyle(
                             fontSize: 14,
                             color: Colors.grey,
@@ -398,106 +394,6 @@ class _AccommodationDetailPageState extends State<AccommodationDetailPage> {
 
                       const SizedBox(height: 26),
 
-                      /// ── REVIEW SECTION ──
-                      const Text(
-                        'Rate this Listing',
-                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                      ),
-                      const SizedBox(height: 6),
-                      Row(
-                        children: [
-                          Image.asset('assets/images/star.png', height: 16, width: 16),
-                          const SizedBox(width: 6),
-                          Text(
-                            'Avg: ${_displayRating.toStringAsFixed(1)} / 5',
-                            style: const TextStyle(fontSize: 13, color: Colors.grey),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 12),
-                      if (!_reviewSubmitted) ...([
-                        Row(
-                          children: List.generate(5, (i) {
-                            final star = i + 1;
-                            return GestureDetector(
-                              onTap: () => setState(() => _selectedRating = star),
-                              child: Padding(
-                                padding: const EdgeInsets.only(right: 8),
-                                child: Image.asset(
-                                  'assets/images/star.png',
-                                  height: 32,
-                                  width: 32,
-                                  color: star <= _selectedRating
-                                      ? const Color(0xFFF59E0B)
-                                      : Colors.grey.shade300,
-                                ),
-                              ),
-                            );
-                          }),
-                        ),
-                        const SizedBox(height: 12),
-                        SizedBox(
-                          width: double.infinity,
-                          child: ElevatedButton(
-                            onPressed: _selectedRating > 0
-                                ? () async {
-                                    setState(() => _reviewSubmitted = true);
-                                    // Post to backend
-                                    try {
-                                      await http.post(
-                                        Uri.parse('$apiBaseUrl/api/accommodation/user/review/${item.id}'),
-                                        headers: {'Content-Type': 'application/json'},
-                                        body: json.encode({
-                                          'userId': 'user123',
-                                          'score': _selectedRating,
-                                        }),
-                                      );
-                                    } catch (_) {}
-                                    if (mounted) {
-                                      ScaffoldMessenger.of(context).showSnackBar(
-                                        SnackBar(
-                                          content: Text(
-                                              'Thanks! You rated $_selectedRating ★'),
-                                          backgroundColor: const Color(0xFF4F7F67),
-                                        ),
-                                      );
-                                    }
-                                  }
-                                : null,
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFF4F7F67),
-                              foregroundColor: Colors.white,
-                              shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12)),
-                            ),
-                            child: const Text('Submit Review'),
-                          ),
-                        ),
-                      ]) else ...[
-                        Row(
-                          children: List.generate(5, (i) {
-                            final star = i + 1;
-                            return Padding(
-                              padding: const EdgeInsets.only(right: 8),
-                              child: Image.asset(
-                                'assets/images/star.png',
-                                height: 28,
-                                width: 28,
-                                color: star <= _selectedRating
-                                    ? const Color(0xFFF59E0B)
-                                    : Colors.grey.shade300,
-                              ),
-                            );
-                          }),
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          'You rated: $_selectedRating ★  — Thank you!',
-                          style: const TextStyle(
-                              color: Color(0xFF4F7F67),
-                              fontWeight: FontWeight.w500),
-                        ),
-                      ],
 
                       const SizedBox(height: 110),
                     ],
@@ -613,6 +509,26 @@ class _AccommodationDetailPageState extends State<AccommodationDetailPage> {
       color: const Color(0xFFE8F5E9),
       child: const Icon(Icons.home, size: 80, color: Color(0xFF4F7F67)),
     );
+  }
+
+  /// Handles base64 data-URI, network URL, and asset path
+  static Widget _buildHeaderImage(String src) {
+    if (src.startsWith('data:image')) {
+      try {
+        final Uint8List bytes = base64Decode(src.split(',').last);
+        return Image.memory(bytes,
+            width: double.infinity, height: 300, fit: BoxFit.cover,
+            errorBuilder: (_, __, ___) => _placeholderImage());
+      } catch (_) {}
+    }
+    if (src.startsWith('http')) {
+      return Image.network(src,
+          width: double.infinity, height: 300, fit: BoxFit.cover,
+          errorBuilder: (_, __, ___) => _placeholderImage());
+    }
+    return Image.asset(src,
+        width: double.infinity, height: 300, fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) => _placeholderImage());
   }
 
   static Widget _circleBtn({

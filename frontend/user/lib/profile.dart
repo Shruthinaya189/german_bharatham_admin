@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'dart:convert';
+import 'dart:typed_data';
 import 'home.dart';
 import 'saved.dart';
 import 'profile_pages/personal_info.dart';
@@ -12,6 +14,8 @@ import 'profile_pages/privacy_policy.dart';
 import 'profile_pages/terms_conditions.dart';
 import 'search.dart';
 import 'profile_pages/edit_profile.dart';
+import 'user_session.dart';
+import 'saved_manager.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -24,6 +28,21 @@ class _ProfilePageState extends State<ProfilePage> {
   int _currentIndex = 3;
 
   static const Color primaryGreen = Color(0xFF4E7F6D);
+
+  UserSession get _sess => UserSession.instance;
+
+  ImageProvider _avatarImage() {
+    final photo = _sess.photoBase64;
+    if (photo != null && photo.isNotEmpty) {
+      try {
+        final bytes = photo.startsWith('data:image')
+            ? base64Decode(photo.split(',').last)
+            : base64Decode(photo);
+        return MemoryImage(bytes as Uint8List);
+      } catch (_) {}
+    }
+    return const AssetImage('assets/images/profile.jpg');
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -50,35 +69,40 @@ class _ProfilePageState extends State<ProfilePage> {
               decoration: _cardDecoration(),
               child: Row(
                 children: [
-                  const CircleAvatar(
+                  CircleAvatar(
                     radius: 28,
-                    backgroundImage:
-                        AssetImage('assets/images/profile.jpg'),
+                    backgroundImage: _avatarImage(),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
-                      children: const [
-                        Text("Ajay",
-                            style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold)),
-                        SizedBox(height: 4),
-                        Text("+91 9363001215",
-                            style: TextStyle(
-                                color: Colors.grey, fontSize: 13)),
+                      children: [
+                        Text(
+                          _sess.name ?? 'User',
+                          style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          _sess.phone ?? _sess.email ?? '',
+                          style: const TextStyle(
+                              color: Colors.grey, fontSize: 13),
+                        ),
                       ],
                     ),
                   ),
                   ElevatedButton.icon(
-                    onPressed: () {
-                      Navigator.push(
+                    onPressed: () async {
+                      await Navigator.push(
                         context,
                         MaterialPageRoute(
                           builder: (_) => const EditProfilePage(),
                         ),
                       );
+                      // Refresh UI after edit
+                      if (mounted) setState(() {});
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: primaryGreen,
@@ -182,7 +206,15 @@ class _ProfilePageState extends State<ProfilePage> {
 
             /// 🔴 LOGOUT BUTTON (FIXED)
             OutlinedButton.icon(
-              onPressed: () {},
+              onPressed: () async {
+                await UserSession.instance.clear();
+                SavedManager.instance.clearCurrentUser();
+                if (mounted) {
+                  // Remove all routes and restart from the app root (SplashScreen)
+                  // SplashScreen will see no session and show WelcomeScreen
+                  Navigator.of(context).pushNamedAndRemoveUntil('/', (route) => false);
+                }
+              },
               icon: Image.asset(
                 'assets/images/logout.png',
                 width: 18,

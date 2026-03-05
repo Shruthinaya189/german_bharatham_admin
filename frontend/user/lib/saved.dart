@@ -300,7 +300,7 @@ class _SavedAccommodationCard extends StatelessWidget {
                       ),
                       const SizedBox(width: 4),
                       Text(
-                        item.rating.toStringAsFixed(1),
+                        (item.averageRating ?? 0.0).toStringAsFixed(1),
                         style: const TextStyle(fontSize: 12),
                       ),
                       const Spacer(),

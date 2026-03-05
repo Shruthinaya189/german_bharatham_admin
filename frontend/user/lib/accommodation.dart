@@ -4,6 +4,7 @@ import 'filter_page.dart';
 import 'saved_manager.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'dart:typed_data';
 
 // Use machine IP for real device, 10.0.2.2 for emulator
 const String apiBaseUrl = 'http://10.233.141.31:5000';
@@ -20,7 +21,6 @@ class Accommodation {
   final double rating;
   final int price;
   final List<String> amenities;
-  final List<String> highlights;
   final String propertyType;
   final double? latitude;
   final double? longitude;
@@ -43,8 +43,7 @@ class Accommodation {
   final bool? nearHospital;
   final bool? nearPublicTransport;
   final String? contactPhone;
-  final double? avgRating;
-  final List<Map<String, dynamic>> reviews;
+  final double? averageRating;
 
   Accommodation({
     required this.id,
@@ -55,7 +54,6 @@ class Accommodation {
     required this.rating,
     required this.price,
     required this.amenities,
-    required this.highlights,
     required this.propertyType,
     this.latitude,
     this.longitude,
@@ -76,9 +74,8 @@ class Accommodation {
     this.nearHospital,
     this.nearPublicTransport,
     this.contactPhone,
-    this.avgRating,
-    List<Map<String, dynamic>>? reviews,
-  }) : reviews = reviews ?? [];
+    this.averageRating,
+  });
 
   factory Accommodation.fromJson(Map<String, dynamic> json) {
     // Extract amenities from the amenities object
@@ -98,12 +95,6 @@ class Accommodation {
       });
     }
 
-    // Extract highlights
-    List<String> extractedHighlights = [];
-    if (json['highlights'] != null && json['highlights'] is List) {
-      extractedHighlights = List<String>.from(json['highlights']);
-    }
-
     // Calculate price from rentDetails
     int displayPrice = 0;
     if (json['rentDetails'] != null) {
@@ -115,9 +106,6 @@ class Accommodation {
     String location = '';
     if (json['city'] != null) {
       location = json['city'].toString();
-      if (json['area'] != null && json['area'].toString().isNotEmpty) {
-        location += ', ${json['area']}';
-      }
     }
 
     // Get property type
@@ -128,18 +116,22 @@ class Accommodation {
       .join(' ');
 
     return Accommodation(
-      id: json['_id'] ?? '',
-      title: json['title'] ?? 'Untitled',
-      description: json['description'] ?? '',
+      id: (json['_id'] ?? '').toString(),
+      title: (json['title'] ?? 'Untitled').toString(),
+      description: (json['description'] ?? '').toString(),
       location: location.isNotEmpty ? location : 'Location not specified',
       image: (json['media']?['images'] != null && 
              (json['media']['images'] as List).isNotEmpty)
-          ? json['media']['images'][0]
+          ? (() {
+              final img = json['media']['images'][0];
+              if (img is String) return img;
+              if (img is Map) return (img['url'] ?? img['uri'] ?? 'assets/images/room.jpg').toString();
+              return 'assets/images/room.jpg';
+            })()
           : 'assets/images/room.jpg',
       rating: 4.5, // Default rating since it's not in schema
       price: displayPrice,
       amenities: extractedAmenities.take(3).toList(),
-      highlights: extractedHighlights,
       propertyType: formattedPropertyType,
       latitude: json['latitude']?.toDouble(),
       longitude: json['longitude']?.toDouble(),
@@ -161,10 +153,7 @@ class Accommodation {
       nearHospital: json['locationHighlights']?['nearHospital'],
       nearPublicTransport: json['locationHighlights']?['nearPublicTransport'],
       contactPhone: json['contactPhone']?.toString(),
-      avgRating: (json['avgRating'] as num?)?.toDouble(),
-      reviews: json['reviews'] != null
-          ? List<Map<String, dynamic>>.from(json['reviews'])
-          : [],
+      averageRating: (json['averageRating'] as num?)?.toDouble() ?? 0.0,
     );
   }
 }
@@ -204,9 +193,21 @@ class _AccommodationPageState extends State<AccommodationPage> {
       );
 
       if (response.statusCode == 200) {
-        List<dynamic> data = json.decode(response.body);
+        final decoded = json.decode(response.body);
+        // Support both plain array and wrapped { data: [...] } responses
+        final List<dynamic> data =
+            decoded is List ? decoded : (decoded['data'] ?? []) as List;
         final loaded = data
-            .map((j) => Accommodation.fromJson(j))
+            .map((j) {
+              try {
+                return Accommodation.fromJson(j as Map<String, dynamic>);
+              } catch (parseErr) {
+                debugPrint('Skipping record due to parse error: $parseErr');
+                return null;
+              }
+            })
+            .where((item) => item != null)
+            .cast<Accommodation>()
             .toList();
         // restore saved state from SavedManager
         for (final acc in loaded) {
@@ -415,21 +416,7 @@ class AccommodationCard extends StatelessWidget {
             /// IMAGE
             ClipRRect(
               borderRadius: BorderRadius.circular(10),
-              child: accommodation.image.startsWith('http')
-                  ? Image.network(
-                      accommodation.image,
-                      width: 90,
-                      height: 90,
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => _placeholderImage(),
-                    )
-                  : Image.asset(
-                      accommodation.image,
-                      width: 90,
-                      height: 90,
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => _placeholderImage(),
-                    ),
+              child: _buildListingImage(accommodation.image, 90, 90),
             ),
 
             const SizedBox(width: 12),
@@ -469,9 +456,9 @@ class AccommodationCard extends StatelessWidget {
                     children: [
                       Image.asset(
                         'assets/images/location.png',
-                        width: 14,
-                        height: 14,
-                        color: Colors.grey,
+                        width: 16,
+                        height: 16,
+                        errorBuilder: (_, __, ___) => const Icon(Icons.location_on, size: 16, color: Color(0xFF4F7F67)),
                       ),
                       const SizedBox(width: 4),
                       Text(
@@ -482,46 +469,6 @@ class AccommodationCard extends StatelessWidget {
                   ),
 
                   const SizedBox(height: 6),
-                  
-                  /// HIGHLIGHTS (if available)
-                  if (accommodation.highlights.isNotEmpty)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 6),
-                      child: Wrap(
-                        spacing: 6,
-                        runSpacing: 6,
-                        children: accommodation.highlights.take(2).map((highlight) {
-                          return Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 4,
-                            ),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF28a745),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                const Text(
-                                  '★',
-                                  style: TextStyle(fontSize: 10, color: Colors.red),
-                                ),
-                                const SizedBox(width: 4),
-                                Text(
-                                  highlight,
-                                  style: const TextStyle(
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.w600,
-                                    color: Colors.white,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          );
-                        }).toList(),
-                      ),
-                    ),
                   
                   /// AMENITIES
                   Wrap(
@@ -557,11 +504,11 @@ class AccommodationCard extends StatelessWidget {
                         'assets/images/star.png',
                         width: 14,
                         height: 14,
+                        color: const Color(0xFFF59E0B),
                       ),
                       const SizedBox(width: 4),
                       Text(
-                        (accommodation.avgRating ?? accommodation.rating)
-                            .toStringAsFixed(1),
+                        (accommodation.averageRating ?? 0.0).toStringAsFixed(1),
                         style: const TextStyle(fontSize: 12),
                       ),
                       const Spacer(),
@@ -586,4 +533,21 @@ class AccommodationCard extends StatelessWidget {
         color: const Color(0xFFE8F5E9),
         child: const Icon(Icons.home, color: Color(0xFF4F7F67), size: 36),
       );
+
+  /// Handles URL, base64 data-URI and asset images
+  static Widget _buildListingImage(String src, double w, double h) {
+    if (src.startsWith('data:image')) {
+      try {
+        final Uint8List bytes = base64Decode(src.split(',').last);
+        return Image.memory(bytes, width: w, height: h, fit: BoxFit.cover,
+            errorBuilder: (_, __, ___) => _placeholderImage());
+      } catch (_) {}
+    }
+    if (src.startsWith('http')) {
+      return Image.network(src, width: w, height: h, fit: BoxFit.cover,
+          errorBuilder: (_, __, ___) => _placeholderImage());
+    }
+    return Image.asset(src, width: w, height: h, fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) => _placeholderImage());
+  }
 }

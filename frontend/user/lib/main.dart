@@ -6,6 +6,8 @@ import 'home.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'user_session.dart';
+import 'saved_manager.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -305,11 +307,9 @@ class _AuthPageState extends State<AuthPage> {
     _loginError = null; // clear old error
   });
 
-  // TODO: Auth implementation - will be pulled from friend's code later
-  /* 
   try {
     final response = await http.post(
-      Uri.parse("http://10.166.137.12:5000/api/user/login"),
+      Uri.parse("http://10.233.141.31:5000/api/user/login"),
       headers: {"Content-Type": "application/json"},
       body: jsonEncode({
         "email": _emailController.text.trim(),
@@ -318,15 +318,25 @@ class _AuthPageState extends State<AuthPage> {
     );
 
     if (response.statusCode == 200) {
-      // ✅ Login Success
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder: (_) => const LocationPermissionPage(),
-        ),
+      final data = jsonDecode(response.body);
+      final user = data['user'];
+      await UserSession.instance.save(
+        userId: user['_id'].toString(),
+        token: data['token'].toString(),
+        name: user['name'].toString(),
+        email: user['email'].toString(),
+        phone: user['phone']?.toString(),
       );
+      SavedManager.instance.switchUser(user['_id'].toString());
+      if (mounted) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (_) => const LocationPermissionPage(),
+          ),
+        );
+      }
     } else {
-      // ❌ Wrong credentials
       setState(() {
         _loginError = "Username or Password is wrong. Try again.";
       });
@@ -336,15 +346,6 @@ class _AuthPageState extends State<AuthPage> {
       _loginError = "Server error. Please try again.";
     });
   }
-  */
-  
-  // Temporary bypass - navigate directly
-  Navigator.pushReplacement(
-    context,
-    MaterialPageRoute(
-      builder: (_) => const LocationPermissionPage(),
-    ),
-  );
 }
   @override
   Widget build(BuildContext context) {
@@ -605,11 +606,9 @@ class _SignupPageState extends State<SignupPage> {
     _passwordError = null;
   });
 
-  // TODO: Auth implementation - will be pulled from friend's code later
-  /*
   try {
     final response = await http.post(
-      Uri.parse("http://10.166.137.12:5000/api/user/register"),
+      Uri.parse("http://10.233.141.31:5000/api/user/register"),
       headers: {"Content-Type": "application/json"},
       body: jsonEncode({
         "name": _nameController.text.trim(),
@@ -620,12 +619,24 @@ class _SignupPageState extends State<SignupPage> {
     );
 
     if (response.statusCode == 201) {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder: (_) => const LocationPermissionPage(),
-        ),
+      final data = jsonDecode(response.body);
+      final user = data['user'];
+      await UserSession.instance.save(
+        userId: user['_id'].toString(),
+        token: data['token'].toString(),
+        name: user['name'].toString(),
+        email: user['email'].toString(),
+        phone: user['phone']?.toString(),
       );
+      SavedManager.instance.switchUser(user['_id'].toString());
+      if (mounted) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (_) => const LocationPermissionPage(),
+          ),
+        );
+      }
     } else {
       setState(() {
         _passwordError = "Signup failed. Try again.";
@@ -636,15 +647,6 @@ class _SignupPageState extends State<SignupPage> {
       _passwordError = "Server error. Try again.";
     });
   }
-  */
-  
-  // Temporary bypass - navigate directly
-  Navigator.pushReplacement(
-    context,
-    MaterialPageRoute(
-      builder: (_) => const LocationPermissionPage(),
-    ),
-  );
 }
   @override
   Widget build(BuildContext context) {
@@ -918,13 +920,25 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   void initState() {
     super.initState();
+    _initAndNavigate();
+  }
 
-    Future.delayed(const Duration(seconds: 3), () {
+  Future<void> _initAndNavigate() async {
+    await Future.delayed(const Duration(seconds: 3));
+    await UserSession.instance.load();
+    if (UserSession.instance.isLoggedIn) {
+      SavedManager.instance.switchUser(UserSession.instance.userId!);
+    }
+    if (mounted) {
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (_) => const WelcomeScreen()),
+        MaterialPageRoute(
+          builder: (_) => UserSession.instance.isLoggedIn
+              ? const HomePage()
+              : const WelcomeScreen(),
+        ),
       );
-    });
+    }
   }
 
   @override
