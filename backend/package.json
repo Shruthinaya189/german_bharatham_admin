@@ -1,13 +1,24 @@
 {
-  "name": "backend",
+  "name": "german-bharatham-backend",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "Backend API for German Bharatham accommodation, jobs, food, community, and services modules",
+  "main": "serve.js",
   "scripts": {
+    "start": "node serve.js",
+    "dev": "nodemon serve.js",
     "test": "echo \"Error: no test specified\" && exit 1",
     "import:community": "node communityModule/importData.js"
   },
-  "keywords": [],
+  "keywords": [
+    "accommodation",
+    "jobs",
+    "food",
+    "community",
+    "services",
+    "api",
+    "mongodb",
+    "express"
+  ],
   "author": "",
   "license": "ISC",
   "dependencies": {

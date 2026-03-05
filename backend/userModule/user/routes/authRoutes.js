@@ -6,6 +6,8 @@ const controller = require("../controllers/authController");
 
 router.post("/register", controller.register);
 router.post("/login", controller.login);
+router.get("/profile", protect, controller.getProfile);
+router.put("/profile", protect, controller.updateProfile);
 // 👑 Admin Routes
 router.get("/all-users", protect, adminOnly, userController.getAllUsers);
 router.put("/activate/:id", protect, adminOnly, userController.activateUser);

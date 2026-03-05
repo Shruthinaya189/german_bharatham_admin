@@ -12,9 +12,10 @@ const userSchema = new mongoose.Schema(
       default: "user",
     },
     isActive: {
-  type: Boolean,
-  default: true,
-},
+      type: Boolean,
+      default: true,
+    },
+    photo: { type: String, default: null },
   },
   { timestamps: true }
 );

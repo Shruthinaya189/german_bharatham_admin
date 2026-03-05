@@ -74,8 +74,6 @@ router.post("/", async (req, res) => {
       city,
       description: req.body.description ? String(req.body.description).trim() : null,
       propertyType: req.body.propertyType ? String(req.body.propertyType).trim() : null,
-      highlights: Array.isArray(req.body.highlights) ? req.body.highlights : [],
-      area: req.body.area ? String(req.body.area).trim() : null,
       postalCode: req.body.postalCode ? String(req.body.postalCode).trim() : null,
       address: req.body.address ? String(req.body.address).trim() : null,
       latitude: req.body.latitude ? parseFloat(req.body.latitude) : null,
@@ -137,7 +135,8 @@ router.post("/", async (req, res) => {
         favouritesCount: req.body.adminControls.favouritesCount ? parseInt(req.body.adminControls.favouritesCount, 10) : 0
       } : {},
 
-      contactPhone: req.body.contactPhone ? String(req.body.contactPhone).trim() : null
+      contactPhone: req.body.contactPhone ? String(req.body.contactPhone).trim() : null,
+      status: ['active', 'disabled', 'pending'].includes(req.body.status) ? req.body.status : 'active'
     };
 
     const newAccommodation = new Accommodation(payload);
@@ -159,6 +158,24 @@ router.post("/", async (req, res) => {
     }
     res.status(500).json({ message: error.message });
   }
+});
+
+// PATCH status
+router.patch('/:id/status', async (req, res) => {
+  try {
+    if (req.user.role !== 'admin') return res.status(403).json({ message: 'Admin access required' });
+    const { status } = req.body;
+    const normalised = status === 'inactive' ? 'disabled' : status;
+    if (!['active', 'disabled', 'pending'].includes(normalised)) return res.status(400).json({ message: 'Invalid status' });
+    const isActive = normalised === 'active';
+    const doc = await Accommodation.findByIdAndUpdate(
+      req.params.id,
+      { status: normalised, 'adminControls.isActive': isActive },
+      { new: true }
+    );
+    if (!doc) return res.status(404).json({ message: 'Not found' });
+    res.json(doc);
+  } catch (e) { res.status(500).json({ message: e.message }); }
 });
 
 // UPDATE

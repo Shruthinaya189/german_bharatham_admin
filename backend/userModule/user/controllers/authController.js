@@ -38,6 +38,33 @@ exports.register = async (req, res) => {
   }
 };
 
+// GET PROFILE
+exports.getProfile = async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id).select('-password');
+    if (!user) return res.status(404).json({ message: 'User not found' });
+    res.json(user);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// UPDATE PROFILE
+exports.updateProfile = async (req, res) => {
+  try {
+    const { name, phone, photo } = req.body;
+    const update = {};
+    if (name !== undefined) update.name = name.trim();
+    if (phone !== undefined) update.phone = phone.trim();
+    if (photo !== undefined) update.photo = photo;
+    const user = await User.findByIdAndUpdate(req.user.id, update, { new: true }).select('-password');
+    if (!user) return res.status(404).json({ message: 'User not found' });
+    res.json(user);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
 // LOGIN
 exports.login = async (req, res) => {
   try {
