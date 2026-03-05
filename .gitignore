@@ -1,65 +1,72 @@
 # See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 
-# dependencies
-/node_modules
+# ── Node / npm ────────────────────────────────────────────────
+**/node_modules/
 /.pnp
 .pnp.js
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+package-lock.json
+yarn.lock
 
-# testing
-/coverage
+# ── Build outputs ─────────────────────────────────────────────
+**/build/
+**/dist/
+**/coverage/
+**/.cache/
 
-# production
-/build
-/dist
-
-# Flutter
-/frontend/user/build/
-/frontend/user/.dart_tool/
-/frontend/user/.flutter-plugins
-/frontend/user/.flutter-plugins-dependencies
-/frontend/user/pubspec.lock
-/frontend/user/.packages
-
-# Android
-/frontend/user/android/.gradle
-/frontend/user/android/**/local.properties
-/frontend/user/android/**/GeneratedPluginRegistrant.java
-/frontend/user/android/key.properties
-
-# iOS
-/frontend/user/ios/Flutter/Flutter.framework
-/frontend/user/ios/Flutter/Flutter.podspec
-
-# macOS
-/frontend/user/macos/Flutter/Flutter-Release.framework
-
-# Windows
-/frontend/user/windows/flutter/generated_plugin_registrant.cc
-/frontend/user/windows/flutter/generated_plugins.cmake
-
-# Linux
-/frontend/user/linux/flutter/generated_plugin_registrant.cc
-/frontend/user/linux/flutter/generated_plugins.cmake
-
-# misc
-.DS_Store
+# ── Environment / secrets ─────────────────────────────────────
 .env
 .env.local
 .env.development.local
 .env.test.local
 .env.production.local
 
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
+# ── Flutter ───────────────────────────────────────────────────
+frontend/user/build/
+frontend/user/.dart_tool/
+frontend/user/.flutter-plugins
+frontend/user/.flutter-plugins-dependencies
+frontend/user/pubspec.lock
+frontend/user/.packages
 
-# IDE
+# Android
+frontend/user/android/.gradle/
+frontend/user/android/**/local.properties
+frontend/user/android/**/GeneratedPluginRegistrant.java
+frontend/user/android/key.properties
+
+# iOS
+frontend/user/ios/Flutter/Flutter.framework
+frontend/user/ios/Flutter/Flutter.podspec
+frontend/user/ios/Pods/
+frontend/user/ios/.symlinks/
+
+# macOS
+frontend/user/macos/Flutter/Flutter-Release.framework
+frontend/user/macos/Pods/
+
+# Windows
+frontend/user/windows/flutter/generated_plugin_registrant.cc
+frontend/user/windows/flutter/generated_plugins.cmake
+
+# Linux
+frontend/user/linux/flutter/generated_plugin_registrant.cc
+frontend/user/linux/flutter/generated_plugins.cmake
+
+# ── IDE / Editor ──────────────────────────────────────────────
 .vscode/
 .idea/
 *.swp
 *.swo
 *~
 
-# OS
-Thumbs.db
+# ── OS ────────────────────────────────────────────────────────
 .DS_Store
+Thumbs.db
+desktop.ini
+
+# ── Logs ──────────────────────────────────────────────────────
+*.log
+logs/

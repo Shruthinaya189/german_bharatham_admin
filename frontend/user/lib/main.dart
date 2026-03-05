@@ -305,6 +305,8 @@ class _AuthPageState extends State<AuthPage> {
     _loginError = null; // clear old error
   });
 
+  // TODO: Auth implementation - will be pulled from friend's code later
+  /* 
   try {
     final response = await http.post(
       Uri.parse("http://10.166.137.12:5000/api/user/login"),
@@ -334,6 +336,15 @@ class _AuthPageState extends State<AuthPage> {
       _loginError = "Server error. Please try again.";
     });
   }
+  */
+  
+  // Temporary bypass - navigate directly
+  Navigator.pushReplacement(
+    context,
+    MaterialPageRoute(
+      builder: (_) => const LocationPermissionPage(),
+    ),
+  );
 }
   @override
   Widget build(BuildContext context) {
@@ -594,6 +605,8 @@ class _SignupPageState extends State<SignupPage> {
     _passwordError = null;
   });
 
+  // TODO: Auth implementation - will be pulled from friend's code later
+  /*
   try {
     final response = await http.post(
       Uri.parse("http://10.166.137.12:5000/api/user/register"),
@@ -623,6 +636,15 @@ class _SignupPageState extends State<SignupPage> {
       _passwordError = "Server error. Try again.";
     });
   }
+  */
+  
+  // Temporary bypass - navigate directly
+  Navigator.pushReplacement(
+    context,
+    MaterialPageRoute(
+      builder: (_) => const LocationPermissionPage(),
+    ),
+  );
 }
   @override
   Widget build(BuildContext context) {

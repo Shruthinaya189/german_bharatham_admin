@@ -4,7 +4,12 @@ import Login from './components/Login';
 import Dashboard from './components/Dashboard';
 import Listings from './components/Listings';
 import Categories from './components/Categories';
+import AccommodationListings from './components/AccommodationListings';
+import FoodListings from './components/FoodListings';
+import JobsListings from './components/JobsListings';
+import ServicesListings from './components/ServicesListings';
 import Users from './components/Users';
+import CustomCategoryListings from './components/CustomCategoryListings';
 import ContentModeration from './components/ContentModeration';
 import Community from './components/Community';
 import Settings from './components/Settings';
@@ -34,6 +39,11 @@ function App() {
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/listings" element={<Listings />} />
           <Route path="/categories" element={<Categories />} />
+          <Route path="/accommodation-listings" element={<AccommodationListings />} />
+          <Route path="/food-listings" element={<FoodListings />} />
+          <Route path="/jobs-listings" element={<JobsListings />} />
+          <Route path="/services-listings" element={<ServicesListings />} />
+          <Route path="/custom-category/:id" element={<CustomCategoryListings />} />
           <Route path="/users" element={<Users />} />
           <Route path="/content-moderation" element={<ContentModeration />} />
           <Route path="/community" element={<Community />} />
