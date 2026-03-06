@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'saved.dart';
 import 'profile.dart';
@@ -8,7 +10,6 @@ import 'services.dart';
 import 'community.dart';
 import 'search.dart';
 import 'user_session.dart';
-import 'dart:convert';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -22,28 +23,39 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   int _currentIndex = 0;
 
+  ImageProvider _avatarProvider(String? photoBase64) {
+    if (photoBase64 != null && photoBase64.trim().isNotEmpty) {
+      try {
+        final raw = photoBase64.contains(',')
+            ? photoBase64.split(',').last
+            : photoBase64;
+        return MemoryImage(base64Decode(raw));
+      } catch (_) {}
+    }
+    return const AssetImage("assets/images/person.jpeg");
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF6F8FA),
 
       // 🔹 BODY
-      body: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.all(16),
-          children: [
-            _header(),
-            const SizedBox(height: 16),
-            _promoCard(),
-            const SizedBox(height: 20),
+      body: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          _header(),
+          const SizedBox(height: 16),
+          _promoCard(),
+          const SizedBox(height: 20),
 
-            const Text(
-              "Category",
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 12),
+          const Text(
+            "Category",
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 12),
 
-            CategoryTile(
+          CategoryTile(
   imagePath: 'assets/images/accommodation.png',
   title: "Accommodation",
   subtitle: "Rooms & apartments for rent",
@@ -102,24 +114,21 @@ CategoryTile(
     );
   },
 ),
-          ],
-        ),
+        ],
       ),
 
       // 🔹 BOTTOM NAV
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex,
         type: BottomNavigationBarType.fixed,
-        onTap: (index) {
+        onTap: (index) async {
           setState(() => _currentIndex = index);
 
           if (index == 2) {
             Navigator.push(
               context,
               MaterialPageRoute(builder: (_) => const SavedPage()),
-            ).then((_) {
-              if (mounted) setState(() {});
-            });
+            );
           }
           else if (index == 1) {
             Navigator.pushReplacement(
@@ -129,12 +138,12 @@ CategoryTile(
             );
           }
           if (index == 3) {
-            Navigator.push(
+            await Navigator.push(
               context,
               MaterialPageRoute(builder: (_) => const ProfilePage()),
-            ).then((_) {
-              if (mounted) setState(() {});
-            });
+            );
+            if (!mounted) return;
+            setState(() {});
           }
         },
         items: [
@@ -162,27 +171,16 @@ CategoryTile(
   // 🔹 HEADER
  // 🔹 HEADER
 Widget _header() {
-  final sess = UserSession.instance;
-  final displayName = (sess.name != null && sess.name!.trim().isNotEmpty)
-      ? sess.name!.trim()
-      : 'User';
-
-  ImageProvider avatarProvider() {
-    final photo = sess.photoBase64;
-    if (photo != null && photo.isNotEmpty) {
-      try {
-        final raw = photo.contains(',') ? photo.split(',').last : photo;
-        return MemoryImage(base64Decode(raw));
-      } catch (_) {}
-    }
-    return const AssetImage('assets/images/person.jpeg');
-  }
+  final session = UserSession.instance;
+  final displayName = (session.name ?? '').trim().isEmpty
+      ? 'User'
+      : session.name!.trim();
 
   return Row(
     children: [
       CircleAvatar(
         radius: 22,
-        backgroundImage: avatarProvider(),
+        backgroundImage: _avatarProvider(session.photoBase64),
       ),
       const SizedBox(width: 12),
 
@@ -192,18 +190,11 @@ Widget _header() {
           children: [
             const Text(
               "Welcome back",
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
               style: TextStyle(fontSize: 14, color: Colors.grey),
             ),
             Text(
               displayName,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
           ],
         ),
@@ -227,7 +218,7 @@ Widget _header() {
   // 🔹 PROMO CARD
   Widget _promoCard() {
     return Container(
-      constraints: const BoxConstraints(minHeight: 140),
+      height: 140,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: HomePage.primaryGreen,
@@ -241,8 +232,6 @@ Widget _header() {
               children: [
                 const Text(
                   "New to Germany? Start Here",
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
                   style: TextStyle(
                       color: Colors.white,
                       fontSize: 16,
@@ -251,8 +240,6 @@ Widget _header() {
                 const SizedBox(height: 4),
                 const Text(
                   "Guides & resources for Indians in Germany",
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
                   style: TextStyle(color: Colors.white70, fontSize: 11),
                 ),
                 const SizedBox(height: 6),
@@ -276,7 +263,6 @@ Widget _header() {
   child: Image.asset(
     "assets/images/person.jpeg", // change to your image name
     width: 90,
-    height: 110,
     fit: BoxFit.cover,
   ),
 )

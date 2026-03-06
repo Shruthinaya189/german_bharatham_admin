@@ -1,5 +1,16 @@
 const User = require("../models/User");
 
+// 🌐 Public-safe user profiles (role=user only)
+exports.getPublicUsers = async (req, res) => {
+  try {
+    const users = await User.find({ role: "user", isActive: true })
+      .select("name email phone photo role isActive createdAt");
+    res.json(users);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
 // 👀 Get All Users (only role = user)
 exports.getAllUsers = async (req, res) => {
   try {

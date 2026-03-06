@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'home.dart';
 import 'saved.dart';
@@ -15,10 +17,6 @@ import 'profile_pages/edit_profile.dart';
 import 'user_session.dart';
 import 'saved_manager.dart';
 import 'main.dart';
-import 'dart:convert';
-import 'saved_job_manager.dart';
-import 'package:http/http.dart' as http;
-import 'services/api_config.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -32,60 +30,27 @@ class _ProfilePageState extends State<ProfilePage> {
 
   static const Color primaryGreen = Color(0xFF4E7F6D);
 
-  @override
-  void initState() {
-    super.initState();
-    _refreshProfileFromServer();
-  }
-
-  Future<void> _refreshProfileFromServer() async {
-    final token = UserSession.instance.token;
-    if (token == null || token.isEmpty) return;
-
-    try {
-      final res = await http.get(
-        Uri.parse('${ApiConfig.baseUrl}/api/user/profile'),
-        headers: {
-          'Authorization': 'Bearer $token',
-          'Content-Type': 'application/json',
-        },
-      ).timeout(const Duration(seconds: 8));
-
-      if (res.statusCode != 200) return;
-      final data = jsonDecode(res.body);
-      if (data is! Map) return;
-
-      await UserSession.instance.updateProfile(
-        name: data['name']?.toString(),
-        phone: data['phone']?.toString(),
-        photoBase64: data['photo']?.toString(),
-      );
-      if (mounted) setState(() {});
-    } catch (_) {
-      // ignore network errors
+  ImageProvider _avatarProvider(String? photoBase64) {
+    if (photoBase64 != null && photoBase64.trim().isNotEmpty) {
+      try {
+        final raw = photoBase64.contains(',')
+            ? photoBase64.split(',').last
+            : photoBase64;
+        return MemoryImage(base64Decode(raw));
+      } catch (_) {}
     }
+    return const AssetImage('assets/images/profile.jpg');
   }
 
   @override
   Widget build(BuildContext context) {
-    final sess = UserSession.instance;
-    final displayName = (sess.name != null && sess.name!.trim().isNotEmpty)
-        ? sess.name!.trim()
-        : 'User';
-    final displayPhone = (sess.phone != null && sess.phone!.trim().isNotEmpty)
-        ? sess.phone!.trim()
-        : (sess.email ?? '');
-
-    ImageProvider avatarProvider() {
-      final photo = sess.photoBase64;
-      if (photo != null && photo.isNotEmpty) {
-        try {
-          final raw = photo.contains(',') ? photo.split(',').last : photo;
-          return MemoryImage(base64Decode(raw));
-        } catch (_) {}
-      }
-      return const AssetImage('assets/images/profile.png');
-    }
+    final session = UserSession.instance;
+    final displayName = (session.name ?? '').trim().isEmpty
+        ? 'User'
+        : session.name!.trim();
+    final displayPhone = (session.phone ?? '').trim().isEmpty
+        ? '-'
+        : session.phone!.trim();
 
     return Scaffold(
       backgroundColor: const Color(0xFFF7F8FA),
@@ -112,7 +77,7 @@ class _ProfilePageState extends State<ProfilePage> {
                 children: [
                   CircleAvatar(
                     radius: 28,
-                    backgroundImage: avatarProvider(),
+                    backgroundImage: _avatarProvider(session.photoBase64),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
@@ -138,15 +103,15 @@ class _ProfilePageState extends State<ProfilePage> {
                     ),
                   ),
                   ElevatedButton.icon(
-                    onPressed: () {
-                      Navigator.push(
+                    onPressed: () async {
+                      await Navigator.push(
                         context,
                         MaterialPageRoute(
                           builder: (_) => const EditProfilePage(),
                         ),
-                      ).then((_) {
-                        if (mounted) setState(() {});
-                      });
+                      );
+                      if (!mounted) return;
+                      setState(() {});
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: primaryGreen,
@@ -253,7 +218,6 @@ class _ProfilePageState extends State<ProfilePage> {
               onPressed: () async {
                 await UserSession.instance.clear();
                 SavedManager.instance.clearCurrentUser();
-                await SavedJobManager.instance.switchUser('guest');
                 if (mounted) {
                   Navigator.pushAndRemoveUntil(
                     context,

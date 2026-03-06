@@ -17,13 +17,29 @@ class CommunityPage extends StatefulWidget {
 class _CommunityPageState extends State<CommunityPage> {
   List<CommunityPost> guides = [];
   List<CommunityPost> allGuides = [];
+  List<CommunityPost> filterGuides = [];
   bool isLoading = true;
   String errorMessage = "";
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
 
   @override
   void initState() {
     super.initState();
+    _loadSavedGuides();
     _loadCachedThenFetch();
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadSavedGuides() async {
+    await SavedGuidesManager.instance.getSavedItems();
+    if (!mounted) return;
+    setState(() {});
   }
 
   Future<void> _openFilter() async {
@@ -36,9 +52,32 @@ class _CommunityPageState extends State<CommunityPage> {
 
     if (filteredPosts != null && filteredPosts is List<CommunityPost>) {
       setState(() {
-        guides = filteredPosts;
+        filterGuides = filteredPosts;
+        _applySearch();
       });
     }
+  }
+
+  void _onSearchChanged(String value) {
+    setState(() {
+      _searchQuery = value;
+      _applySearch();
+    });
+  }
+
+  void _applySearch() {
+    final query = _searchQuery.trim().toLowerCase();
+    if (query.isEmpty) {
+      guides = List.from(filterGuides);
+      return;
+    }
+
+    guides = filterGuides.where((post) {
+      return post.title.toLowerCase().contains(query) ||
+          post.description.toLowerCase().contains(query) ||
+          post.category.toLowerCase().contains(query) ||
+          post.author.toLowerCase().contains(query);
+    }).toList();
   }
 
   Future<void> _loadCachedThenFetch() async {
@@ -51,6 +90,8 @@ class _CommunityPageState extends State<CommunityPage> {
 
         guides = list.map((e) => CommunityPost.fromJson(e)).toList();
         allGuides = guides;
+        filterGuides = guides;
+        _applySearch();
 
         setState(() {
           isLoading = false;
@@ -79,8 +120,9 @@ class _CommunityPageState extends State<CommunityPage> {
         if (!mounted) return;
 
         setState(() {
-          guides = fetchedGuides;
           allGuides = fetchedGuides;
+          filterGuides = fetchedGuides;
+          _applySearch();
           isLoading = false;
           errorMessage = "";
         });
@@ -184,6 +226,8 @@ class _CommunityPageState extends State<CommunityPage> {
               border: Border.all(color: Colors.grey.shade300),
             ),
             child: TextField(
+              controller: _searchController,
+              onChanged: _onSearchChanged,
               decoration: InputDecoration(
                 prefixIcon: Padding(
                   padding: const EdgeInsets.all(12),
@@ -221,6 +265,8 @@ class _CommunityPageState extends State<CommunityPage> {
   }
 
   Widget _communityCard(CommunityPost guide) {
+    final isSaved = SavedGuidesManager.instance.isSavedSync(guide.id);
+
     return Container(
       margin: const EdgeInsets.only(bottom: 14),
       padding: const EdgeInsets.all(14),
@@ -249,21 +295,27 @@ class _CommunityPageState extends State<CommunityPage> {
                   ),
                 ),
               ),
-              GestureDetector(
-                onTap: () {
-                  setState(() {
-                    SavedGuidesManager.instance.toggle(guide);
-                  });
+              InkWell(
+                onTap: () async {
+                  final wasSaved =
+                      SavedGuidesManager.instance.isSavedSync(guide.id);
+                  await SavedGuidesManager.instance.toggle(guide);
+
+                  if (!mounted) return;
+                  setState(() {});
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        wasSaved ? 'Removed from saved' : 'Saved',
+                      ),
+                    ),
+                  );
                 },
-                child: Image.asset(
-                  'assets/images/bookmark.png',
-                  height: 20,
-                  width: 20,
-                  color: SavedGuidesManager.instance.isSaved(guide)
-                      ? Colors.black
-                      : Colors.grey,
+                child: Icon(
+                  isSaved ? Icons.bookmark : Icons.bookmark_border,
+                  color: isSaved ? Colors.black : Colors.grey,
                 ),
-              ),
+              )
             ],
           ),
           const SizedBox(height: 6),

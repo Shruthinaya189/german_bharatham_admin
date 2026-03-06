@@ -37,6 +37,7 @@ class UserSession {
     required String name,
     required String email,
     String? phone,
+    String? photoBase64,
   }) async {
     this.userId = userId;
     this.token = token;
@@ -45,12 +46,15 @@ class UserSession {
     this.phone = phone ?? this.phone;
     // load existing photo for this user if already stored
     final prefs = await SharedPreferences.getInstance();
-    photoBase64 = prefs.getString('sess_photo_$userId');
+    this.photoBase64 = photoBase64 ?? prefs.getString('sess_photo_$userId');
     await prefs.setString('sess_userId', userId);
     await prefs.setString('sess_token', token);
     await prefs.setString('sess_name', name);
     await prefs.setString('sess_email', email);
     if (phone != null) await prefs.setString('sess_phone', phone);
+    if (photoBase64 != null) {
+      await prefs.setString('sess_photo_$userId', photoBase64);
+    }
   }
 
   /// Call when the user edits their profile.

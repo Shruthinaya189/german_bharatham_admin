@@ -1,6 +1,9 @@
 class ApiConfig {
   // Physical Android device over USB uses adb reverse -> localhost.
-  static const String baseUrl = 'http://10.166.137.12:5000';
+  static const String baseUrl = String.fromEnvironment(
+    'API_BASE_URL',
+    defaultValue: 'http://10.166.137.12:5000',
+  );
   
   // API endpoints
   static const String loginEndpoint = '$baseUrl/api/user/login';

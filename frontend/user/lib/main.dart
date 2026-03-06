@@ -2,12 +2,12 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'home.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'user_session.dart';
 import 'saved_manager.dart';
+import 'user_profiles_page.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -326,6 +326,7 @@ class _AuthPageState extends State<AuthPage> {
         name: user['name'].toString(),
         email: user['email'].toString(),
         phone: user['phone']?.toString(),
+        photoBase64: user['photo']?.toString(),
       );
       SavedManager.instance.switchUser(user['_id'].toString());
       if (mounted) {
@@ -627,6 +628,7 @@ class _SignupPageState extends State<SignupPage> {
         name: user['name'].toString(),
         email: user['email'].toString(),
         phone: user['phone']?.toString(),
+        photoBase64: user['photo']?.toString(),
       );
       SavedManager.instance.switchUser(user['_id'].toString());
       if (mounted) {
@@ -878,7 +880,7 @@ class LocationPermissionPage extends StatelessWidget {
     onPressed: () {
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (_) => const HomePage()),
+        MaterialPageRoute(builder: (_) => const UserProfilesPage()),
       );
     },
     style: ElevatedButton.styleFrom(
@@ -895,7 +897,7 @@ class LocationPermissionPage extends StatelessWidget {
                onPressed: () {
                 Navigator.pushReplacement(
                  context,
-                  MaterialPageRoute(builder: (_) => const HomePage()),
+                  MaterialPageRoute(builder: (_) => const UserProfilesPage()),
               );
             },
             child: const Text("Not now",style: TextStyle(color: Colors.grey,),),
@@ -934,7 +936,7 @@ class _SplashScreenState extends State<SplashScreen> {
         context,
         MaterialPageRoute(
           builder: (_) => UserSession.instance.isLoggedIn
-              ? const HomePage()
+              ? const UserProfilesPage()
               : const WelcomeScreen(),
         ),
       );

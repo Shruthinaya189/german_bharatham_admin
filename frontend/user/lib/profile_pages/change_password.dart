@@ -1,9 +1,110 @@
-import 'package:flutter/material.dart';
+import 'dart:convert';
 
-class ChangePasswordPage extends StatelessWidget {
+import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+
+import '../accommodation.dart'; // apiBaseUrl
+import '../user_session.dart';
+
+class ChangePasswordPage extends StatefulWidget {
   const ChangePasswordPage({super.key});
 
   static const Color primaryGreen = Color(0xFF4E7F6D);
+
+  @override
+  State<ChangePasswordPage> createState() => _ChangePasswordPageState();
+}
+
+class _ChangePasswordPageState extends State<ChangePasswordPage> {
+  final _currentController = TextEditingController();
+  final _newController = TextEditingController();
+  final _confirmController = TextEditingController();
+  bool _saving = false;
+
+  @override
+  void dispose() {
+    _currentController.dispose();
+    _newController.dispose();
+    _confirmController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submit() async {
+    final currentPassword = _currentController.text;
+    final newPassword = _newController.text;
+    final confirm = _confirmController.text;
+
+    if (currentPassword.isEmpty || newPassword.isEmpty || confirm.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please fill all fields')),
+      );
+      return;
+    }
+    if (newPassword != confirm) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('New password and confirm password must match')),
+      );
+      return;
+    }
+    if (newPassword.trim().length < 6) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Password must be at least 6 characters')),
+      );
+      return;
+    }
+
+    final token = UserSession.instance.token;
+    if (token == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please login again')),
+      );
+      return;
+    }
+
+    setState(() => _saving = true);
+    try {
+      final response = await http.put(
+        Uri.parse('$apiBaseUrl/api/user/change-password'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode({
+          'currentPassword': currentPassword,
+          'newPassword': newPassword,
+        }),
+      );
+
+      if (!mounted) return;
+
+      if (response.statusCode == 200) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Password updated successfully'),
+            backgroundColor: Color(0xFF4E7F6D),
+          ),
+        );
+        Navigator.pop(context);
+      } else {
+        String message = 'Failed to update password';
+        try {
+          final decoded = jsonDecode(response.body);
+          if (decoded is Map && decoded['message'] != null) {
+            message = decoded['message'].toString();
+          }
+        } catch (_) {}
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(message)));
+      }
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Network error. Please try again.')),
+      );
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -33,31 +134,38 @@ class ChangePasswordPage extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _field("Current Password"),
-            _field("New Password"),
-            _field("Confirm Password"),
+            _field("Current Password", controller: _currentController),
+            _field("New Password", controller: _newController),
+            _field("Confirm Password", controller: _confirmController),
             const SizedBox(height: 24),
 
             /// UPDATE BUTTON
             ElevatedButton(
-              onPressed: () {
-                Navigator.pop(context); // ✅ GO BACK TO PROFILE
-              },
+              onPressed: _saving ? null : _submit,
               style: ElevatedButton.styleFrom(
-                backgroundColor: primaryGreen,
+                backgroundColor: ChangePasswordPage.primaryGreen,
                 minimumSize: const Size(double.infinity, 50),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
               ),
-              child: const Text(
-                "Update Password",
-                style: TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                ),
-              ),
+              child: _saving
+                  ? const SizedBox(
+                      height: 22,
+                      width: 22,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
+                  : const Text(
+                      "Update Password",
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
             )
           ],
         ),
@@ -66,7 +174,7 @@ class ChangePasswordPage extends StatelessWidget {
   }
 
   /// INPUT FIELD WITH LABEL ABOVE
-  Widget _field(String label) {
+  Widget _field(String label, {required TextEditingController controller}) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
       child: Column(
@@ -93,9 +201,10 @@ class ChangePasswordPage extends StatelessWidget {
                 ),
               ],
             ),
-            child: const TextField(
+            child: TextField(
+              controller: controller,
               obscureText: true,
-              decoration: InputDecoration(
+              decoration: const InputDecoration(
                 border: InputBorder.none,
               ),
             ),

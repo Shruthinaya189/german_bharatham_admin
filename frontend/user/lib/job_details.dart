@@ -1,234 +1,72 @@
-import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:share_plus/share_plus.dart';
 import 'models/job_model.dart';
-import 'services/job_service.dart';
-import 'services/api_config.dart';
 
 class JobDetailsPage extends StatefulWidget {
-  final Job job;
-  
-  const JobDetailsPage({super.key, required this.job});
+  final Job item;
+  final VoidCallback? onRefresh;
+
+  const JobDetailsPage({
+    super.key,
+    required this.item,
+    this.onRefresh,
+  });
 
   @override
   State<JobDetailsPage> createState() => _JobDetailsPageState();
 }
 
 class _JobDetailsPageState extends State<JobDetailsPage> {
-  late Future<Job> _jobFuture;
-
-  Widget _companyLogo(Job job) {
-    return Container(
-      height: 50,
-      width: 50,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(10),
-        color: Colors.grey.shade200,
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: Padding(
-        padding: const EdgeInsets.all(8),
-        child: Image.asset('assets/images/google.png', fit: BoxFit.contain),
-      ),
-    );
+  void _shareItem() {
+    final String shareText = [
+      widget.item.title,
+      widget.item.company,
+      '',
+      widget.item.description ?? 'Check out this job!',
+      '',
+      'Location: ${_locationLine(widget.item)}',
+      'Type: ${widget.item.jobType}',
+      if (widget.item.salary != null && widget.item.salary!.trim().isNotEmpty)
+        'Salary: ${widget.item.salary}',
+      if (widget.item.phone != null && widget.item.phone!.trim().isNotEmpty)
+        'Phone: ${widget.item.phone}',
+    ].join('\n');
+    Share.share(shareText);
   }
 
-  String _postedAgo(DateTime? createdAt) {
-    if (createdAt == null) return '';
-    final now = DateTime.now();
-    final diff = now.difference(createdAt.toLocal());
-
-    if (diff.inDays >= 1) {
-      return diff.inDays == 1 ? 'Posted 1 day ago' : 'Posted ${diff.inDays} days ago';
-    }
-    if (diff.inHours >= 1) {
-      return diff.inHours == 1 ? 'Posted 1 hour ago' : 'Posted ${diff.inHours} hours ago';
-    }
-    if (diff.inMinutes >= 1) {
-      return diff.inMinutes == 1 ? 'Posted 1 min ago' : 'Posted ${diff.inMinutes} mins ago';
-    }
-    return 'Posted just now';
-  }
-
-  @override
-  void initState() {
-    super.initState();
-    _jobFuture = JobService.fetchJobById(widget.job.id);
-  }
-
-  /// Launch URL using url_launcher
-  Future<void> _launchUrl(String url) async {
-    if (url.isEmpty) {
+  Future<void> _makePhoneCall() async {
+    if (widget.item.phone == null || widget.item.phone!.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('No application URL available')),
+        const SnackBar(content: Text('Phone number not available'), backgroundColor: Colors.red),
       );
       return;
     }
 
-    try {
-      final Uri uri = Uri.parse(url);
-      if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
-        throw Exception('Could not launch $url');
+    final Uri phoneUri = Uri(scheme: 'tel', path: widget.item.phone);
+    if (await canLaunchUrl(phoneUri)) {
+      await launchUrl(phoneUri);
+    }
+  }
+
+  Future<void> _applyNow() async {
+    if (widget.item.applyUrl != null && widget.item.applyUrl!.isNotEmpty) {
+      final Uri applyUri = Uri.parse(widget.item.applyUrl!);
+      if (await canLaunchUrl(applyUri)) {
+        await launchUrl(applyUri, mode: LaunchMode.externalApplication);
       }
-    } catch (e) {
+    } else if (widget.item.email != null) {
+      final Uri emailUri = Uri(scheme: 'mailto', path: widget.item.email);
+      if (await canLaunchUrl(emailUri)) await launchUrl(emailUri);
+    } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error opening URL: $e')),
+        const SnackBar(content: Text('Application link not available'), backgroundColor: Colors.red),
       );
     }
   }
 
-  /// Share job via WhatsApp, Email, or other apps
-  void _shareJob(Job job) {
-    showModalBottomSheet(
-      context: context,
-      builder: (context) {
-        return SafeArea(
-          top: false,
-          child: SingleChildScrollView(
-            child: Container(
-              padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Share Job',
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  Wrap(
-                    spacing: 18,
-                    runSpacing: 14,
-                    children: [
-                  _shareOptionButton(
-                    'WhatsApp',
-                    Icons.chat,
-                    () async {
-                      final message = '${job.title}\n${job.company}\n${job.location}\n€${job.salary}\n${job.applyUrl}';
-                      final encodedMessage = Uri.encodeComponent(message);
-                      final whatsappUrl = 'https://wa.me/?text=$encodedMessage';
-                      try {
-                        await launchUrl(Uri.parse(whatsappUrl), mode: LaunchMode.externalApplication);
-                      } catch (e) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('WhatsApp not installed')),
-                        );
-                      }
-                    },
-                  ),
-                  _shareOptionButton(
-                    'Email',
-                    Icons.mail,
-                    () async {
-                      final subject = Uri.encodeComponent('${job.title} - ${job.company}');
-                      final body = Uri.encodeComponent(
-                        '${job.title}\n${job.company}\n${job.location}\n€${job.salary}\n\nApply here: ${job.applyUrl}'
-                      );
-                      final mailUrl = 'mailto:?subject=$subject&body=$body';
-                      try {
-                        await launchUrl(Uri.parse(mailUrl));
-                      } catch (e) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Email not available')),
-                        );
-                      }
-                    },
-                  ),
-                  _shareOptionButton(
-                    'Copy Link',
-                    Icons.link,
-                    () async {
-                      await Clipboard.setData(ClipboardData(text: job.applyUrl ?? ''));
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Job link copied')),
-                      );
-                      Navigator.pop(context);
-                    },
-                  ),
-                  _shareOptionButton(
-                    'Message',
-                    Icons.message,
-                    () async {
-                      final smsBody = Uri.encodeComponent(
-                        '${job.title} at ${job.company}\nApply here: ${job.applyUrl}',
-                      );
-                      final smsUrl = Uri.parse('sms:?body=$smsBody');
-                      await launchUrl(smsUrl);
-                    },
-                  ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                ],
-              ),
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  /// Share Option Button
-  Widget _shareOptionButton(String label, IconData icon, VoidCallback onTap) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Container(
-            height: 50,
-            width: 64,
-            decoration: BoxDecoration(
-              color: const Color(0xFF5E8E73),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Icon(icon, color: Colors.white, size: 24),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            label,
-            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            textAlign: TextAlign.center,
-          ),
-        ],
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder<Job>(
-      future: _jobFuture,
-      builder: (context, snapshot) {
-        final job = snapshot.data ?? widget.job;
-
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Scaffold(
-            backgroundColor: Color(0xFFF7FAFC),
-            body: Center(
-              child: CircularProgressIndicator(
-                valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF5E8E73)),
-              ),
-            ),
-          );
-        }
-
-        // If API refresh fails, keep showing the tapped job payload as fallback.
-
-    // Use requirements and benefits lists directly
-    final requirementsList = job.requirements
-        .where((r) => r.isNotEmpty)
-        .toList();
-
-    final benefitsList = job.benefits
-        .where((b) => b.isNotEmpty)
-        .toList();
-
     return Scaffold(
       backgroundColor: const Color(0xFFF7FAFC),
       appBar: AppBar(
@@ -236,203 +74,125 @@ class _JobDetailsPageState extends State<JobDetailsPage> {
         elevation: 0,
         leading: IconButton(
           onPressed: () => Navigator.pop(context),
-          icon: Image.asset(
-            'assets/images/left-arrow.png',
-            height: 22,
-            width: 22,
-            color: Colors.black,
-          ),
+          icon: Image.asset('assets/images/left-arrow.png', height: 22, width: 22, color: Colors.black),
         ),
-        title: const Text(
-          "Job Details",
-          style: TextStyle(
-            color: Colors.black,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
+        title: const Text("Job Details", style: TextStyle(color: Colors.black, fontWeight: FontWeight.w600)),
         centerTitle: true,
+        actions: const [],
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Container(
           padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(16),
-          ),
+          decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16)),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              /// Company + Share
+              // Row 1: Logo + Title (left), Share (right)
               Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  /// Company Logo
-                  _companyLogo(job),
+                  _CompanyLogo(logoPathOrUrl: widget.item.companyLogo),
                   const SizedBox(width: 12),
                   Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          job.title,
-                          style: const TextStyle(
-                            fontSize: 22,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          job.company,
-                          style: const TextStyle(
-                            color: Colors.black87,
-                            fontSize: 15,
-                          ),
-                        ),
-                        const SizedBox(height: 3),
-                        if (_postedAgo(job.createdAt).isNotEmpty)
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFF2F2F2),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Text(
-                              _postedAgo(job.createdAt),
-                              style: const TextStyle(
-                                color: Colors.black54,
-                                fontSize: 12,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                          ),
-                      ],
+                    child: Padding(
+                      padding: const EdgeInsets.only(top: 2),
+                      child: Text(
+                        widget.item.title,
+                        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+                      ),
                     ),
                   ),
                   IconButton(
-                    onPressed: () => _shareJob(job),
-                    icon: const Icon(
-                      Icons.share_outlined,
-                      color: Colors.black87,
-                      size: 22,
-                    ),
+                    onPressed: _shareItem,
+                    icon: const Icon(Icons.share, color: Colors.black),
+                    iconSize: 22,
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
+                    tooltip: 'Share',
                   ),
                 ],
               ),
 
-              const SizedBox(height: 16),
+              // Row 2: Company (left), Posted (right)
+              Padding(
+                padding: const EdgeInsets.only(left: 58),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        widget.item.company,
+                        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                    Text(
+                      _postedAgo(widget.item.createdAt),
+                      style: const TextStyle(fontSize: 12, color: Colors.grey),
+                    ),
+                  ],
+                ),
+              ),
 
-              /// Location + Salary
+              const SizedBox(height: 10),
+
+              // Row 3: Location (left), Salary (right)
               Row(
                 children: [
-                  Image.asset(
-                    'assets/images/location.png',
-                    height: 16,
-                  ),
-                  const SizedBox(width: 6),
-                  Text(
-                    job.location,
-                    style: const TextStyle(
-                      color: Colors.black87,
-                      fontSize: 14,
+                  const Icon(Icons.location_on, size: 18, color: Colors.grey),
+                  const SizedBox(width: 4),
+                  Expanded(
+                    child: Text(
+                      _locationLine(widget.item),
+                      style: const TextStyle(color: Colors.grey, fontSize: 13),
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
-                  const Spacer(),
-                  Text(
-                    '€${job.salary}',
-                    style: const TextStyle(
-                      color: Color(0xFF5E8E73),
-                      fontWeight: FontWeight.w600,
-                      fontSize: 14,
+                  if (widget.item.salary != null && widget.item.salary!.trim().isNotEmpty)
+                    Text(
+                      widget.item.salary!,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        color: Color(0xFF4E7F6D),
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
-                  ),
                 ],
               ),
-
-              const SizedBox(height: 20),
-
-              /// Description
-              const Text(
-                "Description",
-                style: TextStyle(
-                  fontWeight: FontWeight.w600,
-                  fontSize: 20,
+              const SizedBox(height: 16),
+              if (widget.item.description != null && widget.item.description!.trim().isNotEmpty) ...[
+                const Text('Description', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+                const SizedBox(height: 8),
+                Text(
+                  widget.item.description!,
+                  style: const TextStyle(fontSize: 14, color: Colors.grey, height: 1.5),
                 ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                job.description ?? '',
-                style: const TextStyle(
-                  color: Colors.black87,
-                  fontSize: 15,
-                  height: 1.5,
-                ),
-              ),
-
-              const SizedBox(height: 20),
-
-              /// Requirements
-              const Text(
-                "Requirements",
-                style: TextStyle(
-                  fontWeight: FontWeight.w600,
-                  fontSize: 20,
-                ),
-              ),
-              const SizedBox(height: 10),
-
-              Wrap(
-                spacing: 10,
-                runSpacing: 10,
-                children: requirementsList.isNotEmpty
-                    ? requirementsList
-                        .map((req) => _Chip(req))
-                        .toList()
-                    : [const _Chip('See job description for details')],
-              ),
-
-              const SizedBox(height: 20),
-
-              /// Benefits
-              const Text(
-                "Benefits",
-                style: TextStyle(
-                  fontWeight: FontWeight.w600,
-                  fontSize: 20,
-                ),
-              ),
-              const SizedBox(height: 10),
-
-              Wrap(
-                spacing: 10,
-                runSpacing: 10,
-                children: benefitsList.isNotEmpty
-                    ? benefitsList
-                        .map((benefit) => _Chip(benefit))
-                        .toList()
-                    : [const _Chip('See job description for details')],
-              ),
-
-              const SizedBox(height: 30),
-
-              /// Apply Button
+                const SizedBox(height: 16),
+              ],
+              if (widget.item.requirements.isNotEmpty) ...[
+                const Text('Requirements', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+                const SizedBox(height: 10),
+                _PillWrap(items: widget.item.requirements),
+                const SizedBox(height: 16),
+              ],
+              if (widget.item.benefits.isNotEmpty) ...[
+                const Text('Benefits', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+                const SizedBox(height: 10),
+                _PillWrap(items: widget.item.benefits),
+                const SizedBox(height: 20),
+              ],
               SizedBox(
                 width: double.infinity,
-                height: 50,
+                height: 54,
                 child: ElevatedButton(
-                  onPressed: () => _launchUrl(job.applyUrl ?? ''),
+                  onPressed: _applyNow,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF5E8E73),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
+                    elevation: 0,
+                    backgroundColor: const Color(0xFF4F7F67),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                   ),
                   child: const Text(
-                    "Apply Now",
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.white,
-                    ),
+                    'Apply Now',
+                    style: TextStyle(fontSize: 16, color: Colors.white, fontWeight: FontWeight.w700),
                   ),
                 ),
               ),
@@ -441,27 +201,72 @@ class _JobDetailsPageState extends State<JobDetailsPage> {
         ),
       ),
     );
-      },
+  }
+}
+
+String _postedAgo(DateTime? createdAt) {
+  if (createdAt == null) return '';
+  final diff = DateTime.now().difference(createdAt);
+  if (diff.inMinutes < 60) return 'Posted ${diff.inMinutes} min ago';
+  if (diff.inHours < 24) return 'Posted ${diff.inHours} hours ago';
+  return 'Posted ${diff.inDays} days ago';
+}
+
+String _locationLine(Job job) {
+  final parts = <String>[];
+  if (job.city.trim().isNotEmpty) parts.add(job.city.trim());
+  if ((job.state ?? '').trim().isNotEmpty) parts.add(job.state!.trim());
+  if (parts.isNotEmpty) return parts.join(', ');
+  return job.location;
+}
+
+class _PillWrap extends StatelessWidget {
+  final List<String> items;
+
+  const _PillWrap({required this.items});
+
+  @override
+  Widget build(BuildContext context) {
+    return Wrap(
+      spacing: 10,
+      runSpacing: 10,
+      children: items
+          .map((raw) => raw.trim())
+          .where((e) => e.isNotEmpty)
+          .map(
+            (text) => Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: Colors.grey.shade100,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Text(
+                text,
+                style: const TextStyle(fontSize: 13, color: Colors.black87, fontWeight: FontWeight.w500),
+              ),
+            ),
+          )
+          .toList(),
     );
   }
 }
 
-class _Chip extends StatelessWidget {
-  final String label;
-  const _Chip(this.label);
+class _CompanyLogo extends StatelessWidget {
+  final String? logoPathOrUrl;
+
+  const _CompanyLogo({required this.logoPathOrUrl});
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF1F5F3),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Text(
-        label,
-        style: const TextStyle(
-          fontSize: 14,
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        height: 46,
+        width: 46,
+        color: Colors.grey.shade200,
+        child: Image.asset(
+          'assets/images/google.png',
+          fit: BoxFit.cover,
         ),
       ),
     );

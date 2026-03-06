@@ -4,6 +4,8 @@ import 'profile.dart';
 import 'search.dart';
 import 'accommodation.dart';
 import 'accommodation_details.dart';
+import 'guide_details.dart';
+import 'models/community_model.dart';
 import 'saved_manager.dart';
 import 'saved_guides_manager.dart';
 
@@ -19,23 +21,13 @@ class _SavedPageState extends State<SavedPage> {
   int _selectedCategory = 0;
 
   @override
-  @override
-Widget build(BuildContext context) {
+  Widget build(BuildContext context) {
+    final savedAccommodations = SavedManager.instance.savedAccommodations;
 
-  final savedAccommodations = SavedManager.instance.savedAccommodations;
-  final savedGuides = SavedGuidesManager.instance.savedGuides; // ✅ ADD THIS
-
-  List displayedGuides = [];
-
-  if (_selectedCategory == 0) {
-    displayedGuides = savedGuides;
-  }
-
-  // Filter items based on selected category
-  List<Accommodation> displayedAccommodations = [];
-  if (_selectedCategory == 0 || _selectedCategory == 1) {
-    displayedAccommodations = List.from(savedAccommodations);
-  }
+    List<Accommodation> displayedAccommodations = [];
+    if (_selectedCategory == 0 || _selectedCategory == 1) {
+      displayedAccommodations = List.from(savedAccommodations);
+    }
 
     return Scaffold(
       appBar: AppBar(
@@ -69,8 +61,18 @@ Widget build(BuildContext context) {
 
           /// SAVED ITEMS LIST
           Expanded(
-            child: displayedAccommodations.isEmpty
-                ? Center(
+            child: FutureBuilder<List<CommunityPost>>(
+              future: SavedGuidesManager.instance.getSavedItems(),
+              builder: (context, snapshot) {
+                final savedGuides = snapshot.data ?? const <CommunityPost>[];
+                final displayedGuides =
+                    _selectedCategory == 0 ? savedGuides : const <CommunityPost>[];
+
+                final isEmpty =
+                    displayedAccommodations.isEmpty && displayedGuides.isEmpty;
+
+                if (isEmpty) {
+                  return Center(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
@@ -99,11 +101,17 @@ Widget build(BuildContext context) {
                         ),
                       ],
                     ),
-                  )
-                : ListView.builder(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    itemCount: displayedAccommodations.length,
-                    itemBuilder: (context, index) {
+                  );
+                }
+
+                final totalCount =
+                    displayedAccommodations.length + displayedGuides.length;
+
+                return ListView.builder(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  itemCount: totalCount,
+                  itemBuilder: (context, index) {
+                    if (index < displayedAccommodations.length) {
                       final item = displayedAccommodations[index];
                       return _SavedAccommodationCard(
                         item: item,
@@ -116,13 +124,37 @@ Widget build(BuildContext context) {
                           Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (_) => AccommodationDetailPage(item: item),
+                              builder: (_) =>
+                                  AccommodationDetailPage(item: item),
                             ),
                           );
                         },
                       );
-                    },
-                  ),
+                    }
+
+                    final guide =
+                        displayedGuides[index - displayedAccommodations.length];
+
+                    return _SavedGuideCard(
+                      guide: guide,
+                      onRemove: () async {
+                        await SavedGuidesManager.instance.toggle(guide);
+                        if (!context.mounted) return;
+                        setState(() {});
+                      },
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => GuideDetailsPage(guide: guide),
+                          ),
+                        );
+                      },
+                    );
+                  },
+                );
+              },
+            ),
           ),
         ],
       ),
@@ -469,33 +501,63 @@ class SavedCard extends StatelessWidget {
   }
 }
 
-Widget _savedGuideCard(dynamic guide) {
-  return Container(
-    margin: const EdgeInsets.only(bottom: 14),
-    padding: const EdgeInsets.all(14),
-    decoration: BoxDecoration(
-      color: Colors.white,
-      borderRadius: BorderRadius.circular(14),
-    ),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          guide["title"],
-          style: const TextStyle(
-            fontWeight: FontWeight.w600,
-            fontSize: 15,
-          ),
+class _SavedGuideCard extends StatelessWidget {
+  final CommunityPost guide;
+  final VoidCallback onRemove;
+  final VoidCallback onTap;
+
+  const _SavedGuideCard({
+    required this.guide,
+    required this.onRemove,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 14),
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(14),
         ),
-        const SizedBox(height: 6),
-        Text(
-          "${guide["author"]} • ${guide["date"]}",
-          style: const TextStyle(
-            fontSize: 12,
-            color: Colors.grey,
-          ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Text(
+                    guide.title,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 15,
+                    ),
+                  ),
+                ),
+                InkWell(
+                  onTap: onRemove,
+                  child: const Icon(
+                    Icons.bookmark,
+                    color: Colors.black,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            Text(
+              "${guide.author} • ${guide.date}",
+              style: const TextStyle(
+                fontSize: 12,
+                color: Colors.grey,
+              ),
+            ),
+          ],
         ),
-      ],
-    ),
-  );
+      ),
+    );
+  }
 }

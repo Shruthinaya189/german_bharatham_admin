@@ -188,6 +188,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
               onPressed: _saving ? null : _save,
               style: ElevatedButton.styleFrom(
                 backgroundColor: primaryGreen,
+                foregroundColor: Colors.white,
                 minimumSize: const Size(double.infinity, 50),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
@@ -207,6 +208,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
                       style: TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.bold,
+                        color: Colors.white,
                       ),
                     ),
             ),
