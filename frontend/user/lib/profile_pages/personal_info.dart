@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../user_session.dart';
 
 class PersonalInformationPage extends StatefulWidget {
   const PersonalInformationPage({super.key});
@@ -34,35 +35,40 @@ class _PersonalInformationPageState extends State<PersonalInformationPage> {
 
   Future<void> _loadData() async {
     final prefs = await SharedPreferences.getInstance();
+    final uid = UserSession.instance.userId ?? 'guest';
+    String key(String field) => 'pi_${uid}_$field';
     setState(() {
-      name.text = prefs.getString('name') ?? '';
-      phone.text = prefs.getString('phone') ?? '';
-      email.text = prefs.getString('email') ?? '';
-      dob.text = prefs.getString('dob') ?? '';
-      gender.text = prefs.getString('gender') ?? '';
-      location.text = prefs.getString('location') ?? '';
-      preferredCity.text = prefs.getString('preferredCity') ?? '';
-      education.text = prefs.getString('education') ?? '';
-      profession.text = prefs.getString('profession') ?? '';
-      germanLevel.text = prefs.getString('germanLevel') ?? '';
-      passport.text = prefs.getString('passport') ?? '';
+      name.text = prefs.getString(key('name')) ?? (UserSession.instance.name ?? '');
+      phone.text = prefs.getString(key('phone')) ?? (UserSession.instance.phone ?? '');
+      email.text = prefs.getString(key('email')) ?? (UserSession.instance.email ?? '');
+      dob.text = prefs.getString(key('dob')) ?? '';
+      gender.text = prefs.getString(key('gender')) ?? '';
+      location.text = prefs.getString(key('location')) ?? '';
+      preferredCity.text = prefs.getString(key('preferredCity')) ?? '';
+      education.text = prefs.getString(key('education')) ?? '';
+      profession.text = prefs.getString(key('profession')) ?? '';
+      germanLevel.text = prefs.getString(key('germanLevel')) ?? '';
+      passport.text = prefs.getString(key('passport')) ?? '';
     });
   }
 
   Future<void> _saveData() async {
     final prefs = await SharedPreferences.getInstance();
 
-    await prefs.setString('name', name.text);
-    await prefs.setString('phone', phone.text);
-    await prefs.setString('email', email.text);
-    await prefs.setString('dob', dob.text);
-    await prefs.setString('gender', gender.text);
-    await prefs.setString('location', location.text);
-    await prefs.setString('preferredCity', preferredCity.text);
-    await prefs.setString('education', education.text);
-    await prefs.setString('profession', profession.text);
-    await prefs.setString('germanLevel', germanLevel.text);
-    await prefs.setString('passport', passport.text);
+    final uid = UserSession.instance.userId ?? 'guest';
+    String key(String field) => 'pi_${uid}_$field';
+
+    await prefs.setString(key('name'), name.text);
+    await prefs.setString(key('phone'), phone.text);
+    await prefs.setString(key('email'), email.text);
+    await prefs.setString(key('dob'), dob.text);
+    await prefs.setString(key('gender'), gender.text);
+    await prefs.setString(key('location'), location.text);
+    await prefs.setString(key('preferredCity'), preferredCity.text);
+    await prefs.setString(key('education'), education.text);
+    await prefs.setString(key('profession'), profession.text);
+    await prefs.setString(key('germanLevel'), germanLevel.text);
+    await prefs.setString(key('passport'), passport.text);
 
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text("Profile Updated Successfully")),

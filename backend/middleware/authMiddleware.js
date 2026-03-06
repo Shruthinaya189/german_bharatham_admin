@@ -1,14 +1,7 @@
-const express = require("express");
-const router = express.Router();
-const controller = require("../controllers/communityController");
+// Backward-compatibility wrapper.
+// Some modules historically imported from "middleware/authMiddleware".
+// The actual JWT auth middleware lives in "middleware/auth".
 
-const { protect, adminOnly } = require("../../middleware/authMiddleware");
+const { protect, adminOnly } = require("./auth");
 
-// Public route
-router.get("/", controller.getAllGuides);
-
-// Admin only routes
-router.post("/", controller.createGuide);
-router.delete("/:id", protect, adminOnly, controller.deleteGuide);
-
-module.exports = router;
+module.exports = { protect, adminOnly };

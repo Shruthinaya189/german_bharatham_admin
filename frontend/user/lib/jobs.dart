@@ -458,6 +458,22 @@ class JobCard extends StatefulWidget {
 class _JobCardState extends State<JobCard> {
   late bool _isSaved;
 
+  Widget _companyLogo(Job job) {
+    return Container(
+      height: 44,
+      width: 44,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(10),
+        color: Colors.grey.shade200,
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Padding(
+        padding: const EdgeInsets.all(8),
+        child: Image.asset('assets/images/google.png', fit: BoxFit.contain),
+      ),
+    );
+  }
+
   @override
   void initState() {
     super.initState();
@@ -485,26 +501,8 @@ class _JobCardState extends State<JobCard> {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            /// Company Logo Placeholder
-            Container(
-              height: 44,
-              width: 44,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(10),
-                color: Colors.grey.shade200,
-              ),
-              child: Center(
-                child: Text(
-                  widget.job.company.isNotEmpty
-                      ? widget.job.company[0].toUpperCase()
-                      : '?',
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 18,
-                  ),
-                ),
-              ),
-            ),
+            /// Company Logo
+            _companyLogo(widget.job),
             const SizedBox(width: 12),
 
             /// Job details

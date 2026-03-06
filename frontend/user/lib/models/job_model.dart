@@ -1,4 +1,18 @@
+import '../services/api_config.dart';
+
 class Job {
+  static DateTime? _tryParseDateTime(dynamic value) {
+    if (value == null) return null;
+    if (value is DateTime) return value;
+    final s = value.toString().trim();
+    if (s.isEmpty || s.toLowerCase() == 'null') return null;
+    try {
+      return DateTime.parse(s);
+    } catch (_) {
+      return null;
+    }
+  }
+
   static List<String> _toStringList(dynamic value) {
     if (value == null) return [];
     if (value is List) {
@@ -14,6 +28,36 @@ class Job {
           .toList();
     }
     return [];
+  }
+
+  static bool _toBool(dynamic value) {
+    if (value == null) return false;
+    if (value is bool) return value;
+    if (value is num) return value != 0;
+    final s = value.toString().trim().toLowerCase();
+    if (s == 'true' || s == '1' || s == 'yes') return true;
+    if (s == 'false' || s == '0' || s == 'no') return false;
+    return false;
+  }
+
+  static String _normalizeStatus(dynamic value) {
+    final raw = (value ?? '').toString().trim();
+    if (raw.isEmpty) return 'Pending';
+    final lower = raw.toLowerCase();
+    if (lower == 'active') return 'Active';
+    if (lower == 'disabled' || lower == 'inactive') return 'Inactive';
+    if (lower == 'pending') return 'Pending';
+    return raw;
+  }
+
+  static String? _toAbsoluteImageUrl(dynamic value) {
+    if (value == null) return null;
+    final trimmed = value.toString().trim();
+    if (trimmed.isEmpty || trimmed.toLowerCase() == 'null') return null;
+    if (trimmed.startsWith('data:image')) return trimmed;
+    if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) return trimmed;
+    if (trimmed.startsWith('assets/')) return trimmed;
+    return ApiConfig.getImageUrl(trimmed);
   }
 
   final String id;
@@ -74,39 +118,33 @@ class Job {
 
   factory Job.fromJson(Map<String, dynamic> json) {
     return Job(
-      id: json['_id'] ?? json['id'] ?? '',
-      title: json['title'] ?? '',
+      id: (json['_id'] ?? json['id'] ?? '').toString(),
+      title: (json['title'] ?? '').toString(),
       category: json['category'] ?? 'Job',
       // Handle both 'company' (new schema) and 'companyName' (old/admin schema)
-      company: json['company'] ?? json['companyName'] ?? '',
-      companyLogo: json['companyLogo'],
-      jobType: json['jobType'] ?? '',
-      location: json['location'] ?? '',
-      city: json['city'] ?? '',
-      state: json['state'],
-      remote: json['remote'] ?? false,
-      salary: json['salary'],
-      email: json['email'],
-      website: json['website'],
-      phone: json['phone'],
-      description: json['description'],
+      company: (json['company'] ?? json['companyName'] ?? '').toString(),
+      companyLogo: _toAbsoluteImageUrl(json['companyLogo'] ?? json['logo'] ?? json['image']),
+      jobType: (json['jobType'] ?? '').toString(),
+      location: (json['location'] ?? '').toString(),
+      city: (json['city'] ?? '').toString(),
+      state: json['state']?.toString(),
+      remote: _toBool(json['remote']),
+      salary: json['salary']?.toString(),
+      email: json['email']?.toString(),
+      website: json['website']?.toString(),
+      phone: json['phone']?.toString(),
+      description: json['description']?.toString(),
       requirements: _toStringList(json['requirements']),
       responsibilities: _toStringList(json['responsibilities']),
       benefits: _toStringList(json['benefits']),
-      experience: json['experience'],
-      education: json['education'],
-      applyUrl: json['applyUrl'],
-      status: json['status'] ?? 'Pending',
-      featured: json['featured'] ?? false,
-      expiresAt: json['expiresAt'] != null
-          ? DateTime.parse(json['expiresAt'])
-          : null,
-      createdAt: json['createdAt'] != null
-          ? DateTime.parse(json['createdAt'])
-          : null,
-      updatedAt: json['updatedAt'] != null
-          ? DateTime.parse(json['updatedAt'])
-          : null,
+      experience: json['experience']?.toString(),
+      education: json['education']?.toString(),
+      applyUrl: json['applyUrl']?.toString(),
+      status: _normalizeStatus(json['status'] ?? 'Pending'),
+      featured: _toBool(json['featured']),
+      expiresAt: _tryParseDateTime(json['expiresAt']),
+      createdAt: _tryParseDateTime(json['createdAt']),
+      updatedAt: _tryParseDateTime(json['updatedAt']),
     );
   }
 

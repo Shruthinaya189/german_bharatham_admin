@@ -6,7 +6,7 @@ import 'api_config.dart';
 
 class ApiService {
   // Shared backend URL config for all user app API calls.
-  static const String baseUrl = ApiConfig.baseUrl;
+  static String get baseUrl => ApiConfig.baseUrl;
   
   /// Fetch all Food & Grocery listings
   static Future<List<FoodGrocery>> getFoodGroceryListings({

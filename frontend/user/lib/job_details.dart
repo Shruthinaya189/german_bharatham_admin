@@ -17,6 +17,22 @@ class JobDetailsPage extends StatefulWidget {
 class _JobDetailsPageState extends State<JobDetailsPage> {
   late Future<Job> _jobFuture;
 
+  Widget _companyLogo(Job job) {
+    return Container(
+      height: 50,
+      width: 50,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(10),
+        color: Colors.grey.shade200,
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Padding(
+        padding: const EdgeInsets.all(8),
+        child: Image.asset('assets/images/google.png', fit: BoxFit.contain),
+      ),
+    );
+  }
+
   String _postedAgo(DateTime? createdAt) {
     if (createdAt == null) return '';
     final now = DateTime.now();
@@ -250,26 +266,8 @@ class _JobDetailsPageState extends State<JobDetailsPage> {
               /// Company + Share
               Row(
                 children: [
-                  /// Company Logo Placeholder
-                  Container(
-                    height: 50,
-                    width: 50,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(8),
-                      color: Colors.grey.shade200,
-                    ),
-                    child: Center(
-                      child: Text(
-                        job.company.isNotEmpty
-                            ? job.company[0].toUpperCase()
-                            : '?',
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 20,
-                        ),
-                      ),
-                    ),
-                  ),
+                  /// Company Logo
+                  _companyLogo(job),
                   const SizedBox(width: 12),
                   Expanded(
                     child: Column(
@@ -312,10 +310,10 @@ class _JobDetailsPageState extends State<JobDetailsPage> {
                   ),
                   IconButton(
                     onPressed: () => _shareJob(job),
-                    icon: Image.asset(
-                      'assets/images/share.png',
-                      height: 22,
-                      width: 22,
+                    icon: const Icon(
+                      Icons.share_outlined,
+                      color: Colors.black87,
+                      size: 22,
                     ),
                   ),
                 ],

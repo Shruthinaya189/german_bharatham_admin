@@ -8,6 +8,9 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'services/api_config.dart';
+import 'user_session.dart';
+import 'saved_manager.dart';
+import 'saved_job_manager.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -312,16 +315,11 @@ class _AuthPageState extends State<AuthPage> {
     "password": _passwordController.text.trim(),
   });
 
-  // Try USB-tunneled localhost first, then direct LAN IP fallback.
-  final endpoints = <String>[
-    ApiConfig.loginEndpoint,
-    'http://10.96.191.147:5000/api/user/login',
-  ];
+  final endpoint = ApiConfig.loginEndpoint;
 
-  for (final endpoint in endpoints) {
     try {
       if (kDebugMode) {
-        print('Attempting login to: $endpoint');
+        print('Attempting login to: $endpoint (base: ${ApiConfig.baseUrl})');
       }
 
       final response = await http
@@ -337,6 +335,31 @@ class _AuthPageState extends State<AuthPage> {
       }
 
       if (response.statusCode == 200) {
+        try {
+          final decoded = jsonDecode(response.body);
+          final token = decoded['token'] as String?;
+          final user = decoded['user'];
+          final userId = (user is Map)
+              ? (user['_id'] ?? user['id'])?.toString()
+              : null;
+          final name = (user is Map) ? (user['name']?.toString() ?? '') : '';
+          final email = (user is Map) ? (user['email']?.toString() ?? '') : '';
+          final phone = (user is Map) ? (user['phone']?.toString()) : null;
+
+          if (token != null && userId != null && name.isNotEmpty && email.isNotEmpty) {
+            await UserSession.instance.save(
+              userId: userId,
+              token: token,
+              name: name,
+              email: email,
+              phone: phone,
+            );
+            SavedManager.instance.switchUser(userId);
+            await SavedJobManager.instance.switchUser(userId);
+          }
+        } catch (_) {
+          // If parsing fails, still allow navigation; UI will behave like guest.
+        }
         if (!mounted) return;
         Navigator.pushReplacement(
           context,
@@ -358,23 +381,22 @@ class _AuthPageState extends State<AuthPage> {
       if (kDebugMode) {
         print('Timeout at $endpoint: $e');
       }
-      continue;
+      // Fall through to final error message.
     } on SocketException catch (e) {
       if (kDebugMode) {
         print('Network error at $endpoint: $e');
       }
-      continue;
+      // Fall through to final error message.
     } catch (e) {
       if (kDebugMode) {
         print('Login error at $endpoint: $e');
       }
-      continue;
+      // Fall through to final error message.
     }
-  }
 
   if (!mounted) return;
   setState(() {
-    _loginError = "Cannot reach server. Check USB/WiFi connection.";
+    _loginError = "Cannot reach server at ${ApiConfig.baseUrl}. If using a phone, run adb reverse or set --dart-define=API_BASE_URL.";
   });
 }
   @override
@@ -653,6 +675,30 @@ class _SignupPageState extends State<SignupPage> {
     ).timeout(const Duration(seconds: 10));
 
     if (response.statusCode == 201) {
+      try {
+        final decoded = jsonDecode(response.body);
+        final token = decoded['token'] as String?;
+        final user = decoded['user'];
+        final userId = (user is Map)
+            ? (user['_id'] ?? user['id'])?.toString()
+            : null;
+        final name = (user is Map) ? (user['name']?.toString() ?? '') : '';
+        final email = (user is Map) ? (user['email']?.toString() ?? '') : '';
+        final phone = (user is Map) ? (user['phone']?.toString()) : null;
+        if (token != null && userId != null && name.isNotEmpty && email.isNotEmpty) {
+          await UserSession.instance.save(
+            userId: userId,
+            token: token,
+            name: name,
+            email: email,
+            phone: phone,
+          );
+          SavedManager.instance.switchUser(userId);
+          await SavedJobManager.instance.switchUser(userId);
+        }
+      } catch (_) {
+        // ignore parse errors; allow navigation
+      }
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(
@@ -949,12 +995,25 @@ class _SplashScreenState extends State<SplashScreen> {
   void initState() {
     super.initState();
 
-    Future.delayed(const Duration(seconds: 3), () {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (_) => const WelcomeScreen()),
-      );
-    });
+    _boot();
+  }
+
+  Future<void> _boot() async {
+    await UserSession.instance.load();
+    if (UserSession.instance.userId != null) {
+      SavedManager.instance.switchUser(UserSession.instance.userId!);
+      await SavedJobManager.instance.switchUser(UserSession.instance.userId!);
+    }
+    await Future.delayed(const Duration(seconds: 3));
+    if (!mounted) return;
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(
+        builder: (_) => UserSession.instance.isLoggedIn
+            ? const HomePage()
+            : const WelcomeScreen(),
+      ),
+    );
   }
 
   @override

@@ -7,6 +7,8 @@ import 'jobs.dart';
 import 'services.dart';
 import 'community.dart';
 import 'search.dart';
+import 'user_session.dart';
+import 'dart:convert';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -26,21 +28,22 @@ class _HomePageState extends State<HomePage> {
       backgroundColor: const Color(0xFFF6F8FA),
 
       // 🔹 BODY
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          _header(),
-          const SizedBox(height: 16),
-          _promoCard(),
-          const SizedBox(height: 20),
+      body: SafeArea(
+        child: ListView(
+          padding: const EdgeInsets.all(16),
+          children: [
+            _header(),
+            const SizedBox(height: 16),
+            _promoCard(),
+            const SizedBox(height: 20),
 
-          const Text(
-            "Category",
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 12),
+            const Text(
+              "Category",
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 12),
 
-          CategoryTile(
+            CategoryTile(
   imagePath: 'assets/images/accommodation.png',
   title: "Accommodation",
   subtitle: "Rooms & apartments for rent",
@@ -99,7 +102,8 @@ CategoryTile(
     );
   },
 ),
-        ],
+          ],
+        ),
       ),
 
       // 🔹 BOTTOM NAV
@@ -113,7 +117,9 @@ CategoryTile(
             Navigator.push(
               context,
               MaterialPageRoute(builder: (_) => const SavedPage()),
-            );
+            ).then((_) {
+              if (mounted) setState(() {});
+            });
           }
           else if (index == 1) {
             Navigator.pushReplacement(
@@ -126,7 +132,9 @@ CategoryTile(
             Navigator.push(
               context,
               MaterialPageRoute(builder: (_) => const ProfilePage()),
-            );
+            ).then((_) {
+              if (mounted) setState(() {});
+            });
           }
         },
         items: [
@@ -154,25 +162,48 @@ CategoryTile(
   // 🔹 HEADER
  // 🔹 HEADER
 Widget _header() {
+  final sess = UserSession.instance;
+  final displayName = (sess.name != null && sess.name!.trim().isNotEmpty)
+      ? sess.name!.trim()
+      : 'User';
+
+  ImageProvider avatarProvider() {
+    final photo = sess.photoBase64;
+    if (photo != null && photo.isNotEmpty) {
+      try {
+        final raw = photo.contains(',') ? photo.split(',').last : photo;
+        return MemoryImage(base64Decode(raw));
+      } catch (_) {}
+    }
+    return const AssetImage('assets/images/person.jpeg');
+  }
+
   return Row(
     children: [
-      const CircleAvatar(
-  radius: 22,
-  backgroundImage: AssetImage("assets/images/person.jpeg"),
-),
+      CircleAvatar(
+        radius: 22,
+        backgroundImage: avatarProvider(),
+      ),
       const SizedBox(width: 12),
 
-      const Expanded(
+      Expanded(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
+            const Text(
               "Welcome back",
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
               style: TextStyle(fontSize: 14, color: Colors.grey),
             ),
             Text(
-              "Ajay",
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              displayName,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
             ),
           ],
         ),
@@ -196,7 +227,7 @@ Widget _header() {
   // 🔹 PROMO CARD
   Widget _promoCard() {
     return Container(
-      height: 140,
+      constraints: const BoxConstraints(minHeight: 140),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: HomePage.primaryGreen,
@@ -210,6 +241,8 @@ Widget _header() {
               children: [
                 const Text(
                   "New to Germany? Start Here",
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                   style: TextStyle(
                       color: Colors.white,
                       fontSize: 16,
@@ -218,6 +251,8 @@ Widget _header() {
                 const SizedBox(height: 4),
                 const Text(
                   "Guides & resources for Indians in Germany",
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                   style: TextStyle(color: Colors.white70, fontSize: 11),
                 ),
                 const SizedBox(height: 6),
@@ -241,6 +276,7 @@ Widget _header() {
   child: Image.asset(
     "assets/images/person.jpeg", // change to your image name
     width: 90,
+    height: 110,
     fit: BoxFit.cover,
   ),
 )

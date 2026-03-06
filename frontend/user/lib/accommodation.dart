@@ -7,7 +7,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 import 'services/api_config.dart';
 
-const String apiBaseUrl = ApiConfig.baseUrl;
+final String apiBaseUrl = ApiConfig.baseUrl;
 
 /// =======================
 /// DATA MODEL
@@ -78,6 +78,20 @@ class Accommodation {
   });
 
   factory Accommodation.fromJson(Map<String, dynamic> json) {
+    String normalizeImage(dynamic value) {
+      if (value == null) return 'assets/images/room.jpg';
+      final raw = value.toString().trim();
+      if (raw.isEmpty || raw.toLowerCase() == 'null') return 'assets/images/room.jpg';
+      if (raw.startsWith('http') || raw.startsWith('data:image') || raw.startsWith('assets/')) {
+        return raw;
+      }
+      // Handle relative upload paths like /uploads/.. or uploads/..
+      if (raw.startsWith('/uploads/') || raw.startsWith('uploads/')) {
+        return ApiConfig.getImageUrl(raw);
+      }
+      return raw;
+    }
+
     // Extract amenities from the amenities object
     List<String> extractedAmenities = [];
     if (json['amenities'] != null) {
@@ -120,15 +134,14 @@ class Accommodation {
       title: (json['title'] ?? 'Untitled').toString(),
       description: (json['description'] ?? '').toString(),
       location: location.isNotEmpty ? location : 'Location not specified',
-      image: (json['media']?['images'] != null && 
-             (json['media']['images'] as List).isNotEmpty)
+      image: (json['media']?['images'] != null && (json['media']['images'] as List).isNotEmpty)
           ? (() {
               final img = json['media']['images'][0];
-              if (img is String) return img;
-              if (img is Map) return (img['url'] ?? img['uri'] ?? 'assets/images/room.jpg').toString();
+              if (img is String) return normalizeImage(img);
+              if (img is Map) return normalizeImage(img['url'] ?? img['uri']);
               return 'assets/images/room.jpg';
             })()
-          : 'assets/images/room.jpg',
+          : normalizeImage(json['image']),
       rating: 4.5, // Default rating since it's not in schema
       price: displayPrice,
       amenities: extractedAmenities.take(3).toList(),

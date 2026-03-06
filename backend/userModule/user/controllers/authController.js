@@ -2,6 +2,13 @@ const User = require("../models/User");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 
+const sanitizeUser = (userDoc) => {
+  if (!userDoc) return null;
+  const obj = typeof userDoc.toObject === "function" ? userDoc.toObject() : userDoc;
+  if (obj.password !== undefined) delete obj.password;
+  return obj;
+};
+
 const generateToken = (user) => {
   return jwt.sign(
     { id: user._id, role: user.role },
@@ -31,7 +38,7 @@ exports.register = async (req, res) => {
 
     res.status(201).json({
       token: generateToken(user),
-      user,
+      user: sanitizeUser(user),
     });
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -74,13 +81,17 @@ exports.login = async (req, res) => {
     if (!user)
       return res.status(400).json({ message: "Invalid credentials" });
 
+    if (user.isActive === false) {
+      return res.status(403).json({ message: "Account is deactivated" });
+    }
+
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch)
       return res.status(400).json({ message: "Invalid credentials" });
 
     res.json({
       token: generateToken(user),
-      user,
+      user: sanitizeUser(user),
     });
   } catch (error) {
     res.status(500).json({ message: error.message });
