@@ -17,7 +17,7 @@ const foodSchema = new mongoose.Schema(
     media: {
       images: { type: [String], default: [] }
     },
-    status: { type: String, enum: ['active', 'disabled', 'pending'], default: 'active' }
+    status: { type: String, enum: ['Active', 'Pending', 'Inactive', 'active', 'disabled', 'pending'], default: 'Pending' }
   },
   { timestamps: true }
 );

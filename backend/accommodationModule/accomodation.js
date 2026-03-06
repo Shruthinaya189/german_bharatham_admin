@@ -81,7 +81,7 @@ const accommodationSchema = new mongoose.Schema(
     adminControls:     { type: adminControlsSchema,     default: () => ({}) },
 
     contactPhone: { type: String, trim: true },
-    status: { type: String, enum: ['active', 'disabled', 'pending'], default: 'active' },
+    status: { type: String, enum: ['Active', 'Pending', 'Inactive', 'active', 'disabled', 'pending'], default: 'Pending' },
   },
   { timestamps: true, versionKey: false }
 );
