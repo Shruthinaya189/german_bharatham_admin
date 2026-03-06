@@ -30,7 +30,9 @@ app.use("/api/admin/foodgrocery", (req, res, next) => {
   console.log(`📍 Food Grocery route accessed: ${req.method} ${req.path}`);
   next();
 }, protect, foodGroceryRoutes);
-app.use("/api/user/foodgrocery", require("./foodGroceryModule/user"));
+const foodGroceryUserRoutes = require("./foodGroceryModule/user");
+
+app.use("/api/user/foodgrocery", foodGroceryUserRoutes);
 
 // ── Jobs Module ──────────────────────────────────────────────
 app.use("/api/jobs/admin", protect, require("./jobsModule/admin"));

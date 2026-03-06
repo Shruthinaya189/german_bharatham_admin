@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:share_plus/share_plus.dart';
+import 'models/community_model.dart';
 
 class GuideDetailsPage extends StatelessWidget {
-  final dynamic guide;
-  
+  final CommunityPost guide;
+
   const GuideDetailsPage({
     super.key,
     required this.guide,
@@ -57,61 +58,63 @@ class GuideDetailsPage extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(
-  children: [
-    Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-      decoration: BoxDecoration(
-        color: const Color(0xFFE6F2EC),
-        borderRadius: BorderRadius.circular(25),
-      ),
-      child: Text(
-        guide["category"] ?? "Guide",
-        style: const TextStyle(
-          color: Color(0xFF3B8F6A),
-          fontSize: 12.5,
-          fontWeight: FontWeight.w600,
-        ),
-      ),
-    ),
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 14, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFE6F2EC),
+                          borderRadius: BorderRadius.circular(25),
+                        ),
+                        child: Text(
+                          guide.category,
+                          style: const TextStyle(
+                            color: Color(0xFF3B8F6A),
+                            fontSize: 12.5,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                      const Spacer(),
+                      IconButton(
+                        onPressed: () {
+                          Share.share(
+                            "${guide.title}\n\n${guide.description}\n\nOfficial Website: ${guide.officialWebsites}",
+                          );
+                        },
+                        icon: Image.asset(
+                          'assets/images/share.png',
+                          height: 22,
+                          width: 22,
+                        ),
+                      ),
+                    ],
+                  ),
 
-    const Spacer(),
-
-    IconButton(
-      onPressed: () {
-        Share.share(
-          "${guide["title"]}\n\n${guide["description"]}\n\nOfficial Website: ${guide["officialWebsites"]}",
-        );
-      },
-      icon: Image.asset(
-        'assets/images/share.png',
-        height: 22,
-        width: 22,
-      ),
-    ),
-  ],
-),
                   const SizedBox(height: 12),
 
                   Text(
-                    guide["title"] ?? "Guide Title",
+                    guide.title,
                     style: const TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.w700,
                     ),
                   ),
+
                   const SizedBox(height: 6),
 
                   Text(
-                    "${guide["author"] ?? "Admin"} • ${guide["date"] ?? "Jan 20, 2026"} • 5 min read",
+                    "${guide.author} • ${guide.date} • 5 min read",
                     style: const TextStyle(
                       fontSize: 13.5,
                       color: Colors.grey,
                     ),
                   ),
+
                   const SizedBox(height: 12),
 
                   Text(
-                    guide["description"] ?? "This is a comprehensive guide that will help you understand the process and requirements.",
+                    guide.description,
                     style: const TextStyle(
                       fontSize: 15,
                       height: 1.6,
@@ -119,6 +122,7 @@ class GuideDetailsPage extends StatelessWidget {
                   ),
 
                   const SizedBox(height: 18),
+
                   const Text(
                     "Key Points",
                     style: TextStyle(
@@ -126,11 +130,13 @@ class GuideDetailsPage extends StatelessWidget {
                       fontSize: 17.5,
                     ),
                   ),
+
                   const SizedBox(height: 12),
 
-                  ..._buildKeyPoints(guide["keyPoints"]),
+                  ..._buildKeyPoints(guide.keyPoints),
 
                   const SizedBox(height: 18),
+
                   const Text(
                     "External Resources",
                     style: TextStyle(
@@ -138,10 +144,12 @@ class GuideDetailsPage extends StatelessWidget {
                       fontSize: 17.5,
                     ),
                   ),
+
                   const SizedBox(height: 12),
+
                   _resourceButton(
                     context: context,
-                    url: guide["officialWebsites"] ?? "",
+                    url: guide.officialWebsites,
                     image: Image.asset(
                       'assets/images/link.png',
                       width: 20,
@@ -150,10 +158,12 @@ class GuideDetailsPage extends StatelessWidget {
                     ),
                     text: "Official Government Website",
                   ),
+
                   const SizedBox(height: 12),
+
                   _resourceButton(
                     context: context,
-                    url: guide["communityDiscussions"] ?? "",
+                    url: guide.communityDiscussions,
                     image: Image.asset(
                       'assets/images/link.png',
                       width: 20,
@@ -178,17 +188,14 @@ class GuideDetailsPage extends StatelessWidget {
 
     List<String> points = [];
 
-    // ✅ If backend sends List (Array)
     if (keyPointsData is List) {
       points = keyPointsData
           .map((e) => e.toString().trim())
           .where((e) => e.isNotEmpty)
           .toList();
-    }
-    // ✅ If backend sends String (Semicolon-separated)
-    else if (keyPointsData is String) {
+    } else if (keyPointsData is String) {
       points = keyPointsData
-          .split(';')  // 🔹 Split by semicolon only
+          .split(';')
           .map((e) => e.trim())
           .where((e) => e.isNotEmpty)
           .toList();
@@ -198,7 +205,6 @@ class GuideDetailsPage extends StatelessWidget {
       return [];
     }
 
-    // Return each point as a separate widget
     return points.map((point) => _pointTile(point)).toList();
   }
 
@@ -242,99 +248,75 @@ class GuideDetailsPage extends StatelessWidget {
   }
 
   Widget _resourceButton({
-  required BuildContext context,
-  IconData? icon,
-  Widget? image,
-  required String text,
-  required String url,
-}) {
-  return SizedBox(
-    width: double.infinity,
-    height: 52,
-    child: ElevatedButton(
-      onPressed: () async {
-        if (url.isEmpty) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Link not available'),
-              duration: Duration(seconds: 2),
-            ),
-          );
-          return;
-        }
-
-        try {
-          // Add https:// if no protocol is specified
-          String urlToLaunch = url;
-          if (!urlToLaunch.startsWith('http://') && !urlToLaunch.startsWith('https://')) {
-            urlToLaunch = 'https://$urlToLaunch';
+    required BuildContext context,
+    IconData? icon,
+    Widget? image,
+    required String text,
+    required String url,
+  }) {
+    return SizedBox(
+      width: double.infinity,
+      height: 52,
+      child: ElevatedButton(
+        onPressed: () async {
+          if (url.isEmpty) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Link not available')),
+            );
+            return;
           }
-          
-          final Uri uri = Uri.parse(urlToLaunch);
-          debugPrint("🔗 Launching URL: $urlToLaunch");
-          
-          // Try to launch the URL
-          bool launched = await launchUrl(
-            uri,
-            mode: LaunchMode.externalApplication,
-          );
 
-          if (!launched) {
-            debugPrint("❌ Could not launch $urlToLaunch");
-            if (context.mounted) {
+          try {
+            String urlToLaunch = url;
+
+            if (!urlToLaunch.startsWith('http')) {
+              urlToLaunch = 'https://$urlToLaunch';
+            }
+
+            final Uri uri = Uri.parse(urlToLaunch);
+
+            bool launched = await launchUrl(
+              uri,
+              mode: LaunchMode.externalApplication,
+            );
+
+            if (!launched) {
               ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text('Could not open: $text'),
-                  duration: const Duration(seconds: 2),
-                ),
+                SnackBar(content: Text('Could not open: $text')),
               );
             }
-          } else {
-            debugPrint("✅ Successfully launched URL");
-          }
-        } catch (e) {
-          debugPrint("⚠️ Error launching URL: $e");
-          if (context.mounted) {
+          } catch (e) {
             ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text('Error: ${e.toString()}'),
-                duration: const Duration(seconds: 2),
-              ),
+              SnackBar(content: Text('Error: $e')),
             );
           }
-        }
-      },
-      style: ElevatedButton.styleFrom(
-        backgroundColor: const Color(0xFF4F8F75),
-        foregroundColor: Colors.white,
-        elevation: 2,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
+        },
+        style: ElevatedButton.styleFrom(
+          backgroundColor: const Color(0xFF4F8F75),
+          foregroundColor: Colors.white,
+          elevation: 2,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            if (image != null)
+              SizedBox(width: 20, height: 20, child: image)
+            else if (icon != null)
+              Icon(icon, size: 20),
+            const SizedBox(width: 10),
+            Text(
+              text,
+              style: const TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
         ),
       ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          if (image != null) 
-            SizedBox(
-              width: 20,
-              height: 20,
-              child: image,
-            )
-          else if (icon != null) 
-            Icon(icon, size: 20),
-          const SizedBox(width: 10),
-          Text(
-            text,
-            style: const TextStyle(
-              fontSize: 15,
-              fontWeight: FontWeight.w600,
-              letterSpacing: 0.3,
-            ),
-          ),
-        ],
-      ),
-    ),
-  );
-}
+    );
+  }
 }

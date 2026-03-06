@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'guide_details.dart';
 import 'saved_guides_manager.dart';
+import 'community_filter_page.dart';
+import 'models/community_model.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
@@ -13,7 +15,8 @@ class CommunityPage extends StatefulWidget {
 }
 
 class _CommunityPageState extends State<CommunityPage> {
-  List guides = [];
+  List<CommunityPost> guides = [];
+  List<CommunityPost> allGuides = [];
   bool isLoading = true;
   String errorMessage = "";
 
@@ -23,72 +26,81 @@ class _CommunityPageState extends State<CommunityPage> {
     _loadCachedThenFetch();
   }
 
+  Future<void> _openFilter() async {
+    final filteredPosts = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => CommunityFilterPage(allPosts: allGuides),
+      ),
+    );
+
+    if (filteredPosts != null && filteredPosts is List<CommunityPost>) {
+      setState(() {
+        guides = filteredPosts;
+      });
+    }
+  }
+
   Future<void> _loadCachedThenFetch() async {
-    // First try to load cached guides so user sees something immediately
     final prefs = await SharedPreferences.getInstance();
     final cached = prefs.getString('cached_guides');
+
     if (cached != null) {
       try {
-        final list = json.decode(cached);
+        final List list = json.decode(cached);
+
+        guides = list.map((e) => CommunityPost.fromJson(e)).toList();
+        allGuides = guides;
+
         setState(() {
-          guides = list;
           isLoading = false;
-          errorMessage = "";
         });
       } catch (_) {}
     }
 
-    // Then attempt network fetch to refresh data (will update UI and cache)
     await fetchGuides();
   }
 
   Future<void> fetchGuides() async {
     try {
-      // Backend runs on port 5000 (see backend/.env). Include port so
-      // requests reach the Express server instead of defaulting to port 80.
       final response = await http.get(
         Uri.parse("http://10.166.137.12:5000/api/community"),
       );
 
-      print("Status Code: ${response.statusCode}");
-      print("Body: ${response.body}");
-
       if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        // cache response
-        try {
-          final prefs = await SharedPreferences.getInstance();
-          await prefs.setString('cached_guides', response.body);
-        } catch (_) {}
+        final List jsonData = json.decode(response.body);
+
+        final fetchedGuides =
+            jsonData.map((e) => CommunityPost.fromJson(e)).toList();
+
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('cached_guides', response.body);
+
+        if (!mounted) return;
 
         setState(() {
-          guides = data;
+          guides = fetchedGuides;
+          allGuides = fetchedGuides;
           isLoading = false;
           errorMessage = "";
         });
       } else {
         setState(() {
           isLoading = false;
-          errorMessage = "Failed to load guides (Status: ${response.statusCode})";
+          errorMessage = "Failed to load guides";
         });
-        print("Failed to load guides");
       }
     } catch (e) {
-      // On error, keep any cached data already shown; only show error
-      // if there is no cached data available.
-      final prefs = await SharedPreferences.getInstance();
-      final cached = prefs.getString('cached_guides');
       setState(() {
         isLoading = false;
-        if ((guides.isEmpty) && (cached == null)) {
-          errorMessage = "Error: ${e.toString()}";
-        } else {
-          errorMessage = ""; // show cached data silently
+
+        if (guides.isEmpty) {
+          errorMessage = "Network error";
         }
       });
-      print("Error: $e");
     }
   }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -122,9 +134,7 @@ class _CommunityPageState extends State<CommunityPage> {
             const SizedBox(height: 16),
             Expanded(
               child: isLoading
-                  ? const Center(
-                      child: CircularProgressIndicator(),
-                    )
+                  ? const Center(child: CircularProgressIndicator())
                   : errorMessage.isNotEmpty
                       ? Center(
                           child: Text(
@@ -139,17 +149,19 @@ class _CommunityPageState extends State<CommunityPage> {
                           : ListView.builder(
                               itemCount: guides.length,
                               itemBuilder: (context, index) {
+                                final guide = guides[index];
+
                                 return GestureDetector(
                                   onTap: () {
                                     Navigator.push(
                                       context,
                                       MaterialPageRoute(
                                         builder: (_) =>
-                                            GuideDetailsPage(guide: guides[index]),
+                                            GuideDetailsPage(guide: guide),
                                       ),
                                     );
                                   },
-                                  child: _communityCard(guides[index]),
+                                  child: _communityCard(guide),
                                 );
                               },
                             ),
@@ -181,31 +193,34 @@ class _CommunityPageState extends State<CommunityPage> {
                     width: 20,
                   ),
                 ),
-                hintText: "Search Services",
+                hintText: "Search Guides",
                 border: InputBorder.none,
               ),
             ),
           ),
         ),
         const SizedBox(width: 10),
-        Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: Colors.grey.shade300),
-          ),
-          child: Image.asset(
-            'assets/images/sort.png',
-            height: 22,
-            width: 22,
+        GestureDetector(
+          onTap: _openFilter,
+          child: Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.grey.shade300),
+            ),
+            child: Image.asset(
+              'assets/images/sort.png',
+              height: 22,
+              width: 22,
+            ),
           ),
         )
       ],
     );
   }
 
-  Widget _communityCard(dynamic guide) {
+  Widget _communityCard(CommunityPost guide) {
     return Container(
       margin: const EdgeInsets.only(bottom: 14),
       padding: const EdgeInsets.all(14),
@@ -224,11 +239,10 @@ class _CommunityPageState extends State<CommunityPage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Expanded(
                 child: Text(
-                  guide["title"] ?? "",
+                  guide.title,
                   style: const TextStyle(
                     fontSize: 15.5,
                     fontWeight: FontWeight.w600,
@@ -236,25 +250,25 @@ class _CommunityPageState extends State<CommunityPage> {
                 ),
               ),
               GestureDetector(
-  onTap: () {
-    setState(() {
-      SavedGuidesManager.instance.toggle(guide);
-    });
-  },
-  child: Image.asset(
-    'assets/images/bookmark.png',
-    height: 20,
-    width: 20,
-    color: SavedGuidesManager.instance.isSaved(guide)
-        ? Colors.black
-        : Colors.grey,
-  ),
-),
+                onTap: () {
+                  setState(() {
+                    SavedGuidesManager.instance.toggle(guide);
+                  });
+                },
+                child: Image.asset(
+                  'assets/images/bookmark.png',
+                  height: 20,
+                  width: 20,
+                  color: SavedGuidesManager.instance.isSaved(guide)
+                      ? Colors.black
+                      : Colors.grey,
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 6),
           Text(
-            "${guide["author"] ?? ""} • ${guide["date"] ?? ""}",
+            "${guide.author} • ${guide.date}",
             style: const TextStyle(
               fontSize: 12.5,
               color: Colors.grey,
@@ -270,9 +284,9 @@ class _CommunityPageState extends State<CommunityPage> {
                   color: const Color(0xFFE6F2EC),
                   borderRadius: BorderRadius.circular(20),
                 ),
-                child: const Text(
-                  "Guide",
-                  style: TextStyle(
+                child: Text(
+                  guide.category,
+                  style: const TextStyle(
                     color: Color(0xFF3B8F6A),
                     fontSize: 12,
                     fontWeight: FontWeight.w500,

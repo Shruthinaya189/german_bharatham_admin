@@ -2,11 +2,14 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../models/food_grocery_model.dart';
 import '../models/rating_model.dart';
-import 'api_config.dart';
 
 class ApiService {
-  // Shared backend URL config for all user app API calls.
-  static String get baseUrl => ApiConfig.baseUrl;
+  // Update this to your backend URL
+  static const String baseUrl = 'http://10.166.137.12:5000';
+  
+  // For Android emulator use: http://10.0.2.2:5000
+  // For iOS simulator use: http://localhost:5000
+  // For real device, use your computer's IP address: http://192.168.x.x:5000
   
   /// Fetch all Food & Grocery listings
   static Future<List<FoodGrocery>> getFoodGroceryListings({
@@ -48,10 +51,20 @@ class ApiService {
       print('Response status: ${response.statusCode}');
 
       if (response.statusCode == 200) {
-        final List<dynamic> data = json.decode(response.body);
-        print('Received ${data.length} items');
-        return data.map((json) => FoodGrocery.fromJson(json)).toList();
-      } else {
+  final decoded = json.decode(response.body);
+
+  if (decoded is Map && decoded.containsKey('data')) {
+    final List<dynamic> data = decoded['data'];
+
+    print('Received ${data.length} items');
+
+    return data
+        .map((json) => FoodGrocery.fromJson(json))
+        .toList();
+  } else {
+    throw Exception('Unexpected API response format');
+  }
+} else {
         throw Exception('Failed to load listings: ${response.statusCode}');
       }
     } catch (e) {
