@@ -27,7 +27,7 @@ export default function FoodListings() {
     setLoading(true);
     try {
       const token = localStorage.getItem('adminToken');
-      const res = await fetch(`${BASE}/api/admin/foodgrocery`, {
+      const res = await fetch(`${BASE}/api/food/admin`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (res.ok) {
@@ -53,7 +53,7 @@ export default function FoodListings() {
     if (!window.confirm('Are you sure you want to delete this listing?')) return;
     try {
       const token = localStorage.getItem('adminToken');
-      const res = await fetch(`${BASE}/api/admin/foodgrocery/${id}`, {
+      const res = await fetch(`${BASE}/api/food/admin/${id}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -70,7 +70,7 @@ export default function FoodListings() {
   const handleStatusChange = async (id, newStatus) => {
     try {
       const token = localStorage.getItem('adminToken');
-      const res = await fetch(`${BASE}/api/admin/foodgrocery/${id}/status`, {
+      const res = await fetch(`${BASE}/api/food/admin/${id}/status`, {
         method: 'PATCH',
         headers: {
           'Authorization': `Bearer ${token}`,

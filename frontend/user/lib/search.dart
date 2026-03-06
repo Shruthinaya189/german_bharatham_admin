@@ -1,7 +1,19 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+
 import 'home.dart';
 import 'saved.dart';
 import 'profile.dart';
+import 'job_details.dart';
+import 'accommodation_details.dart';
+import 'food_details.dart';
+import 'accommodation.dart';
+import 'models/food_grocery_model.dart';
+import 'models/job_model.dart';
+import 'services/job_service.dart';
+import 'services/api_config.dart';
 
 class SearchPage extends StatefulWidget {
   const SearchPage({super.key});
@@ -13,80 +25,198 @@ class SearchPage extends StatefulWidget {
 class _SearchPageState extends State<SearchPage> {
   int selectedTab = 0;
   int bottomIndex = 1;
+  String _searchQuery = '';
+  bool _loading = true;
 
-  final tabs = ["All", "Accommodation", "Food", "Jobs", "Services"];
+  List<Job> _allJobs = [];
+  List<Accommodation> _allAccommodations = [];
+  List<FoodGrocery> _allFood = [];
+
+  final tabs = ['All', 'Accommodation', 'Food', 'Jobs', 'Services'];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadAllContent();
+  }
+
+  Future<void> _loadAllContent() async {
+    if (!mounted) return;
+    setState(() => _loading = true);
+
+    try {
+      final jobsFuture = JobService.fetchAllJobs();
+      final accommodationFuture = _fetchAccommodations();
+      final foodFuture = _fetchFood();
+
+      final results = await Future.wait([
+        jobsFuture,
+        accommodationFuture,
+        foodFuture,
+      ]);
+
+      if (!mounted) return;
+      setState(() {
+        _allJobs = results[0] as List<Job>;
+        _allAccommodations = results[1] as List<Accommodation>;
+        _allFood = results[2] as List<FoodGrocery>;
+        _loading = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _loading = false);
+    }
+  }
+
+  Future<List<Accommodation>> _fetchAccommodations() async {
+    final response = await http.get(Uri.parse(ApiConfig.accommodationEndpoint));
+    if (response.statusCode != 200) return [];
+
+    final decoded = jsonDecode(response.body);
+    final List<dynamic> data = decoded is List
+        ? decoded
+        : (decoded is Map<String, dynamic> ? (decoded['data'] ?? []) : []);
+
+    return data
+        .whereType<Map<String, dynamic>>()
+        .map((e) {
+          try {
+            return Accommodation.fromJson(e);
+          } catch (_) {
+            return null;
+          }
+        })
+        .whereType<Accommodation>()
+        .toList();
+  }
+
+  Future<List<FoodGrocery>> _fetchFood() async {
+    final response = await http.get(Uri.parse(ApiConfig.foodEndpoint));
+    if (response.statusCode != 200) return [];
+
+    final decoded = jsonDecode(response.body);
+    final List<dynamic> data = decoded is List
+        ? decoded
+        : (decoded is Map<String, dynamic> ? (decoded['data'] ?? []) : []);
+
+    return data
+        .whereType<Map<String, dynamic>>()
+        .map((e) {
+          try {
+            return FoodGrocery.fromJson(e);
+          } catch (_) {
+            return null;
+          }
+        })
+        .whereType<FoodGrocery>()
+        .where((f) => f.status == 'Active')
+        .toList();
+  }
+
+  List<Job> _filteredJobs() {
+    final sorted = List<Job>.from(_allJobs)
+      ..sort((a, b) => (b.createdAt ?? DateTime(2000)).compareTo(a.createdAt ?? DateTime(2000)));
+    if (_searchQuery.trim().isEmpty) return sorted.take(3).toList();
+    final q = _searchQuery.toLowerCase();
+    return sorted
+        .where((j) =>
+            j.title.toLowerCase().contains(q) ||
+            j.company.toLowerCase().contains(q) ||
+            j.location.toLowerCase().contains(q))
+        .toList();
+  }
+
+  List<Accommodation> _filteredAccommodations() {
+    final sorted = List<Accommodation>.from(_allAccommodations)
+      ..sort((a, b) => b.id.compareTo(a.id));
+    if (_searchQuery.trim().isEmpty) return sorted.take(3).toList();
+    final q = _searchQuery.toLowerCase();
+    return sorted
+        .where((a) =>
+            a.title.toLowerCase().contains(q) ||
+            a.location.toLowerCase().contains(q) ||
+            a.propertyType.toLowerCase().contains(q))
+        .toList();
+  }
+
+  List<FoodGrocery> _filteredFood() {
+    final sorted = List<FoodGrocery>.from(_allFood)
+      ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    if (_searchQuery.trim().isEmpty) return sorted.take(3).toList();
+    final q = _searchQuery.toLowerCase();
+    return sorted
+        .where((f) =>
+            f.title.toLowerCase().contains(q) ||
+            f.city.toLowerCase().contains(q) ||
+            f.subCategory.toLowerCase().contains(q))
+        .toList();
+  }
 
   @override
   Widget build(BuildContext context) {
     return WillPopScope(
-  onWillPop: () async {
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(builder: (_) => const HomePage()),
-    );
-    return false; // prevents default pop
-  },
-  child: Scaffold(
-      backgroundColor: const Color(0xFFF6F8FA),
-      appBar: AppBar(
-  title: const Text("Search"),
-  centerTitle: true,
-  backgroundColor: Colors.white,
-  foregroundColor: Colors.black,
-  elevation: 0,
-
-  automaticallyImplyLeading: false,
-  leading: null,
-),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _searchBar(),
-            const SizedBox(height: 14),
-            _categoryTabs(),
-            const SizedBox(height: 20),
-
-            if (selectedTab == 0 || selectedTab == 1) ...[
-              _sectionHeader("Popular Accommodations"),
-              _accommodationCard(),
-              _accommodationCard(),
-              const SizedBox(height: 18),
-            ],
-
-            if (selectedTab == 0 || selectedTab == 3) ...[
-              _sectionHeader("New Jobs"),
-              _jobCard(),
-              _jobCard(),
-              const SizedBox(height: 18),
-            ],
-
-            if (selectedTab == 0 || selectedTab == 2) ...[
-              _sectionHeader("Famous Food & Grocery"),
-              _foodCard(),
-              _foodCard(),
-              const SizedBox(height: 18),
-            ],
-
-            if (selectedTab == 0 || selectedTab == 4) ...[
-              _sectionHeader("Services"),
-              _serviceCard(),
-              _serviceCard(),
-            ],
-          ],
+      onWillPop: () async {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const HomePage()),
+        );
+        return false;
+      },
+      child: Scaffold(
+        backgroundColor: const Color(0xFFF6F8FA),
+        appBar: AppBar(
+          title: const Text('Search'),
+          centerTitle: true,
+          backgroundColor: Colors.white,
+          foregroundColor: Colors.black,
+          elevation: 0,
+          automaticallyImplyLeading: false,
+          leading: null,
         ),
+        body: _loading
+            ? const Center(child: CircularProgressIndicator(color: Color(0xFF4E7F6D)))
+            : SingleChildScrollView(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _searchBar(),
+                    const SizedBox(height: 14),
+                    _categoryTabs(),
+                    const SizedBox(height: 20),
+                    if (selectedTab == 0 || selectedTab == 1) ...[
+                      _sectionHeader('Recent Accommodations'),
+                      _accommodationResultsSection(),
+                      const SizedBox(height: 18),
+                    ],
+                    if (selectedTab == 0 || selectedTab == 2) ...[
+                      _sectionHeader('Recent Food & Grocery'),
+                      _foodResultsSection(),
+                      const SizedBox(height: 18),
+                    ],
+                    if (selectedTab == 0 || selectedTab == 3) ...[
+                      _sectionHeader('Recent Jobs'),
+                      _jobResultsSection(),
+                      const SizedBox(height: 18),
+                    ],
+                    if (selectedTab == 4)
+                      const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 12),
+                        child: Text('Open Services from Home to browse all service listings.'),
+                      ),
+                  ],
+                ),
+              ),
+        bottomNavigationBar: _bottomNav(),
       ),
-      bottomNavigationBar: _bottomNav(),
-    ),
     );
   }
 
-  /// 🔍 SEARCH BAR
   Widget _searchBar() {
     return TextField(
+      onChanged: (value) => setState(() => _searchQuery = value.trim()),
       decoration: InputDecoration(
-        hintText: "Search anything...",
+        hintText: 'Search accommodation, food, jobs...',
         prefixIcon: Padding(
           padding: const EdgeInsets.all(12),
           child: Image.asset('assets/images/search.png', width: 20),
@@ -101,7 +231,6 @@ class _SearchPageState extends State<SearchPage> {
     );
   }
 
-  /// 🔘 CATEGORY TABS
   Widget _categoryTabs() {
     return SizedBox(
       height: 32,
@@ -136,132 +265,174 @@ class _SearchPageState extends State<SearchPage> {
     );
   }
 
-  /// 📌 SECTION HEADER
   Widget _sectionHeader(String title) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(title,
-              style:
-                  const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
-          const Text("View all",
-              style: TextStyle(color: Colors.grey, fontSize: 12)),
-        ],
+      child: Text(
+        title,
+        style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
       ),
     );
   }
 
-  /// 🏠 ACCOMMODATION CARD
-  Widget _accommodationCard() {
-    return _commonCard(
-      image: 'assets/images/room.jpg',
-      title: "Studio Apartment near University",
-      subtitle: "Munich, Bavaria",
-      rating: "4.5",
-      trailing: "€24 / month",
+  Widget _accommodationResultsSection() {
+    final items = _filteredAccommodations();
+    if (items.isEmpty) return const Padding(padding: EdgeInsets.symmetric(vertical: 10), child: Text('No accommodation found'));
+
+    return Column(
+      children: items.map((item) {
+        return _commonCard(
+          image: item.image,
+          title: item.title,
+          subtitle: item.location,
+          trailing: 'EUR ${item.price}/month',
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => AccommodationDetailPage(item: item)),
+            );
+          },
+        );
+      }).toList(),
     );
   }
 
-  /// 💼 JOB CARD
-  Widget _jobCard() {
-    return _commonCard(
-      image: 'assets/images/google.png',
-      title: "Software Developer",
-      subtitle: "Munich, Bavaria",
-      rating: "4.5",
-      trailing: "€55,000 - €70,000/year",
+  Widget _foodResultsSection() {
+    final items = _filteredFood();
+    if (items.isEmpty) return const Padding(padding: EdgeInsets.symmetric(vertical: 10), child: Text('No food listings found'));
+
+    return Column(
+      children: items.map((item) {
+        return _commonCard(
+          image: item.image ?? '',
+          title: item.title,
+          subtitle: item.city,
+          trailing: item.priceRange,
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => FoodDetailPage(item: item, onRefresh: _loadAllContent),
+              ),
+            );
+          },
+        );
+      }).toList(),
     );
   }
 
-  /// 🍔 FOOD CARD
-  Widget _foodCard() {
-    return _commonCard(
-      image: 'assets/images/restaurant.jpg',
-      title: "Taj Mahal Restaurant",
-      subtitle: "Munich, Bavaria",
-      rating: "4.5",
+  Widget _jobResultsSection() {
+    final items = _filteredJobs();
+    if (items.isEmpty) return const Padding(padding: EdgeInsets.symmetric(vertical: 10), child: Text('No jobs found'));
+
+    return Column(
+      children: items.map((job) {
+        return _commonCard(
+          image: job.companyLogo ?? '',
+          title: job.title,
+          subtitle: job.location,
+          trailing: job.salary == null ? null : 'EUR ${job.salary}',
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => JobDetailsPage(job: job)),
+            );
+          },
+        );
+      }).toList(),
     );
   }
 
-  /// 🛠 SERVICE CARD
-  Widget _serviceCard() {
-    return _commonCard(
-      image: 'assets/images/movers.jpg',
-      title: "Relocation Experts",
-      subtitle: "Munich, Bavaria",
-      rating: "4.5",
-    );
-  }
-
-  /// 🔁 COMMON CARD UI
   Widget _commonCard({
     required String image,
     required String title,
     required String subtitle,
-    required String rating,
     String? trailing,
+    required VoidCallback onTap,
   }) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-      ),
-      child: Row(
-        children: [
-          ClipRRect(
-            borderRadius: BorderRadius.circular(10),
-            child: Image.asset(image, width: 60, height: 60, fit: BoxFit.cover),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(title,
-                    style: const TextStyle(
-                        fontWeight: FontWeight.w600, fontSize: 13)),
-                const SizedBox(height: 4),
-                Row(
-                  children: [
-                    Image.asset('assets/images/location.png',
-                        width: 14, height: 14, color: Colors.grey),
-                    const SizedBox(width: 4),
-                    Text(subtitle,
-                        style: const TextStyle(
-                            color: Colors.grey, fontSize: 12)),
-                  ],
-                ),
-                const SizedBox(height: 4),
-                Row(
-                  children: [
-                    Image.asset('assets/images/star.png',
-                        width: 14, height: 14),
-                    const SizedBox(width: 4),
-                    Text(rating, style: const TextStyle(fontSize: 12)),
-                    const Spacer(),
-                    if (trailing != null)
-                      Text(trailing,
-                          style: const TextStyle(
-                              color: Colors.green,
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600)),
-                  ],
-                )
-              ],
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(14),
+        ),
+        child: Row(
+          children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(10),
+              child: _buildImage(image),
             ),
-          ),
-          Image.asset('assets/images/bookmark.png',
-              width: 18, height: 18, color: Colors.grey),
-        ],
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                  const SizedBox(height: 4),
+                  Text(subtitle, style: const TextStyle(color: Colors.grey, fontSize: 12)),
+                  if (trailing != null) ...[
+                    const SizedBox(height: 6),
+                    Text(
+                      trailing,
+                      style: const TextStyle(color: Color(0xFF4E7F6D), fontSize: 12, fontWeight: FontWeight.w600),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 
-  /// 🔻 CUSTOM BOTTOM NAV
+  Widget _buildImage(String src) {
+    if (src.startsWith('http://') || src.startsWith('https://')) {
+      return Image.network(
+        src,
+        width: 60,
+        height: 60,
+        fit: BoxFit.cover,
+        errorBuilder: (_, _, _) => _placeholderImage(),
+      );
+    }
+
+    if (src.startsWith('/')) {
+      final url = '${ApiConfig.baseUrl}$src';
+      return Image.network(
+        url,
+        width: 60,
+        height: 60,
+        fit: BoxFit.cover,
+        errorBuilder: (_, _, _) => _placeholderImage(),
+      );
+    }
+
+    if (src.isNotEmpty && src.startsWith('assets/')) {
+      return Image.asset(
+        src,
+        width: 60,
+        height: 60,
+        fit: BoxFit.cover,
+        errorBuilder: (_, _, _) => _placeholderImage(),
+      );
+    }
+
+    return _placeholderImage();
+  }
+
+  Widget _placeholderImage() {
+    return Container(
+      width: 60,
+      height: 60,
+      color: const Color(0xFFEAF2EE),
+      child: const Icon(Icons.image_outlined, color: Color(0xFF4E7F6D), size: 20),
+    );
+  }
+
   Widget _bottomNav() {
     return Container(
       decoration: const BoxDecoration(
@@ -276,35 +447,20 @@ class _SearchPageState extends State<SearchPage> {
         type: BottomNavigationBarType.fixed,
         onTap: (index) {
           if (index == 0) {
-            Navigator.pushReplacement(
-                context, MaterialPageRoute(builder: (_) => const HomePage()));
+            Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const HomePage()));
           }
           if (index == 2) {
-            Navigator.pushReplacement(
-                context, MaterialPageRoute(builder: (_) => const SavedPage()));
+            Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const SavedPage()));
           }
           if (index == 3) {
-            Navigator.pushReplacement(
-                context, MaterialPageRoute(builder: (_) => const ProfilePage()));
+            Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const ProfilePage()));
           }
         },
         items: [
-          BottomNavigationBarItem(
-            icon: Image.asset('assets/images/home.png', height: 24),
-            label: 'Home',
-          ),
-          BottomNavigationBarItem(
-            icon: Image.asset('assets/images/search.png', height: 24),
-            label: 'Search',
-          ),
-          BottomNavigationBarItem(
-            icon: Image.asset('assets/images/bookmark.png', height: 24),
-            label: 'Saved',
-          ),
-          BottomNavigationBarItem(
-            icon: Image.asset('assets/images/profile.png', height: 24),
-            label: 'Profile',
-          ),
+          BottomNavigationBarItem(icon: Image.asset('assets/images/home.png', height: 24), label: 'Home'),
+          BottomNavigationBarItem(icon: Image.asset('assets/images/search.png', height: 24), label: 'Search'),
+          BottomNavigationBarItem(icon: Image.asset('assets/images/bookmark.png', height: 24), label: 'Saved'),
+          BottomNavigationBarItem(icon: Image.asset('assets/images/profile.png', height: 24), label: 'Profile'),
         ],
       ),
     );

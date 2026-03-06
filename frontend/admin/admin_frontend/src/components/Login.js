@@ -26,11 +26,15 @@ const Login = ({ onLogin }) => {
     }
 
     // Store token
-    // Login success
-localStorage.setItem("adminToken", data.token);
+    localStorage.setItem("adminToken", data.token);
 
     // Optionally fetch protected admin data right after login
-    await fetchProtectedData();
+    try {
+      await fetchProtectedData();
+    } catch (dashboardError) {
+      console.warn("Dashboard fetch warning:", dashboardError);
+      // Continue with login even if dashboard fetch fails
+    }
 
     // Login success
     onLogin();

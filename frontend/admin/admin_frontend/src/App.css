@@ -556,8 +556,35 @@ tr:last-child td {
 .settings-header {
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
+  align-items: center;
   margin-bottom: 2rem;
+}
+.listings-filters {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.filter-group {
+  display: flex;
+  align-items: center;
+}
+
+.filter-dropdown {
+  padding: 0.625rem 1rem;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  font-size: 0.9375rem;
+  background: white;
+  cursor: pointer;
+  min-width: 150px;
+  font-family: inherit;
+}
+
+.filter-dropdown:focus {
+  outline: none;
+  border-color: #6b9976;
 }
 
 .listings-header h1,
@@ -1298,6 +1325,7 @@ tr:last-child td {
   display: flex;
   gap: 0.5rem;
   flex-wrap: wrap;
+  margin-top: 1rem;
 }
 
 .amenity-tag {
@@ -1306,6 +1334,13 @@ tr:last-child td {
   padding: 0.25rem 0.75rem;
   border-radius: 20px;
   font-size: 0.75rem;
+  
+}
+.amenities-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 1rem;   /* ✅ Adds space above buttons */
 }
 
 .review-actions {

@@ -1,8 +1,26 @@
 class Job {
+  static List<String> _toStringList(dynamic value) {
+    if (value == null) return [];
+    if (value is List) {
+      return value.map((e) => e.toString()).where((e) => e.trim().isNotEmpty).toList();
+    }
+    if (value is String) {
+      final trimmed = value.trim();
+      if (trimmed.isEmpty) return [];
+      return trimmed
+          .split(RegExp(r'[,;\n]'))
+          .map((e) => e.trim())
+          .where((e) => e.isNotEmpty)
+          .toList();
+    }
+    return [];
+  }
+
   final String id;
   final String title;
   final String category;
   final String company;
+  final String? companyLogo;
   final String jobType; // Full-time, Part-time, Contract, Internship
   final String location;
   final String city;
@@ -30,6 +48,7 @@ class Job {
     required this.title,
     required this.category,
     required this.company,
+    this.companyLogo,
     required this.jobType,
     required this.location,
     required this.city,
@@ -58,7 +77,9 @@ class Job {
       id: json['_id'] ?? json['id'] ?? '',
       title: json['title'] ?? '',
       category: json['category'] ?? 'Job',
-      company: json['company'] ?? '',
+      // Handle both 'company' (new schema) and 'companyName' (old/admin schema)
+      company: json['company'] ?? json['companyName'] ?? '',
+      companyLogo: json['companyLogo'],
       jobType: json['jobType'] ?? '',
       location: json['location'] ?? '',
       city: json['city'] ?? '',
@@ -69,15 +90,9 @@ class Job {
       website: json['website'],
       phone: json['phone'],
       description: json['description'],
-      requirements: json['requirements'] != null
-          ? List<String>.from(json['requirements'])
-          : [],
-      responsibilities: json['responsibilities'] != null
-          ? List<String>.from(json['responsibilities'])
-          : [],
-      benefits: json['benefits'] != null
-          ? List<String>.from(json['benefits'])
-          : [],
+      requirements: _toStringList(json['requirements']),
+      responsibilities: _toStringList(json['responsibilities']),
+      benefits: _toStringList(json['benefits']),
       experience: json['experience'],
       education: json['education'],
       applyUrl: json['applyUrl'],

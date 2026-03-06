@@ -23,7 +23,7 @@ const FoodGrocery = () => {
     try {
       setLoading(true);
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:5000/api/admin/foodgrocery', {
+      const response = await fetch('http://localhost:5000/api/food/admin', {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -50,7 +50,7 @@ const FoodGrocery = () => {
     
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:5000/api/admin/foodgrocery/${id}`, {
+      const response = await fetch(`http://localhost:5000/api/food/admin/${id}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`

@@ -2,14 +2,11 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../models/food_grocery_model.dart';
 import '../models/rating_model.dart';
+import 'api_config.dart';
 
 class ApiService {
-  // Update this to your backend URL
-  static const String baseUrl = 'http://10.96.191.169:5000';
-  
-  // For Android emulator use: http://10.0.2.2:5000
-  // For iOS simulator use: http://localhost:5000
-  // For real device, use your computer's IP address: http://192.168.x.x:5000
+  // Shared backend URL config for all user app API calls.
+  static const String baseUrl = ApiConfig.baseUrl;
   
   /// Fetch all Food & Grocery listings
   static Future<List<FoodGrocery>> getFoodGroceryListings({

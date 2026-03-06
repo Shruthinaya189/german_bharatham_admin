@@ -1,4 +1,4 @@
-const Accommodation = require("../model/Accommodation");
+const Accommodation = require("../../accomodation");
 
 // Get all accommodations
 exports.getAllAccommodations = async (req, res) => {

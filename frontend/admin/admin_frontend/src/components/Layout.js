@@ -8,7 +8,7 @@ import {
   Shield, 
   MessageCircle, 
   Settings, 
-  LogOut 
+  LogOut
 } from 'lucide-react';
 
 const Layout = ({ children, onLogout }) => {

@@ -112,7 +112,7 @@ const AddFoodGroceryModal = ({ onClose, onSuccess }) => {
         category: 'Food'
       };
       
-      const response = await fetch('http://localhost:5000/api/admin/foodgrocery', {
+      const response = await fetch('http://localhost:5000/api/food/admin', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

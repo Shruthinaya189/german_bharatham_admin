@@ -3,46 +3,38 @@ const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 
 exports.adminLogin = async (req, res) => {
-  console.log("=== ADMIN LOGIN ENDPOINT HIT ===");
-  console.log("Request body:", JSON.stringify(req.body));
-  console.log("Request headers:", JSON.stringify(req.headers));
-  
   try {
     const { email, password } = req.body;
-
-    console.log("Extracted email:", email);
-    console.log("Extracted password:", password ? "***" : "NOT PROVIDED");
+    const normalizedEmail = (email || "").trim().toLowerCase();
 
     // 1️⃣ Check if user exists
-    const user = await User.findOne({ email });
+    const user = await User.findOne({ email: normalizedEmail });
 
     if (!user) {
-      console.log("User not found in database:", email);
       return res.status(400).json({ message: "Invalid credentials" });
     }
 
-    console.log("User found:", { email: user.email, role: user.role });
+    if (!user.password || typeof password !== "string") {
+      return res.status(400).json({ message: "Invalid credentials" });
+    }
 
     // 2️⃣ Check role
     if (user.role !== "admin") {
-      console.log("Not an admin:", user.role);
       return res.status(403).json({ message: "Access denied. Not an admin." });
     }
 
     // 3️⃣ Check password
     const isMatch = await bcrypt.compare(password, user.password);
 
-    console.log("Password match:", isMatch);
-
     if (!isMatch) {
-      console.log("Password mismatch");
       return res.status(400).json({ message: "Invalid credentials" });
     }
 
     // 4️⃣ Generate token
+    const jwtSecret = process.env.JWT_SECRET || "dev_jwt_secret";
     const token = jwt.sign(
       { id: user._id, role: user.role },
-      process.env.JWT_SECRET,
+      jwtSecret,
       { expiresIn: "1d" }
     );
 

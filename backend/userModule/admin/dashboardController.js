@@ -1,4 +1,4 @@
-const Accommodation = require("../../accommodationModule/admin/model/Accommodation");
+const Accommodation = require("../../accommodationModule/accomodation");
 const FoodGrocery = require("../../foodGroceryModule/admin/model/FoodGrocery");
 const Job = require("../../jobsModule/admin/model/Job");
 const Service = require("../../servicesModule/admin/model/Service");

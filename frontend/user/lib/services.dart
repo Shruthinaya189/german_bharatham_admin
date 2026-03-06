@@ -4,9 +4,9 @@ import 'dart:convert';
 import 'models/service_model.dart';
 import 'saved_service_manager.dart';
 import 'service_details.dart';
+import 'services/api_config.dart';
 
-const String baseUrl = 'http://10.96.191.169:5000'; // Physical device on local network
-// const String baseUrl = 'http://10.0.2.2:5000'; // Android emulator
+const String baseUrl = ApiConfig.baseUrl;
 
 class ServicesPage extends StatefulWidget {
   const ServicesPage({super.key});
@@ -29,8 +29,9 @@ class _ServicesPageState extends State<ServicesPage> {
   }
 
   Future<void> _loadServices() async {
+    if (!mounted) return;
     setState(() => isLoading = true);
-    
+
     try {
       final response = await http.get(Uri.parse('$baseUrl/api/services/user'));
 
@@ -46,6 +47,7 @@ class _ServicesPageState extends State<ServicesPage> {
           itemsList = [];
         }
 
+        if (!mounted) return;
         setState(() {
           allItems = itemsList
               .map((json) => Service.fromJson(json))
@@ -54,14 +56,16 @@ class _ServicesPageState extends State<ServicesPage> {
           filteredItems = allItems;
           isLoading = false;
         });
+      } else {
+        if (!mounted) return;
+        setState(() => isLoading = false);
       }
     } catch (e) {
+      if (!mounted) return;
       setState(() => isLoading = false);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error loading services: $e'), backgroundColor: Colors.red),
-        );
-      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error loading services: $e'), backgroundColor: Colors.red),
+      );
     }
   }
 

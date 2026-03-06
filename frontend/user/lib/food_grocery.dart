@@ -5,6 +5,7 @@ import 'food_details.dart';
 import 'food_filter_page.dart';
 import 'models/food_grocery_model.dart';
 import 'saved_food_manager.dart';
+import 'services/api_config.dart';
 
 class FoodGroceryPage extends StatefulWidget {
   const FoodGroceryPage({super.key});
@@ -14,7 +15,7 @@ class FoodGroceryPage extends StatefulWidget {
 }
 
 class _FoodGroceryPageState extends State<FoodGroceryPage> {
-  static const String baseUrl = 'http://10.96.191.169:5000';
+  static const String baseUrl = ApiConfig.baseUrl;
   List<FoodGrocery> allItems = [];
   List<FoodGrocery> filteredItems = [];
   bool isLoading = true;
@@ -36,7 +37,7 @@ class _FoodGroceryPageState extends State<FoodGroceryPage> {
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         List<dynamic> itemsList;
-        
+
         // Handle both {data: [], count: n} and plain array formats
         if (data is Map && data.containsKey('data')) {
           itemsList = data['data'];
@@ -45,7 +46,8 @@ class _FoodGroceryPageState extends State<FoodGroceryPage> {
         } else {
           itemsList = [];
         }
-        
+
+        if (!mounted) return;
         setState(() {
           allItems = itemsList
               .map((json) => FoodGrocery.fromJson(json))
@@ -54,9 +56,15 @@ class _FoodGroceryPageState extends State<FoodGroceryPage> {
           filteredItems = allItems;
           isLoading = false;
         });
+      } else {
+        if (!mounted) return;
+        setState(() {
+          isLoading = false;
+        });
       }
     } catch (e) {
       debugPrint('Error loading food items: $e');
+      if (!mounted) return;
       setState(() {
         isLoading = false;
       });
@@ -86,6 +94,7 @@ class _FoodGroceryPageState extends State<FoodGroceryPage> {
       ),
     );
     
+    if (!mounted) return;
     if (result != null) {
       setState(() {
         filteredItems = result;
@@ -210,10 +219,11 @@ class _FoodCardState extends State<FoodCard> {
   
   void _toggleSave() async {
     final nowSaved = await SavedFoodManager.instance.toggle(widget.item);
+    if (!mounted) return;
     setState(() {
       isSaved = nowSaved;
     });
-    
+
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(nowSaved ? 'Saved to bookmarks' : 'Removed from bookmarks'),

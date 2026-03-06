@@ -200,6 +200,7 @@ const GenericCategoryListings = ({ category, apiBase, icon, viewFields }) => {
   const [viewItem, setViewItem] = useState(null);
   const [editItem, setEditItem] = useState(null);
   const [statusFilter, setStatusFilter] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => { fetchItems(); }, [statusFilter]);
 
@@ -209,7 +210,11 @@ const GenericCategoryListings = ({ category, apiBase, icon, viewFields }) => {
       const token = localStorage.getItem('adminToken');
       const url = statusFilter ? `${apiBase}?status=${statusFilter}` : apiBase;
       const res = await fetch(url, { headers: { 'Authorization': `Bearer ${token}` } });
-      if (res.ok) { const d = await res.json(); setItems(d.data || []); }
+      if (res.ok) { 
+        const d = await res.json(); 
+        // Handle both array response and object with data property
+        setItems(Array.isArray(d) ? d : (d.data || [])); 
+      }
     } catch (e) { console.error(e); }
     finally { setLoading(false); }
   };
@@ -226,18 +231,40 @@ const GenericCategoryListings = ({ category, apiBase, icon, viewFields }) => {
   const patchStatus = async (id, status) => {
     try {
       const token = localStorage.getItem('adminToken');
-      await fetch(`${apiBase}/${id}/status`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-        body: JSON.stringify({ status }),
-      });
+      if (category === 'Food') {
+        await fetch(`${apiBase}/${id}/status`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+          body: JSON.stringify({ status }),
+        });
+      } else {
+        await fetch(`${apiBase}/${id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+          body: JSON.stringify({ status }),
+        });
+      }
       fetchItems();
     } catch (e) { alert(e.message); }
   };
 
   const getTitle = item => item[viewFields.title] || item[viewFields.titleKey] || 'Untitled';
   const getSub = item => item[viewFields.subKey] || '';
-  const getLoc = item => [item.city, item.area].filter(Boolean).join(', ') || 'N/A';
+  const getLoc = item => item[viewFields.locationKey] || item.location || [item.city, item.area].filter(Boolean).join(', ') || 'N/A';
+  const getContact = item => item[viewFields.contactKey] || item.contactPhone || item.contact || item.phone || '—';
+
+  const filteredItems = items.filter((item) => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return true;
+    return [
+      getTitle(item),
+      getSub(item),
+      getLoc(item),
+      getContact(item),
+    ]
+      .filter(Boolean)
+      .some((v) => String(v).toLowerCase().includes(q));
+  });
 
   return (
     <div className="listings">
@@ -251,11 +278,18 @@ const GenericCategoryListings = ({ category, apiBase, icon, viewFields }) => {
           <p>Total: {items.length}</p>
         </div>
         <div className="header-actions">
+          <input
+            className="filter-select"
+            placeholder={`Search ${category.toLowerCase()}...`}
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            style={{ minWidth: 220 }}
+          />
           <select className="filter-select" value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
             <option value="">All Status</option>
-            <option value="active">Active</option>
-            <option value="pending">Pending</option>
-            <option value="disabled">Disabled</option>
+            <option value="Active">Active</option>
+            <option value="Pending">Pending</option>
+            <option value="Inactive">Inactive</option>
           </select>
           <button className="add-listing-btn" onClick={() => setShowAdd(true)}>
             <Plus size={18} /> New {category}
@@ -265,7 +299,7 @@ const GenericCategoryListings = ({ category, apiBase, icon, viewFields }) => {
 
       {loading ? (
         <div style={{ textAlign: 'center', padding: 40 }}>Loading…</div>
-      ) : items.length === 0 ? (
+      ) : filteredItems.length === 0 ? (
         <div style={{ textAlign: 'center', padding: 40 }}>No {category.toLowerCase()} listings found.</div>
       ) : (
         <div className="listings-table">
@@ -283,7 +317,7 @@ const GenericCategoryListings = ({ category, apiBase, icon, viewFields }) => {
               </tr>
             </thead>
             <tbody>
-              {items.map(item => (
+              {filteredItems.map(item => (
                 <tr key={item._id}>
                   <td>
                     {(item.media?.images?.[0] || (item.images && item.images[0]))
@@ -295,16 +329,23 @@ const GenericCategoryListings = ({ category, apiBase, icon, viewFields }) => {
                   <td className="listing-title">{getTitle(item)}</td>
                   <td>{getSub(item) || '—'}</td>
                   <td>{getLoc(item)}</td>
-                  <td>{item.contactPhone || '—'}</td>
+                  <td>{getContact(item)}</td>
                   <td>
+                    {(() => {
+                      const statusKey = String(item.status || 'active').toLowerCase() === 'inactive'
+                        ? 'disabled'
+                        : String(item.status || 'active').toLowerCase();
+                      return (
                     <select
-                      value={item.status || 'active'}
+                      value={item.status || 'Active'}
                       onChange={e => patchStatus(item._id, e.target.value)}
-                      style={{ padding: '3px 8px', borderRadius: 12, fontSize: 12, fontWeight: 600, border: '1px solid #e5e7eb', background: STATUS_COLORS[item.status || 'active']?.bg, color: STATUS_COLORS[item.status || 'active']?.color, cursor: 'pointer' }}>
-                      <option value="active">Active</option>
-                      <option value="pending">Pending</option>
-                      <option value="disabled">Disabled</option>
+                      style={{ padding: '3px 8px', borderRadius: 12, fontSize: 12, fontWeight: 600, border: '1px solid #e5e7eb', background: STATUS_COLORS[statusKey]?.bg, color: STATUS_COLORS[statusKey]?.color, cursor: 'pointer' }}>
+                      <option value="Active">Active</option>
+                      <option value="Pending">Pending</option>
+                      <option value="Inactive">Inactive</option>
                     </select>
+                      );
+                    })()}
                   </td>
                   <td>{item.createdAt ? new Date(item.createdAt).toLocaleDateString('en-GB') : 'N/A'}</td>
                   <td>
@@ -332,7 +373,12 @@ const GenericCategoryListings = ({ category, apiBase, icon, viewFields }) => {
         <ViewModal item={viewItem} category={category} fields={viewFields} onClose={() => setViewItem(null)} />
       )}
       {editItem && (
-        <EditModal item={editItem} category={category} apiBase={apiBase} onClose={() => setEditItem(null)} onSuccess={fetchItems} />
+        <AddListingModal
+          editJob={editItem}
+          defaultCategory={category}
+          onClose={() => setEditItem(null)}
+          onSuccess={fetchItems}
+        />
       )}
     </div>
   );

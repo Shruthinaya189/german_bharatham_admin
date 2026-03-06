@@ -163,7 +163,7 @@ const SimpleAddListingModal = ({ onClose, onSuccess }) => {
 
       if (form.category === "Food") {
         // Food-specific payload
-        endpoint = `${BASE}/api/admin/foodgrocery`;
+        endpoint = `${BASE}/api/food/admin`;
         payload = {
           title: form.title.trim(),
           category: "Food",

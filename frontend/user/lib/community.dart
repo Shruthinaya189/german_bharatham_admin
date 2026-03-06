@@ -3,6 +3,7 @@ import 'guide_details.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'services/api_config.dart';
 
 class CommunityPage extends StatefulWidget {
   const CommunityPage({super.key});
@@ -46,7 +47,7 @@ class _CommunityPageState extends State<CommunityPage> {
       // Backend runs on port 5000 (see backend/.env). Include port so
       // requests reach the Express server instead of defaulting to port 80.
       final response = await http.get(
-        Uri.parse("http://10.96.191.169:5000/api/community"),
+        Uri.parse('${ApiConfig.baseUrl}/api/community'),
       );
 
       print("Status Code: ${response.statusCode}");

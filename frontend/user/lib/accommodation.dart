@@ -5,9 +5,9 @@ import 'saved_manager.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'dart:typed_data';
+import 'services/api_config.dart';
 
-// Use machine IP for real device, 10.0.2.2 for emulator
-const String apiBaseUrl = 'http://10.96.191.169:5000';
+const String apiBaseUrl = ApiConfig.baseUrl;
 
 /// =======================
 /// DATA MODEL
@@ -181,8 +181,9 @@ class _AccommodationPageState extends State<AccommodationPage> {
   }
 
   Future<void> fetchAccommodations() async {
+    if (!mounted) return;
     setState(() => isLoading = true);
-    
+
     try {
       final response = await http.get(
         Uri.parse('$apiBaseUrl/api/accommodation/user'),
@@ -213,29 +214,28 @@ class _AccommodationPageState extends State<AccommodationPage> {
         for (final acc in loaded) {
           acc.isSaved = SavedManager.instance.isSaved(acc.id);
         }
+        if (!mounted) return;
         setState(() {
           accommodations = loaded;
           filteredAccommodations = accommodations;
           isLoading = false;
         });
       } else {
+        if (!mounted) return;
         setState(() => isLoading = false);
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Server error ${response.statusCode}: ${response.body}')),
-          );
-        }
-      }
-    } catch (e) {
-      setState(() => isLoading = false);
-      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Connection error: $e'),
-            duration: const Duration(seconds: 6),
-          ),
+          SnackBar(content: Text('Server error ${response.statusCode}: ${response.body}')),
         );
       }
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => isLoading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Connection error: $e'),
+          duration: const Duration(seconds: 6),
+        ),
+      );
     }
   }
 
@@ -318,6 +318,7 @@ class _AccommodationPageState extends State<AccommodationPage> {
         builder: (_) => FilterPage(allAccommodations: accommodations),
       ),
     );
+    if (!mounted) return;
     if (result != null) {
       setState(() {
         filteredAccommodations = result;

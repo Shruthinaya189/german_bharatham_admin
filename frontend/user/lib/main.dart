@@ -1,12 +1,13 @@
 import 'dart:async';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'home.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-import 'user_session.dart';
-import 'saved_manager.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'services/api_config.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -281,7 +282,7 @@ class InfoPage extends StatelessWidget {
 
 // Authentication page (Get Started / Login / Sign up)
 class AuthPage extends StatefulWidget {
-  const AuthPage({super.key});
+  const AuthPage({Key? key}) : super(key: key);
 
   @override
   State<AuthPage> createState() => _AuthPageState();
@@ -306,45 +307,75 @@ class _AuthPageState extends State<AuthPage> {
     _loginError = null; // clear old error
   });
 
-  try {
-    final response = await http.post(
-      Uri.parse("http://10.96.191.169:5000/api/user/login"),
-      headers: {"Content-Type": "application/json"},
-      body: jsonEncode({
-        "email": _emailController.text.trim(),
-        "password": _passwordController.text.trim(),
-      }),
-    );
+  final payload = jsonEncode({
+    "email": _emailController.text.trim(),
+    "password": _passwordController.text.trim(),
+  });
 
-    if (response.statusCode == 200) {
-      final data = jsonDecode(response.body);
-      final user = data['user'];
-      await UserSession.instance.save(
-        userId: user['_id'].toString(),
-        token: data['token'].toString(),
-        name: user['name'].toString(),
-        email: user['email'].toString(),
-        phone: user['phone']?.toString(),
-      );
-      SavedManager.instance.switchUser(user['_id'].toString());
-      if (mounted) {
+  // Try USB-tunneled localhost first, then direct LAN IP fallback.
+  final endpoints = <String>[
+    ApiConfig.loginEndpoint,
+    'http://10.96.191.147:5000/api/user/login',
+  ];
+
+  for (final endpoint in endpoints) {
+    try {
+      if (kDebugMode) {
+        print('Attempting login to: $endpoint');
+      }
+
+      final response = await http
+          .post(
+            Uri.parse(endpoint),
+            headers: {"Content-Type": "application/json"},
+            body: payload,
+          )
+          .timeout(const Duration(seconds: 12));
+
+      if (kDebugMode) {
+        print('Response status: ${response.statusCode}');
+      }
+
+      if (response.statusCode == 200) {
+        if (!mounted) return;
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
             builder: (_) => const LocationPermissionPage(),
           ),
         );
+        return;
       }
-    } else {
-      setState(() {
-        _loginError = "Username or Password is wrong. Try again.";
-      });
+
+      if (response.statusCode == 400 || response.statusCode == 401) {
+        if (!mounted) return;
+        setState(() {
+          _loginError = "Username or Password is wrong. Try again.";
+        });
+        return;
+      }
+    } on TimeoutException catch (e) {
+      if (kDebugMode) {
+        print('Timeout at $endpoint: $e');
+      }
+      continue;
+    } on SocketException catch (e) {
+      if (kDebugMode) {
+        print('Network error at $endpoint: $e');
+      }
+      continue;
+    } catch (e) {
+      if (kDebugMode) {
+        print('Login error at $endpoint: $e');
+      }
+      continue;
     }
-  } catch (e) {
-    setState(() {
-      _loginError = "Server error. Please try again.";
-    });
   }
+
+  if (!mounted) return;
+  setState(() {
+    _loginError = "Cannot reach server. Check USB/WiFi connection.";
+  });
 }
   @override
   Widget build(BuildContext context) {
@@ -371,7 +402,7 @@ class _AuthPageState extends State<AuthPage> {
               const SizedBox(height: 18),
               const Text('Get Started now',style: TextStyle(fontSize: 25, fontWeight: FontWeight.w800),),
               const SizedBox(height: 8),
-              const Text('Create an account or log in to explore the app',style: TextStyle(fontSize: 22,color: Colors.grey,),),
+              Text('Create an account or log in to explore the app',style: TextStyle(fontSize: 22,color: Colors.grey,),),
               const SizedBox(height: 18),
 
               // segmented control (Login / Sign up)
@@ -398,11 +429,7 @@ class _AuthPageState extends State<AuthPage> {
                     Expanded(
                       child: GestureDetector(
                         onTap: () {
-                          Navigator.pushReplacement(
-                            context,
-                            MaterialPageRoute(builder: (_) => const SignupPage()),
-                          );
-                        },
+                                    Navigator.push(context,MaterialPageRoute(builder: (_) => SignupPage()),);},
                         child: Container(
                           padding: const EdgeInsets.symmetric(vertical: 12),
                           decoration: BoxDecoration(
@@ -541,7 +568,7 @@ class _AuthPageState extends State<AuthPage> {
 // ===== ADD SIGNUP PAGE HERE =====
 
 class SignupPage extends StatefulWidget {
-  const SignupPage({super.key});
+  SignupPage({Key? key}) : super(key: key);
 
   @override
   State<SignupPage> createState() => _SignupPageState();
@@ -550,7 +577,7 @@ class SignupPage extends StatefulWidget {
 class _SignupPageState extends State<SignupPage> {
 
   // 🔹 Toggle (Login / Signup)
-  final bool _isLogin = false;
+  bool _isLogin = false;
 
   // 🔹 Text Controllers
   final TextEditingController _nameController = TextEditingController();
@@ -575,24 +602,28 @@ class _SignupPageState extends State<SignupPage> {
   }
 
   String? validatePassword(String password) {
-  if (password.length < 6) {
-    return "Password must be at least 6 characters long";
-  }
+    if (password.isEmpty) {
+      return "Password cannot be empty";
+    }
+  
+    if (password.length < 6) {
+      return "Password must be at least 6 characters long";
+    }
 
-  if (!RegExp(r'[A-Za-z]').hasMatch(password)) {
-    return "Password must contain at least one alphabet";
-  }
+    if (!RegExp(r'[A-Za-z]').hasMatch(password)) {
+      return "Password must contain at least one letter";
+    }
 
-  if (!RegExp(r'[0-9]').hasMatch(password)) {
-    return "Password must contain at least one number";
-  }
+    if (!RegExp(r'[0-9]').hasMatch(password)) {
+      return "Password must contain at least one number";
+    }
 
-  if (!RegExp(r'[!@#\$&*~%^()_\-+=]').hasMatch(password)) {
-    return "Password must contain at least one special character";
-  }
+    if (!RegExp(r'[!@#\$&*~%^()_\-+=]').hasMatch(password)) {
+      return "Password must contain at least one special character (!@#\$&*~%^()_-+=)";
+    }
 
-  return null;
-}
+    return null;
+  }
   Future<void> registerUser() async {
 
   final password = _passwordController.text.trim();
@@ -611,7 +642,7 @@ class _SignupPageState extends State<SignupPage> {
 
   try {
     final response = await http.post(
-      Uri.parse("http://10.96.191.169:5000/api/user/register"),
+      Uri.parse(ApiConfig.registerEndpoint),
       headers: {"Content-Type": "application/json"},
       body: jsonEncode({
         "name": _nameController.text.trim(),
@@ -619,33 +650,27 @@ class _SignupPageState extends State<SignupPage> {
         "phone": _phoneController.text.trim(),
         "password": password,
       }),
-    );
+    ).timeout(const Duration(seconds: 10));
 
     if (response.statusCode == 201) {
-      final data = jsonDecode(response.body);
-      final user = data['user'];
-      await UserSession.instance.save(
-        userId: user['_id'].toString(),
-        token: data['token'].toString(),
-        name: user['name'].toString(),
-        email: user['email'].toString(),
-        phone: user['phone']?.toString(),
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (_) => const LocationPermissionPage(),
+        ),
       );
-      SavedManager.instance.switchUser(user['_id'].toString());
-      if (mounted) {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (_) => const LocationPermissionPage(),
-          ),
-        );
-      }
     } else {
+      if (kDebugMode) {
+        print('Signup failed: ${response.statusCode} - ${response.body}');
+      }
       setState(() {
         _passwordError = "Signup failed. Try again.";
       });
     }
   } catch (e) {
+    if (kDebugMode) {
+      print('Signup error: $e');
+    }
     setState(() {
       _passwordError = "Server error. Try again.";
     });
@@ -688,33 +713,29 @@ class _SignupPageState extends State<SignupPage> {
                 child: Row(
                   children: [
                     Expanded(
-                      child: GestureDetector(
-                        onTap: () {
-                          Navigator.pushReplacement(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => const AuthPage(),
-                            ),
-                          );
-                        },
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                          decoration: BoxDecoration(
-                            color: _isLogin ? Colors.white : Colors.transparent,
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: const Text('Login', textAlign: TextAlign.center),
-                        ),
-                      ),
-                    ),
+  child: GestureDetector(
+    onTap: () {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => AuthPage(),
+        ),
+      );
+},
+    child: Container(
+      padding: const EdgeInsets.symmetric(vertical: 12),
+      decoration: BoxDecoration(
+        color: _isLogin ? Colors.white : Colors.transparent,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: const Text('Login', textAlign: TextAlign.center),
+    ),
+  ),
+),
                     Expanded(
                       child: GestureDetector(
                         onTap: () {
-                          Navigator.pushReplacement(
-                            context,
-                            MaterialPageRoute(builder: (_) => const SignupPage()),
-                          );
-                        },
+                                    Navigator.push(context,MaterialPageRoute(builder: (_) => SignupPage()),);},
                         child: Container(
                           padding: const EdgeInsets.symmetric(vertical: 12),
                           decoration: BoxDecoration(
@@ -845,20 +866,16 @@ class LocationPermissionPage extends StatelessWidget {
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
           child: Column(
             children: [
-              const Spacer(),
-
               Image.asset(
                 'assets/images/loc.jpeg',
                 height: 260,
                 fit: BoxFit.contain,
               ),
-
               const SizedBox(height: 24),
-
               const Text(
                 'Location',
                 style: TextStyle(
@@ -877,37 +894,41 @@ class LocationPermissionPage extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 32),
-
               SizedBox(
-  width: double.infinity,
-  height: 56,
-  child: ElevatedButton(
-    onPressed: () {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (_) => const HomePage()),
-      );
-    },
-    style: ElevatedButton.styleFrom(
-      backgroundColor: primaryGreen,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(6), // 👈 reduced radius here
-      ),
-    ),
-    child: const Text("Enable Location",style: TextStyle(color: Colors.white,),),
-  ),
-),
+                width: double.infinity,
+                height: 56,
+                child: ElevatedButton(
+                  onPressed: () {
+                    Navigator.pushReplacement(
+                      context,
+                      MaterialPageRoute(builder: (_) => const HomePage()),
+                    );
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: primaryGreen,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                  ),
+                  child: const Text(
+                    'Enable Location',
+                    style: TextStyle(color: Colors.white),
+                  ),
+                ),
+              ),
               const SizedBox(height: 14),
               TextButton(
-               onPressed: () {
-                Navigator.pushReplacement(
-                 context,
-                  MaterialPageRoute(builder: (_) => const HomePage()),
-              );
-            },
-            child: const Text("Not now",style: TextStyle(color: Colors.grey,),),
-            ),
-            const Spacer(),
+                onPressed: () {
+                  Navigator.pushReplacement(
+                    context,
+                    MaterialPageRoute(builder: (_) => const HomePage()),
+                  );
+                },
+                child: const Text(
+                  'Not now',
+                  style: TextStyle(color: Colors.grey),
+                ),
+              ),
             ],
           ),
         ),
@@ -927,25 +948,13 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   void initState() {
     super.initState();
-    _initAndNavigate();
-  }
 
-  Future<void> _initAndNavigate() async {
-    await Future.delayed(const Duration(seconds: 3));
-    await UserSession.instance.load();
-    if (UserSession.instance.isLoggedIn) {
-      SavedManager.instance.switchUser(UserSession.instance.userId!);
-    }
-    if (mounted) {
+    Future.delayed(const Duration(seconds: 3), () {
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(
-          builder: (_) => UserSession.instance.isLoggedIn
-              ? const HomePage()
-              : const WelcomeScreen(),
-        ),
+        MaterialPageRoute(builder: (_) => const WelcomeScreen()),
       );
-    }
+    });
   }
 
   @override
