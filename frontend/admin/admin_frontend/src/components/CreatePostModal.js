@@ -38,7 +38,7 @@ const handleSubmit = async (e) => {
 
   const token = localStorage.getItem("adminToken");
   console.log("TOKEN:", token);
-  const BASE = "https://german-bharatham-admin-2rhc.onrender.com";
+  const BASE = "https://german-bharatham-backend.onrender.com";
 
   const parsed = parseContent(postData.content);
 

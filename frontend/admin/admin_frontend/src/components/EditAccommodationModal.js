@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { X } from 'lucide-react';
 
-const BASE = 'https://german-bharatham-admin-2rhc.onrender.com';
+const BASE = 'https://german-bharatham-backend.onrender.com';
 const DEFAULT_AMENITIES = ['WiFi', 'Parking', 'Balcony', 'Garden', 'Elevator'];
 
 const EditAccommodationModal = ({ accommodation: acc, onClose, onSuccess }) => {
@@ -30,7 +30,6 @@ const EditAccommodationModal = ({ accommodation: acc, onClose, onSuccess }) => {
   const [selectedAmenities, setSelectedAmenities] = useState(resolveAmenities);
   const [customAmenity, setCustomAmenity]         = useState('');
   const [images, setImages]                       = useState(acc?.media?.images || []);
-  const [newFiles, setNewFiles]                   = useState([]);
   const [submitting, setSubmitting]               = useState(false);
 
   if (!acc) return null;

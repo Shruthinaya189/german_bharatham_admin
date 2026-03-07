@@ -7,7 +7,7 @@ const Users = () => {
   const [filterBy, setFilterBy] = useState('all');
   const [users, setUsers]     = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
-  const BASE = "https://german-bharatham-admin-2rhc.onrender.com";
+  const BASE = "https://german-bharatham-backend.onrender.com";
 
   const getUserPhotoSrc = (user) => {
     const p = user?.photo;

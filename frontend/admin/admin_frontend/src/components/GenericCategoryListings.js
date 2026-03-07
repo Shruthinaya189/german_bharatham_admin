@@ -1,9 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Plus, Trash2, Edit, Eye, ArrowLeft } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import AddListingModal from './AddListingModal';
-
-const BASE = 'https://german-bharatham-admin-2rhc.onrender.com';
 
 const STATUS_COLORS = {
   active: { bg: '#d1fae5', color: '#065f46' },
@@ -201,9 +199,7 @@ const GenericCategoryListings = ({ category, apiBase, icon, viewFields }) => {
   const [editItem, setEditItem] = useState(null);
   const [statusFilter, setStatusFilter] = useState('');
 
-  useEffect(() => { fetchItems(); }, [statusFilter]);
-
-  const fetchItems = async () => {
+  const fetchItems = useCallback(async () => {
     setLoading(true);
     try {
       const token = localStorage.getItem('adminToken');
@@ -212,7 +208,9 @@ const GenericCategoryListings = ({ category, apiBase, icon, viewFields }) => {
       if (res.ok) { const d = await res.json(); setItems(d.data || []); }
     } catch (e) { console.error(e); }
     finally { setLoading(false); }
-  };
+  }, [apiBase, statusFilter]);
+
+  useEffect(() => { fetchItems(); }, [fetchItems]);
 
   const handleDelete = async (id, name) => {
     if (!window.confirm(`Delete "${name}"?`)) return;

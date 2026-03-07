@@ -9,7 +9,7 @@ const Community = () => {
   const [selectedPost, setSelectedPost] = useState(null);
   const [showEditModal, setShowEditModal] = useState(false);
 
-  const BASE = "https://german-bharatham-admin-2rhc.onrender.com";
+  const BASE = "https://german-bharatham-backend.onrender.com";
 
   useEffect(() => {
     fetchPosts();

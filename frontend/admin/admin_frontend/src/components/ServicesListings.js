@@ -24,7 +24,7 @@ export default function ServicesListings() {
   return (
     <GenericCategoryListings
       category="Services"
-      apiBase="https://german-bharatham-admin-2rhc.onrender.com/api/services/admin"
+      apiBase="https://german-bharatham-backend.onrender.com/api/services/admin"
       icon="🔧"
       viewFields={SERVICES_FIELDS}
     />

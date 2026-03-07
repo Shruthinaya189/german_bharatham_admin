@@ -26,7 +26,7 @@ export default function FoodListings() {
   return (
     <GenericCategoryListings
       category="Food"
-      apiBase="https://german-bharatham-admin-2rhc.onrender.com/api/food/admin"
+      apiBase="https://german-bharatham-backend.onrender.com/api/food/admin"
       icon="🍴"
       viewFields={FOOD_FIELDS}
     />

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Plus, TrendingUp, FolderOpen, Users, Clock } from 'lucide-react';
 import SimpleAddListingModal from './SimpleAddListingModal';
 
-const BASE = 'https://german-bharatham-admin-2rhc.onrender.com';
+const BASE = 'https://german-bharatham-backend.onrender.com';
 const CATEGORY_APIS = {
   Accommodation: `${BASE}/api/accommodation/admin`,
   Food:          `${BASE}/api/food/admin`,
@@ -17,8 +17,6 @@ const Dashboard = () => {
   const [userCount, setUserCount]           = useState(0);
   const [categoryCount, setCategoryCount]   = useState(4);
   const [recentListings, setRecentListings] = useState([]);
-
-  useEffect(() => { fetchAll(); }, []);
 
   const fetchAll = useCallback(async () => {
     const token   = localStorage.getItem('adminToken');
@@ -89,6 +87,8 @@ const Dashboard = () => {
       }
     } catch {}
   }, []);
+
+  useEffect(() => { fetchAll(); }, [fetchAll]);
 
   const stats = [
     { label: 'Total Listings', value: totalCount,    icon: TrendingUp },

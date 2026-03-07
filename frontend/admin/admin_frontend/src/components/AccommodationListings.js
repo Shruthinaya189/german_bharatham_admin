@@ -5,7 +5,7 @@ import AddAccommodationModal from './AddAccommodationModal';
 import ViewAccommodationModal from './ViewAccommodationModal';
 import EditAccommodationModal from './EditAccommodationModal';
 
-const API = 'https://german-bharatham-admin-2rhc.onrender.com/api/accommodation/admin';
+const API = 'https://german-bharatham-backend.onrender.com/api/accommodation/admin';
 
 const STATUS_COLORS = {
   active:   { bg: '#d1fae5', color: '#065f46' },

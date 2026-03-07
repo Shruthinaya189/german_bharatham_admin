@@ -112,7 +112,7 @@ const AddFoodGroceryModal = ({ onClose, onSuccess }) => {
         category: 'Food'
       };
       
-      const response = await fetch('https://german-bharatham-admin-2rhc.onrender.com/api/food/admin', {
+      const response = await fetch('https://german-bharatham-backend.onrender.com/api/food/admin', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

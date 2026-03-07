@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Plus, Edit, Trash2, ArrowLeft, Eye } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 
-const BASE = 'https://german-bharatham-admin-2rhc.onrender.com';
+const BASE = 'https://german-bharatham-backend.onrender.com';
 
 const STATUS_COLORS = {
   active:   { bg: '#d1fae5', color: '#065f46' },
@@ -125,19 +125,21 @@ const CustomCategoryListings = () => {
   const [editItem,     setEditItem]     = useState(null);
   const [viewItem,     setViewItem]     = useState(null);
 
-  const token   = () => localStorage.getItem('adminToken');
-  const headers = () => ({ Authorization: `Bearer ${token()}` });
+  const getAuthHeaders = useCallback(
+    () => ({ Authorization: `Bearer ${localStorage.getItem('adminToken')}` }),
+    []
+  );
 
   const fetchCategory = useCallback(async () => {
     try {
-      const res = await fetch(`${BASE}/api/custom-categories`, { headers: headers() });
+      const res = await fetch(`${BASE}/api/custom-categories`, { headers: getAuthHeaders() });
       if (res.ok) {
         const cats = await res.json();
         const found = cats.find(c => c._id === id);
         if (found) setCategory(found);
       }
     } catch {}
-  }, [id]);
+  }, [id, getAuthHeaders]);
 
   const fetchListings = useCallback(async () => {
     setLoading(true);
@@ -145,11 +147,11 @@ const CustomCategoryListings = () => {
       const url = statusFilter
         ? `${BASE}/api/custom-categories/${id}/listings?status=${statusFilter}`
         : `${BASE}/api/custom-categories/${id}/listings`;
-      const res = await fetch(url, { headers: headers() });
+      const res = await fetch(url, { headers: getAuthHeaders() });
       if (res.ok) { const d = await res.json(); setItems(d.data || []); }
     } catch (e) { console.error(e); }
     finally { setLoading(false); }
-  }, [id, statusFilter]);
+  }, [id, statusFilter, getAuthHeaders]);
 
   useEffect(() => { fetchCategory(); }, [fetchCategory]);
   useEffect(() => { fetchListings(); }, [fetchListings]);
@@ -158,7 +160,7 @@ const CustomCategoryListings = () => {
     if (!window.confirm(`Delete "${item.title}"?`)) return;
     try {
       const res = await fetch(`${BASE}/api/custom-categories/${id}/listings/${item._id}`, {
-        method: 'DELETE', headers: headers(),
+        method: 'DELETE', headers: getAuthHeaders(),
       });
       if (res.ok) fetchListings();
       else alert('Failed to delete');
@@ -169,7 +171,7 @@ const CustomCategoryListings = () => {
     try {
       const res = await fetch(`${BASE}/api/custom-categories/${id}/listings/${item._id}/status`, {
         method: 'PATCH',
-        headers: { ...headers(), 'Content-Type': 'application/json' },
+        headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: newStatus }),
       });
       if (res.ok) {

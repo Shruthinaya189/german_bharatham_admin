@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Plus, Edit2, Trash2, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
-const BASE = 'https://german-bharatham-admin-2rhc.onrender.com';
+const BASE = 'https://german-bharatham-backend.onrender.com';
 
 const DEFAULT_CATEGORIES = [
   { id: 'accommodation', name: 'Accommodation', icon: '🏠', description: 'Housing, apartments, student housing, and shared accommodations', api: `${BASE}/api/accommodation/admin`, route: '/accommodation-listings', status: 'active' },
@@ -74,13 +74,15 @@ const Categories = () => {
   const [showAdd,      setShowAdd]      = useState(false);
   const [editCat,      setEditCat]      = useState(null);
 
-  const token   = () => localStorage.getItem('adminToken');
-  const headers = () => ({ Authorization: `Bearer ${token()}` });
+  const getAuthHeaders = useCallback(
+    () => ({ Authorization: `Bearer ${localStorage.getItem('adminToken')}` }),
+    []
+  );
 
   // Fetch custom categories from backend
-  const fetchCustomCats = async () => {
+  const fetchCustomCats = useCallback(async () => {
     try {
-      const res = await fetch(`${BASE}/api/custom-categories`, { headers: headers() });
+      const res = await fetch(`${BASE}/api/custom-categories`, { headers: getAuthHeaders() });
       if (res.ok) {
         const data = await res.json();
         setCustomCats(data.map(c => ({
@@ -96,12 +98,15 @@ const Categories = () => {
         })));
       }
     } catch (e) { console.error(e); }
-  };
+  }, [getAuthHeaders]);
 
-  useEffect(() => { fetchCustomCats(); }, []);
+  useEffect(() => { fetchCustomCats(); }, [fetchCustomCats]);
 
   // Merge all categories
-  const allCategories = [...defaultCats, ...customCats];
+  const allCategories = useMemo(
+    () => [...defaultCats, ...customCats],
+    [defaultCats, customCats]
+  );
   const visible = statusFilter === 'all' ? allCategories : allCategories.filter(c => c.status === statusFilter);
 
   // Fetch listing counts for each category
@@ -109,7 +114,11 @@ const Categories = () => {
     const fetchCounts = async () => {
       const apiCats = allCategories.filter(c => c.api);
       const results = await Promise.allSettled(
-        apiCats.map(c => fetch(c.api, { headers: headers() }).then(r => r.json()).catch(() => ({ count: 0 })))
+        apiCats.map(c =>
+          fetch(c.api, { headers: getAuthHeaders() })
+            .then(r => r.json())
+            .catch(() => ({ count: 0 }))
+        )
       );
       const map = {};
       apiCats.forEach((c, i) => {
@@ -119,14 +128,14 @@ const Categories = () => {
       setCounts(map);
     };
     if (allCategories.some(c => c.api)) fetchCounts();
-  }, [customCats, defaultCats]);
+  }, [allCategories, getAuthHeaders]);
 
   // ── Add (custom category → backend) ────────────────────────────────────────
   const handleAdd = async form => {
     try {
       const res = await fetch(`${BASE}/api/custom-categories`, {
         method: 'POST',
-        headers: { ...headers(), 'Content-Type': 'application/json' },
+        headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: form.name, description: form.description, icon: form.icon, status: form.status }),
       });
       if (res.ok) { await fetchCustomCats(); setShowAdd(false); }
@@ -140,7 +149,7 @@ const Categories = () => {
       try {
         const res = await fetch(`${BASE}/api/custom-categories/${form._id}`, {
           method: 'PUT',
-          headers: { ...headers(), 'Content-Type': 'application/json' },
+          headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
           body: JSON.stringify({ name: form.name, description: form.description, icon: form.icon, status: form.status }),
         });
         if (res.ok) { await fetchCustomCats(); setEditCat(null); }
@@ -160,7 +169,7 @@ const Categories = () => {
       try {
         await fetch(`${BASE}/api/custom-categories/${id}`, {
           method: 'PUT',
-          headers: { ...headers(), 'Content-Type': 'application/json' },
+          headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
           body: JSON.stringify({ status: newStatus }),
         });
         await fetchCustomCats();
@@ -180,7 +189,7 @@ const Categories = () => {
     if (!window.confirm(`Delete "${cat.name}" and all its listings?`)) return;
     try {
       const res = await fetch(`${BASE}/api/custom-categories/${cat._id}`, {
-        method: 'DELETE', headers: headers(),
+        method: 'DELETE', headers: getAuthHeaders(),
       });
       if (res.ok) fetchCustomCats();
       else { const d = await res.json(); alert(d.message); }

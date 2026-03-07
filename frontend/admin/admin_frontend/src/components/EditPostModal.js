@@ -9,7 +9,7 @@ const EditPostModal = ({ post, onClose, onPostUpdated }) => {
     content: "",
   });
 
-  const BASE = "https://german-bharatham-admin-2rhc.onrender.com";
+  const BASE = "https://german-bharatham-backend.onrender.com";
 
   // 🔥 Convert DB data back into textarea format
   const buildContentString = (post) => {
