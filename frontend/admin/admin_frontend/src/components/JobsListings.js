@@ -24,7 +24,7 @@ export default function JobsListings() {
   return (
     <GenericCategoryListings
       category="Jobs"
-      apiBase="http://10.166.137.12:5000/api/jobs/admin"
+      apiBase="https://german-bharatham-admin-2rhc.onrender.com/api/jobs/admin"
       icon="💼"
       viewFields={JOBS_FIELDS}
     />

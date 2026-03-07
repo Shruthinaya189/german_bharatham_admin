@@ -38,7 +38,7 @@ const handleSubmit = async (e) => {
 
   const token = localStorage.getItem("adminToken");
   console.log("TOKEN:", token);
-  const BASE = "http://10.166.137.12:5000";
+  const BASE = "https://german-bharatham-admin-2rhc.onrender.com";
 
   const parsed = parseContent(postData.content);
 

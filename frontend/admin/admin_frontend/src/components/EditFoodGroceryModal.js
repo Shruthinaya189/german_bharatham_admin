@@ -111,7 +111,7 @@ const EditFoodGroceryModal = ({ item, onClose, onSuccess }) => {
         category: 'Food'
       };
       
-      const response = await fetch(`http://localhost:5000/api/food/admin/${item._id}`, {
+      const response = await fetch(`https://german-bharatham-admin-2rhc.onrender.com/api/food/admin/${item._id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

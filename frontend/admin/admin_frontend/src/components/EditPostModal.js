@@ -9,7 +9,7 @@ const EditPostModal = ({ post, onClose, onPostUpdated }) => {
     content: "",
   });
 
-  const BASE = "http://10.166.137.12:5000";
+  const BASE = "https://german-bharatham-admin-2rhc.onrender.com";
 
   // 🔥 Convert DB data back into textarea format
   const buildContentString = (post) => {

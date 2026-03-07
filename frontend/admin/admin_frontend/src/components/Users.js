@@ -7,7 +7,22 @@ const Users = () => {
   const [filterBy, setFilterBy] = useState('all');
   const [users, setUsers]     = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
-  const BASE = "http://10.166.137.12:5000";
+  const BASE = "https://german-bharatham-admin-2rhc.onrender.com";
+
+  const getUserPhotoSrc = (user) => {
+    const p = user?.photo;
+    if (!p || typeof p !== 'string') return null;
+    const trimmed = p.trim();
+    if (!trimmed) return null;
+    if (trimmed.startsWith('data:image')) return trimmed;
+    if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) return trimmed;
+
+    // Base64 without data: prefix (best-effort)
+    const looksBase64 = /^[A-Za-z0-9+/=]+$/.test(trimmed) && trimmed.length > 100;
+    if (looksBase64) return `data:image/jpeg;base64,${trimmed}`;
+
+    return null;
+  };
   useEffect(() => {
   fetchUsers();
 }, []);
@@ -125,7 +140,10 @@ const fetchUsers = async () => {
                       <td>
                         <div className="user-info">
                           <img
-                            src={`https://ui-avatars.com/api/?name=${encodeURIComponent(user.name || 'U')}&background=6b9976&color=fff`}
+                            src={
+                              getUserPhotoSrc(user) ||
+                              `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name || 'U')}&background=6b9976&color=fff`
+                            }
                             alt={user.name}
                             className="user-avatar"
                           />

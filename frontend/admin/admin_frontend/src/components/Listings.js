@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Plus, Trash2 } from 'lucide-react';
 import SimpleAddListingModal from './SimpleAddListingModal';
 
-const BASE = 'http://10.166.137.12:5000';
+const BASE = 'https://german-bharatham-admin-2rhc.onrender.com';
 
 const APIS = {
   Accommodation: { get: `${BASE}/api/accommodation/admin`, patch: (id) => `${BASE}/api/accommodation/admin/${id}/status`, del: (id) => `${BASE}/api/accommodation/admin/${id}`, titleKey: 'title' },

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Plus, Edit2, Trash2, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
-const BASE = 'http://10.166.137.12:5000';
+const BASE = 'https://german-bharatham-admin-2rhc.onrender.com';
 
 const DEFAULT_CATEGORIES = [
   { id: 'accommodation', name: 'Accommodation', icon: '🏠', description: 'Housing, apartments, student housing, and shared accommodations', api: `${BASE}/api/accommodation/admin`, route: '/accommodation-listings', status: 'active' },

@@ -10,7 +10,7 @@ const Login = ({ onLogin }) => {
   e.preventDefault();
 
   try {
-    const response = await fetch("http://10.166.137.12:5000/api/admin/login", {
+    const response = await fetch("https://german-bharatham-admin-2rhc.onrender.com/api/admin/login", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -43,7 +43,7 @@ const fetchProtectedData = async () => {
 
   const token = localStorage.getItem("adminToken");
 
-const response = await fetch("http://10.166.137.12:5000/api/admin/dashboard", {
+const response = await fetch("https://german-bharatham-admin-2rhc.onrender.com/api/admin/dashboard", {
   method: "GET",
   headers: {
     "Content-Type": "application/json",

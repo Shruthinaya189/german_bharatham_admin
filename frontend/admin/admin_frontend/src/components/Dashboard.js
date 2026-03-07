@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Plus, TrendingUp, FolderOpen, Users, Clock } from 'lucide-react';
 import SimpleAddListingModal from './SimpleAddListingModal';
 
-const BASE = 'http://10.166.137.12:5000';
+const BASE = 'https://german-bharatham-admin-2rhc.onrender.com';
 const CATEGORY_APIS = {
   Accommodation: `${BASE}/api/accommodation/admin`,
   Food:          `${BASE}/api/food/admin`,
