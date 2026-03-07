@@ -190,7 +190,12 @@ class _UserProfilesPageState extends State<UserProfilesPage> {
                 ),
                 child: Row(
                   children: [
-                    Icon(Icons.people, color: primaryGreen.withValues(alpha: 0.9)),
+                    Image.asset(
+                      'assets/images/profile.png',
+                      width: 20,
+                      height: 20,
+                      color: primaryGreen.withValues(alpha: 0.9),
+                    ),
                     const SizedBox(width: 10),
                     const Expanded(
                       child: Text(
@@ -274,7 +279,12 @@ class _UserProfilesPageState extends State<UserProfilesPage> {
           onPressed: _prev,
           padding: EdgeInsets.zero,
           constraints: const BoxConstraints.tightFor(width: 44, height: 44),
-          icon: const Icon(Icons.arrow_back_ios_new, color: Colors.black54),
+          icon: Image.asset(
+            'assets/images/left-arrow.png',
+            width: 18,
+            height: 18,
+            color: Colors.black54,
+          ),
         ),
         const SizedBox(width: 6),
         Expanded(
@@ -327,9 +337,10 @@ class _UserProfilesPageState extends State<UserProfilesPage> {
                               child: Row(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
-                                  Icon(
-                                    Icons.phone,
-                                    size: 16,
+                                  Image.asset(
+                                    'assets/images/call.png',
+                                    width: 16,
+                                    height: 16,
                                     color: primaryGreen.withValues(alpha: 0.85),
                                   ),
                                   const SizedBox(width: 8),
@@ -347,9 +358,10 @@ class _UserProfilesPageState extends State<UserProfilesPage> {
                             Row(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                Icon(
-                                  Icons.email,
-                                  size: 16,
+                                Image.asset(
+                                  'assets/images/msg.png',
+                                  width: 16,
+                                  height: 16,
                                   color: primaryGreen.withValues(alpha: 0.85),
                                 ),
                                 const SizedBox(width: 8),
@@ -377,10 +389,11 @@ class _UserProfilesPageState extends State<UserProfilesPage> {
                                   borderRadius: BorderRadius.circular(12),
                                 ),
                               ),
-                              icon: Icon(
-                                liked ? Icons.favorite : Icons.favorite_border,
+                              icon: Image.asset(
+                                'assets/images/star.png',
+                                width: 20,
+                                height: 20,
                                 color: liked ? primaryGreen : Colors.grey,
-                                size: 20,
                               ),
                               label: Text(
                                 liked ? 'Liked' : 'Like',
@@ -406,7 +419,12 @@ class _UserProfilesPageState extends State<UserProfilesPage> {
           onPressed: _next,
           padding: EdgeInsets.zero,
           constraints: const BoxConstraints.tightFor(width: 44, height: 44),
-          icon: const Icon(Icons.arrow_forward_ios, color: Colors.black54),
+          icon: Image.asset(
+            'assets/images/right-arrow.png',
+            width: 18,
+            height: 18,
+            color: Colors.black54,
+          ),
         ),
       ],
     );

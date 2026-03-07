@@ -156,6 +156,76 @@ class Accommodation {
       averageRating: (json['averageRating'] as num?)?.toDouble() ?? 0.0,
     );
   }
+
+  Map<String, dynamic> toSavedJson() {
+    return {
+      'id': id,
+      'title': title,
+      'description': description,
+      'location': location,
+      'image': image,
+      'rating': rating,
+      'price': price,
+      'amenities': amenities,
+      'propertyType': propertyType,
+      'latitude': latitude,
+      'longitude': longitude,
+      'isSaved': isSaved,
+      'bedrooms': bedrooms,
+      'bathrooms': bathrooms,
+      'sizeSqm': sizeSqm,
+      'totalFloors': totalFloors,
+      'coldRent': coldRent,
+      'warmRent': warmRent,
+      'additionalCosts': additionalCosts,
+      'deposit': deposit,
+      'electricityIncluded': electricityIncluded,
+      'heatingIncluded': heatingIncluded,
+      'internetIncluded': internetIncluded,
+      'nearUniversity': nearUniversity,
+      'nearSupermarket': nearSupermarket,
+      'nearHospital': nearHospital,
+      'nearPublicTransport': nearPublicTransport,
+      'contactPhone': contactPhone,
+      'averageRating': averageRating,
+    };
+  }
+
+  factory Accommodation.fromSavedJson(Map<String, dynamic> json) {
+    return Accommodation(
+      id: (json['id'] ?? '').toString(),
+      title: (json['title'] ?? '').toString(),
+      description: (json['description'] ?? '').toString(),
+      location: (json['location'] ?? '').toString(),
+      image: (json['image'] ?? 'assets/images/room.jpg').toString(),
+      rating: (json['rating'] as num?)?.toDouble() ?? 0.0,
+      price: (json['price'] as num?)?.toInt() ?? 0,
+      amenities: (json['amenities'] is List)
+          ? (json['amenities'] as List).map((e) => e.toString()).toList()
+          : <String>[],
+      propertyType: (json['propertyType'] ?? '').toString(),
+      latitude: (json['latitude'] as num?)?.toDouble(),
+      longitude: (json['longitude'] as num?)?.toDouble(),
+      isSaved: (json['isSaved'] as bool?) ?? true,
+      bedrooms: json['bedrooms'] as int?,
+      bathrooms: json['bathrooms'] as int?,
+      sizeSqm: json['sizeSqm'] as int?,
+      totalFloors: json['totalFloors'] as int?,
+      coldRent: json['coldRent'] as int?,
+      warmRent: json['warmRent'] as int?,
+      additionalCosts: json['additionalCosts'] as int?,
+      deposit: json['deposit'] as int?,
+      electricityIncluded: json['electricityIncluded'] as bool?,
+      heatingIncluded: json['heatingIncluded'] as bool?,
+      internetIncluded: json['internetIncluded'] as bool?,
+      nearUniversity: json['nearUniversity'] as bool?,
+      nearSupermarket: json['nearSupermarket'] as bool?,
+      nearHospital: json['nearHospital'] as bool?,
+      nearPublicTransport: json['nearPublicTransport'] as bool?,
+      contactPhone: json['contactPhone']?.toString(),
+      averageRating: (json['averageRating'] as num?)?.toDouble(),
+    );
+  }
 }
 
 /// =======================
@@ -177,7 +247,11 @@ class _AccommodationPageState extends State<AccommodationPage> {
   @override
   void initState() {
     super.initState();
-    fetchAccommodations();
+    SavedManager.instance.initialize().then((_) {
+      if (mounted) {
+        fetchAccommodations();
+      }
+    });
   }
 
   Future<void> fetchAccommodations() async {

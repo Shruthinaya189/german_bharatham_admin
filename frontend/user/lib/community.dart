@@ -311,8 +311,10 @@ class _CommunityPageState extends State<CommunityPage> {
                     ),
                   );
                 },
-                child: Icon(
-                  isSaved ? Icons.bookmark : Icons.bookmark_border,
+                child: Image.asset(
+                  'assets/images/bookmark.png',
+                  width: 22,
+                  height: 22,
                   color: isSaved ? Colors.black : Colors.grey,
                 ),
               )

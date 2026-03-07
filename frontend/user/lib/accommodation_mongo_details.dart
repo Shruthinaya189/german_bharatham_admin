@@ -33,7 +33,8 @@ class AccommodationMongoDetailsPage extends StatelessWidget {
                   top: 12,
                   left: 12,
                   child: _CircleIcon(
-                    icon: Icons.arrow_back,
+                    iconAsset: 'assets/images/left-arrow.png',
+                    iconColor: Colors.black,
                     onTap: () => Navigator.pop(context),
                   ),
                 ),
@@ -83,7 +84,12 @@ class AccommodationMongoDetailsPage extends StatelessWidget {
                     /// LOCATION
                     Row(
                       children: [
-                        const Icon(Icons.location_on, size: 20, color: Color(0xFF6E6E6E)),
+                        Image.asset(
+                          'assets/images/location.png',
+                          height: 20,
+                          width: 20,
+                          color: const Color(0xFF6E6E6E),
+                        ),
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(
@@ -359,10 +365,11 @@ class AccommodationMongoDetailsPage extends StatelessWidget {
 // ============ HELPER WIDGETS ============
 
 class _CircleIcon extends StatelessWidget {
-  final IconData icon;
+  final String iconAsset;
+  final Color? iconColor;
   final VoidCallback? onTap;
 
-  const _CircleIcon({required this.icon, this.onTap});
+  const _CircleIcon({required this.iconAsset, this.iconColor, this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -374,7 +381,12 @@ class _CircleIcon extends StatelessWidget {
           color: Colors.white,
           shape: BoxShape.circle,
         ),
-        child: Icon(icon, size: 20, color: Colors.black),
+        child: Image.asset(
+          iconAsset,
+          height: 20,
+          width: 20,
+          color: iconColor,
+        ),
       ),
     );
   }

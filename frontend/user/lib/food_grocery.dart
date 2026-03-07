@@ -112,7 +112,12 @@ class _FoodGroceryPageState extends State<FoodGroceryPage> {
         foregroundColor: Colors.black,
         leading: IconButton(
           onPressed: () => Navigator.pop(context),
-          icon: const Icon(Icons.arrow_back, color: Colors.black),
+          icon: Image.asset(
+            'assets/images/left-arrow.png',
+            height: 22,
+            width: 22,
+            color: Colors.black,
+          ),
         ),
         title: const Text("Food & Grocery"),
         centerTitle: true,
@@ -129,10 +134,14 @@ class _FoodGroceryPageState extends State<FoodGroceryPage> {
                     onChanged: _filterItems,
                     decoration: InputDecoration(
                       hintText: "Search Food & grocery",
-                      prefixIcon: const Icon(
-                        Icons.search,
-                        color: Color(0xFF9CA3AF),
-                        size: 22,
+                      prefixIcon: Padding(
+                        padding: const EdgeInsets.all(12),
+                        child: Image.asset(
+                          'assets/images/search.png',
+                          height: 20,
+                          width: 20,
+                          color: const Color(0xFF9CA3AF),
+                        ),
                       ),
                       filled: true,
                       fillColor: Colors.white,
@@ -152,9 +161,10 @@ class _FoodGroceryPageState extends State<FoodGroceryPage> {
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(10),
                     ),
-                    child: const Icon(
-                      Icons.filter_list,
-                      size: 22,
+                    child: Image.asset(
+                      'assets/images/sort.png',
+                      height: 22,
+                      width: 22,
                       color: Colors.black,
                     ),
                   ),
@@ -299,10 +309,13 @@ class _FoodCardState extends State<FoodCard> {
                       const SizedBox(width: 8),
                       InkWell(
                         onTap: _toggleSave,
-                        child: Icon(
-                          isSaved ? Icons.bookmark : Icons.bookmark_border,
-                          size: 20,
-                          color: isSaved ? const Color(0xFF4E7F6D) : Colors.grey.shade400,
+                        child: Image.asset(
+                          'assets/images/bookmark.png',
+                          width: 20,
+                          height: 20,
+                          color: isSaved
+                              ? const Color(0xFF4E7F6D)
+                              : Colors.grey.shade400,
                         ),
                       ),
                     ],
@@ -310,10 +323,11 @@ class _FoodCardState extends State<FoodCard> {
                   const SizedBox(height: 6),
                   Row(
                     children: [
-                      const Icon(
-                        Icons.location_on,
-                        size: 14,
-                        color: Color(0xFF9CA3AF),
+                      Image.asset(
+                        'assets/images/location.png',
+                        width: 14,
+                        height: 14,
+                        color: const Color(0xFF9CA3AF),
                       ),
                       const SizedBox(width: 4),
                       Expanded(
@@ -332,10 +346,11 @@ class _FoodCardState extends State<FoodCard> {
                   const SizedBox(height: 6),
                   Row(
                     children: [
-                      const Icon(
-                        Icons.star,
-                        size: 14,
-                        color: Color(0xFFFBBF24),
+                      Image.asset(
+                        'assets/images/star.png',
+                        width: 14,
+                        height: 14,
+                        color: const Color(0xFFFBBF24),
                       ),
                       const SizedBox(width: 4),
                       Text(
@@ -349,10 +364,11 @@ class _FoodCardState extends State<FoodCard> {
                         ),
                       ),
                       const Spacer(),
-                      const Icon(
-                        Icons.location_on,
-                        size: 14,
-                        color: Color(0xFF9CA3AF),
+                      Image.asset(
+                        'assets/images/location.png',
+                        width: 14,
+                        height: 14,
+                        color: const Color(0xFF9CA3AF),
                       ),
                       const SizedBox(width: 4),
                       Text(
@@ -379,10 +395,14 @@ class _FoodCardState extends State<FoodCard> {
       width: 80,
       height: 80,
       color: const Color(0xFFE8F5E9),
-      child: const Icon(
-        Icons.restaurant,
-        size: 36,
-        color: Color(0xFF4E7F6D),
+      child: Center(
+        child: Image.asset(
+          'assets/images/grocery-store.png',
+          width: 36,
+          height: 36,
+          color: const Color(0xFF4E7F6D),
+          errorBuilder: (_, __, ___) => const SizedBox(width: 36, height: 36),
+        ),
       ),
     );
   }

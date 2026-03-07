@@ -112,7 +112,8 @@ ${widget.item.phone != null && widget.item.phone!.isNotEmpty ? 'Phone: ${widget.
                   top: 12,
                   left: 12,
                   child: _circleIcon(
-                    icon: Icons.arrow_back,
+                    iconAsset: 'assets/images/left-arrow.png',
+                    iconColor: Colors.black,
                     onTap: () => Navigator.pop(context),
                   ),
                 ),
@@ -120,7 +121,9 @@ ${widget.item.phone != null && widget.item.phone!.isNotEmpty ? 'Phone: ${widget.
                   top: 12,
                   right: 60,
                   child: _circleIcon(
-                    icon: isSaved ? Icons.bookmark : Icons.bookmark_border,
+                    iconAsset: 'assets/images/bookmark.png',
+                    iconColor:
+                        isSaved ? const Color(0xFF4E7F6D) : Colors.black,
                     onTap: _toggleSave,
                   ),
                 ),
@@ -128,7 +131,8 @@ ${widget.item.phone != null && widget.item.phone!.isNotEmpty ? 'Phone: ${widget.
                   top: 12,
                   right: 12,
                   child: _circleIcon(
-                    icon: Icons.share,
+                    iconAsset: 'assets/images/share.png',
+                    iconColor: Colors.black,
                     onTap: _shareRestaurant,
                   ),
                 ),
@@ -160,7 +164,12 @@ ${widget.item.phone != null && widget.item.phone!.isNotEmpty ? 'Phone: ${widget.
                         const SizedBox(width: 8),
                         Row(
                           children: [
-                            const Icon(Icons.star, color: Color(0xFFFBBF24), size: 18),
+                            Image.asset(
+                              'assets/images/star.png',
+                              height: 18,
+                              width: 18,
+                              color: const Color(0xFFFBBF24),
+                            ),
                             const SizedBox(width: 4),
                             Text(
                               widget.item.averageRating > 0
@@ -180,7 +189,7 @@ ${widget.item.phone != null && widget.item.phone!.isNotEmpty ? 'Phone: ${widget.
 
                     /// ADDRESS
                     _infoRow(
-                      icon: Icons.location_on,
+                      iconAsset: 'assets/images/location.png',
                       label: 'Address',
                       value: widget.item.address,
                     ),
@@ -188,7 +197,7 @@ ${widget.item.phone != null && widget.item.phone!.isNotEmpty ? 'Phone: ${widget.
                     if (widget.item.openingHours != null && widget.item.openingHours!.isNotEmpty) ...[
                       const SizedBox(height: 14),
                       _infoRow(
-                        icon: Icons.access_time,
+                        iconAsset: 'assets/images/time.png',
                         label: 'Time',
                         value: widget.item.openingHours!,
                       ),
@@ -271,10 +280,11 @@ ${widget.item.phone != null && widget.item.phone!.isNotEmpty ? 'Phone: ${widget.
                 width: double.infinity,
                 child: ElevatedButton.icon(
                   onPressed: () => _makePhoneCall(context),
-                  icon: const Icon(
-                    Icons.phone,
+                  icon: Image.asset(
+                    'assets/images/call.png',
+                    height: 20,
+                    width: 20,
                     color: Colors.white,
-                    size: 20,
                   ),
                   label: const Text(
                     "Call",
@@ -300,7 +310,11 @@ ${widget.item.phone != null && widget.item.phone!.isNotEmpty ? 'Phone: ${widget.
     );
   }
 
-  Widget _circleIcon({required IconData icon, VoidCallback? onTap}) {
+  Widget _circleIcon({
+    required String iconAsset,
+    Color? iconColor,
+    VoidCallback? onTap,
+  }) {
     return InkWell(
       onTap: onTap,
       child: Container(
@@ -309,7 +323,12 @@ ${widget.item.phone != null && widget.item.phone!.isNotEmpty ? 'Phone: ${widget.
           color: Colors.white,
           shape: BoxShape.circle,
         ),
-        child: Icon(icon, size: 20, color: Colors.black),
+        child: Image.asset(
+          iconAsset,
+          height: 20,
+          width: 20,
+          color: iconColor,
+        ),
       ),
     );
   }
@@ -339,27 +358,28 @@ ${widget.item.phone != null && widget.item.phone!.isNotEmpty ? 'Phone: ${widget.
   }
 
   Widget _placeholderImage(double height) {
-    return Container(
+    return Image.asset(
+      'assets/images/restaurant.jpg',
       width: double.infinity,
       height: height,
-      color: const Color(0xFFE8F5E9),
-      child: const Icon(
-        Icons.restaurant,
-        color: Color(0xFF4E7F6D),
-        size: 80,
-      ),
+      fit: BoxFit.cover,
     );
   }
 
   Widget _infoRow({
-    required IconData icon,
+    required String iconAsset,
     required String label,
     required String value,
   }) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Icon(icon, size: 18, color: const Color(0xFF4E7F6D)),
+        Image.asset(
+          iconAsset,
+          height: 18,
+          width: 18,
+          color: const Color(0xFF4E7F6D),
+        ),
         const SizedBox(width: 8),
         Expanded(
           child: Column(

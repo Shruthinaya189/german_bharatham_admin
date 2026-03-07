@@ -89,7 +89,12 @@ class _CommunityFilterPageState extends State<CommunityFilterPage> {
         ),
 
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black),
+          icon: Image.asset(
+            'assets/images/left-arrow.png',
+            height: 22,
+            width: 22,
+            color: Colors.black,
+          ),
           onPressed: () => Navigator.pop(context),
         ),
 
@@ -115,9 +120,20 @@ class _CommunityFilterPageState extends State<CommunityFilterPage> {
           children: [
 
             /// SEARCH
-            const Text(
-              "Search",
-              style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
+            Row(
+              children: [
+                Image.asset(
+                  'assets/images/search.png',
+                  height: 16,
+                  width: 16,
+                  color: const Color(0xFF4F7F6C),
+                ),
+                const SizedBox(width: 6),
+                const Text(
+                  "Search",
+                  style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
+                ),
+              ],
             ),
 
             const SizedBox(height: 8),
@@ -126,7 +142,15 @@ class _CommunityFilterPageState extends State<CommunityFilterPage> {
               controller: _searchController,
               decoration: InputDecoration(
                 hintText: "Search community posts",
-                prefixIcon: const Icon(Icons.search),
+                prefixIcon: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Image.asset(
+                    'assets/images/search.png',
+                    height: 18,
+                    width: 18,
+                    color: const Color(0xFF4F7F6C),
+                  ),
+                ),
                 filled: true,
                 fillColor: Colors.white,
                 border: OutlineInputBorder(
@@ -139,9 +163,20 @@ class _CommunityFilterPageState extends State<CommunityFilterPage> {
             const SizedBox(height: 30),
 
             /// CATEGORY
-            const Text(
-              "Category",
-              style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
+            Row(
+              children: [
+                Image.asset(
+                  'assets/images/sort.png',
+                  height: 16,
+                  width: 16,
+                  color: const Color(0xFF4F7F6C),
+                ),
+                const SizedBox(width: 6),
+                const Text(
+                  "Category",
+                  style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
+                ),
+              ],
             ),
 
             const SizedBox(height: 12),

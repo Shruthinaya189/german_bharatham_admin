@@ -249,7 +249,6 @@ class GuideDetailsPage extends StatelessWidget {
 
   Widget _resourceButton({
     required BuildContext context,
-    IconData? icon,
     Widget? image,
     required String text,
     required String url,
@@ -303,9 +302,7 @@ class GuideDetailsPage extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             if (image != null)
-              SizedBox(width: 20, height: 20, child: image)
-            else if (icon != null)
-              Icon(icon, size: 20),
+              SizedBox(width: 20, height: 20, child: image),
             const SizedBox(width: 10),
             Text(
               text,

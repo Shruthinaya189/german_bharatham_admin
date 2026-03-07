@@ -326,6 +326,8 @@ class _JobCardState extends State<JobCard> {
                         'assets/images/location.png',
                         width: 16,
                         height: 16,
+                        color: Colors.grey,
+                        errorBuilder: (_, __, ___) => const SizedBox(width: 16, height: 16),
                       ),
                       const SizedBox(width: 4),
                       Expanded(
@@ -375,10 +377,11 @@ class _JobCardState extends State<JobCard> {
             /// Bookmark icon
             InkWell(
               onTap: _toggleSave,
-              child: Icon(
-                isSaved ? Icons.bookmark : Icons.bookmark_border,
+              child: Image.asset(
+                'assets/images/bookmark.png',
+                width: 22,
+                height: 22,
                 color: isSaved ? const Color(0xFF4E7F6D) : Colors.grey,
-                size: 22,
               ),
             ),
           ],

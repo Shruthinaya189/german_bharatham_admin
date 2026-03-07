@@ -114,7 +114,12 @@ class _FilterPageState extends State<FilterPage> {
           ),
         ),
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black),
+          icon: Image.asset(
+            'assets/images/left-arrow.png',
+            height: 22,
+            width: 22,
+            color: Colors.black,
+          ),
           onPressed: () => Navigator.pop(context),
         ),
         actions: [
@@ -136,16 +141,35 @@ class _FilterPageState extends State<FilterPage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             /// LOCATION / AREA
-            const Text(
-              "Location / Area",
-              style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
+            Row(
+              children: [
+                Image.asset(
+                  'assets/images/location.png',
+                  height: 16,
+                  width: 16,
+                  color: const Color(0xFF4F7F6C),
+                ),
+                const SizedBox(width: 6),
+                const Text(
+                  "Location / Area",
+                  style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
+                ),
+              ],
             ),
             const SizedBox(height: 8),
             TextField(
               controller: _locationController,
               decoration: InputDecoration(
                 hintText: "Enter city, area or neighbourhood",
-                prefixIcon: const Icon(Icons.location_on_outlined, color: Color(0xFF4F7F6C)),
+                prefixIcon: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Image.asset(
+                    'assets/images/location.png',
+                    height: 18,
+                    width: 18,
+                    color: const Color(0xFF4F7F6C),
+                  ),
+                ),
                 filled: true,
                 fillColor: Colors.white,
                 border: OutlineInputBorder(
@@ -161,9 +185,21 @@ class _FilterPageState extends State<FilterPage> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text(
-                  "Rent Range",
-                  style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
+                Row(
+                  children: [
+                    Image.asset(
+                      'assets/images/rent.png',
+                      height: 16,
+                      width: 16,
+                      color: const Color(0xFF4F7F6C),
+                    ),
+                    const SizedBox(width: 6),
+                    const Text(
+                      "Rent Range",
+                      style:
+                          TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
+                    ),
+                  ],
                 ),
                 Text(
                   "€0 – €${_selectedMaxRent.toInt()}",
@@ -208,9 +244,20 @@ class _FilterPageState extends State<FilterPage> {
             const SizedBox(height: 28),
 
             /// ROOM TYPE
-            const Text(
-              "Room Type",
-              style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
+            Row(
+              children: [
+                Image.asset(
+                  'assets/images/propertytype.png',
+                  height: 16,
+                  width: 16,
+                  color: const Color(0xFF4F7F6C),
+                ),
+                const SizedBox(width: 6),
+                const Text(
+                  "Room Type",
+                  style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
+                ),
+              ],
             ),
             const SizedBox(height: 12),
             Wrap(

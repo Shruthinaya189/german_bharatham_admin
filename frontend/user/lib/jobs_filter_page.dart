@@ -86,7 +86,12 @@ class _JobsFilterPageState extends State<JobsFilterPage> {
           ),
         ),
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black),
+          icon: Image.asset(
+            'assets/images/left-arrow.png',
+            height: 22,
+            width: 22,
+            color: Colors.black,
+          ),
           onPressed: () => Navigator.pop(context),
         ),
         actions: [
@@ -107,18 +112,34 @@ class _JobsFilterPageState extends State<JobsFilterPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'Location',
-              style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
+            Row(
+              children: [
+                Image.asset(
+                  'assets/images/location.png',
+                  height: 16,
+                  width: 16,
+                  color: const Color(0xFF4E7F6D),
+                ),
+                const SizedBox(width: 6),
+                const Text(
+                  'Location',
+                  style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
+                ),
+              ],
             ),
             const SizedBox(height: 8),
             TextField(
               controller: _locationController,
               decoration: InputDecoration(
                 hintText: 'Enter city or area',
-                prefixIcon: const Icon(
-                  Icons.location_on_outlined,
-                  color: Color(0xFF4E7F6D),
+                prefixIcon: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Image.asset(
+                    'assets/images/location.png',
+                    height: 18,
+                    width: 18,
+                    color: const Color(0xFF4E7F6D),
+                  ),
                 ),
                 filled: true,
                 fillColor: Colors.white,
@@ -129,9 +150,20 @@ class _JobsFilterPageState extends State<JobsFilterPage> {
               ),
             ),
             const SizedBox(height: 28),
-            const Text(
-              'Job Type',
-              style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
+            Row(
+              children: [
+                Image.asset(
+                  'assets/images/job-search.png',
+                  height: 16,
+                  width: 16,
+                  color: const Color(0xFF4E7F6D),
+                ),
+                const SizedBox(width: 6),
+                const Text(
+                  'Job Type',
+                  style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
+                ),
+              ],
             ),
             const SizedBox(height: 12),
             Wrap(

@@ -502,19 +502,55 @@ class _SearchPageState extends State<SearchPage> {
         },
         items: [
           BottomNavigationBarItem(
-            icon: Image.asset('assets/images/home.png', height: 24),
+            icon: Image.asset(
+              'assets/images/home.png',
+              height: 24,
+              color: bottomIndex == 0 ? const Color(0xFF4E7F6D) : Colors.grey,
+              errorBuilder: (_, __, ___) => Icon(
+                Icons.home,
+                size: 24,
+                color: bottomIndex == 0 ? const Color(0xFF4E7F6D) : Colors.grey,
+              ),
+            ),
             label: 'Home',
           ),
           BottomNavigationBarItem(
-            icon: Image.asset('assets/images/search.png', height: 24),
+            icon: Image.asset(
+              'assets/images/search.png',
+              height: 24,
+              color: bottomIndex == 1 ? const Color(0xFF4E7F6D) : Colors.grey,
+              errorBuilder: (_, __, ___) => Icon(
+                Icons.search,
+                size: 24,
+                color: bottomIndex == 1 ? const Color(0xFF4E7F6D) : Colors.grey,
+              ),
+            ),
             label: 'Search',
           ),
           BottomNavigationBarItem(
-            icon: Image.asset('assets/images/bookmark.png', height: 24),
+            icon: Image.asset(
+              'assets/images/bookmark.png',
+              height: 24,
+              color: bottomIndex == 2 ? const Color(0xFF4E7F6D) : Colors.grey,
+              errorBuilder: (_, __, ___) => Icon(
+                Icons.bookmark,
+                size: 24,
+                color: bottomIndex == 2 ? const Color(0xFF4E7F6D) : Colors.grey,
+              ),
+            ),
             label: 'Saved',
           ),
           BottomNavigationBarItem(
-            icon: Image.asset('assets/images/profile.png', height: 24),
+            icon: Image.asset(
+              'assets/images/profile.png',
+              height: 24,
+              color: bottomIndex == 3 ? const Color(0xFF4E7F6D) : Colors.grey,
+              errorBuilder: (_, __, ___) => Icon(
+                Icons.person,
+                size: 24,
+                color: bottomIndex == 3 ? const Color(0xFF4E7F6D) : Colors.grey,
+              ),
+            ),
             label: 'Profile',
           ),
         ],

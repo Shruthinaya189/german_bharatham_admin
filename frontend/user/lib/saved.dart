@@ -4,10 +4,19 @@ import 'profile.dart';
 import 'search.dart';
 import 'accommodation.dart';
 import 'accommodation_details.dart';
+import 'food_details.dart';
 import 'guide_details.dart';
+import 'job_details.dart';
 import 'models/community_model.dart';
+import 'models/food_grocery_model.dart';
+import 'models/job_model.dart';
+import 'models/service_model.dart';
+import 'saved_food_manager.dart';
+import 'saved_job_manager.dart';
 import 'saved_manager.dart';
 import 'saved_guides_manager.dart';
+import 'saved_service_manager.dart';
+import 'service_details.dart';
 
 class SavedPage extends StatefulWidget {
   const SavedPage({super.key});
@@ -20,15 +29,28 @@ class _SavedPageState extends State<SavedPage> {
   int _currentIndex = 2;
   int _selectedCategory = 0;
 
+  Future<_SavedLists> _loadSaved() async {
+    await SavedManager.instance.initialize();
+
+    await Future.wait([
+      SavedFoodManager.instance.initialize(),
+      SavedJobManager.instance.initialize(),
+      SavedServiceManager.instance.initialize(),
+    ]);
+
+    final guides = await SavedGuidesManager.instance.getSavedItems();
+
+    return _SavedLists(
+      accommodations: List.from(SavedManager.instance.savedAccommodations),
+      foods: List.from(SavedFoodManager.instance.savedFoodItems),
+      jobs: List.from(SavedJobManager.instance.getSavedItems()),
+      services: List.from(SavedServiceManager.instance.getSavedItems()),
+      guides: List.from(guides),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    final savedAccommodations = SavedManager.instance.savedAccommodations;
-
-    List<Accommodation> displayedAccommodations = [];
-    if (_selectedCategory == 0 || _selectedCategory == 1) {
-      displayedAccommodations = List.from(savedAccommodations);
-    }
-
     return Scaffold(
       appBar: AppBar(
         title: const Text("Saved"),
@@ -61,15 +83,41 @@ class _SavedPageState extends State<SavedPage> {
 
           /// SAVED ITEMS LIST
           Expanded(
-            child: FutureBuilder<List<CommunityPost>>(
-              future: SavedGuidesManager.instance.getSavedItems(),
+            child: FutureBuilder<_SavedLists>(
+              future: _loadSaved(),
               builder: (context, snapshot) {
-                final savedGuides = snapshot.data ?? const <CommunityPost>[];
-                final displayedGuides =
-                    _selectedCategory == 0 ? savedGuides : const <CommunityPost>[];
+              final data = snapshot.data;
 
-                final isEmpty =
-                    displayedAccommodations.isEmpty && displayedGuides.isEmpty;
+              final displayedAccommodations =
+                (_selectedCategory == 0 || _selectedCategory == 1)
+                  ? (data?.accommodations ?? const <Accommodation>[])
+                  : const <Accommodation>[];
+
+              final displayedFoods =
+                (_selectedCategory == 0 || _selectedCategory == 2)
+                  ? (data?.foods ?? const <FoodGrocery>[])
+                  : const <FoodGrocery>[];
+
+              final displayedJobs =
+                (_selectedCategory == 0 || _selectedCategory == 3)
+                  ? (data?.jobs ?? const <Job>[])
+                  : const <Job>[];
+
+              final displayedServices =
+                (_selectedCategory == 0 || _selectedCategory == 4)
+                  ? (data?.services ?? const <Service>[])
+                  : const <Service>[];
+
+              // Guides only show in "All" view.
+              final displayedGuides = _selectedCategory == 0
+                ? (data?.guides ?? const <CommunityPost>[])
+                : const <CommunityPost>[];
+
+              final isEmpty = displayedAccommodations.isEmpty &&
+                displayedFoods.isEmpty &&
+                displayedJobs.isEmpty &&
+                displayedServices.isEmpty &&
+                displayedGuides.isEmpty;
 
                 if (isEmpty) {
                   return Center(
@@ -104,15 +152,20 @@ class _SavedPageState extends State<SavedPage> {
                   );
                 }
 
-                final totalCount =
-                    displayedAccommodations.length + displayedGuides.length;
+                final totalCount = displayedAccommodations.length +
+                  displayedFoods.length +
+                  displayedJobs.length +
+                  displayedServices.length +
+                  displayedGuides.length;
 
                 return ListView.builder(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   itemCount: totalCount,
                   itemBuilder: (context, index) {
-                    if (index < displayedAccommodations.length) {
-                      final item = displayedAccommodations[index];
+                    var idx = index;
+
+                    if (idx < displayedAccommodations.length) {
+                      final item = displayedAccommodations[idx];
                       return _SavedAccommodationCard(
                         item: item,
                         onRemove: () {
@@ -132,8 +185,75 @@ class _SavedPageState extends State<SavedPage> {
                       );
                     }
 
-                    final guide =
-                        displayedGuides[index - displayedAccommodations.length];
+                    idx -= displayedAccommodations.length;
+
+                    if (idx < displayedFoods.length) {
+                      final item = displayedFoods[idx];
+                      return _SavedFoodCard(
+                        item: item,
+                        onRemove: () async {
+                          await SavedFoodManager.instance.toggle(item);
+                          if (!context.mounted) return;
+                          setState(() {});
+                        },
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => FoodDetailPage(item: item),
+                            ),
+                          );
+                        },
+                      );
+                    }
+
+                    idx -= displayedFoods.length;
+
+                    if (idx < displayedJobs.length) {
+                      final item = displayedJobs[idx];
+                      return _SavedJobCard(
+                        item: item,
+                        onRemove: () async {
+                          await SavedJobManager.instance.toggle(item);
+                          if (!context.mounted) return;
+                          setState(() {});
+                        },
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => JobDetailsPage(item: item),
+                            ),
+                          );
+                        },
+                      );
+                    }
+
+                    idx -= displayedJobs.length;
+
+                    if (idx < displayedServices.length) {
+                      final item = displayedServices[idx];
+                      return _SavedServiceCard(
+                        item: item,
+                        onRemove: () async {
+                          await SavedServiceManager.instance.toggle(item);
+                          if (!context.mounted) return;
+                          setState(() {});
+                        },
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => ServiceDetailsPage(item: item),
+                            ),
+                          );
+                        },
+                      );
+                    }
+
+                    idx -= displayedServices.length;
+
+                    final guide = displayedGuides[idx];
 
                     return _SavedGuideCard(
                       guide: guide,
@@ -185,19 +305,55 @@ class _SavedPageState extends State<SavedPage> {
         },
         items: [
           BottomNavigationBarItem(
-            icon: Image.asset('assets/images/home.png', height: 24),
+            icon: Image.asset(
+              'assets/images/home.png',
+              height: 24,
+              color: _currentIndex == 0 ? const Color(0xFF3A7D6B) : Colors.grey,
+              errorBuilder: (_, __, ___) => Image.asset(
+                'assets/images/warning.png',
+                height: 24,
+                color: _currentIndex == 0 ? const Color(0xFF3A7D6B) : Colors.grey,
+              ),
+            ),
             label: "Home",
           ),
           BottomNavigationBarItem(
-            icon: Image.asset('assets/images/search.png', height: 24),
+            icon: Image.asset(
+              'assets/images/search.png',
+              height: 24,
+              color: _currentIndex == 1 ? const Color(0xFF3A7D6B) : Colors.grey,
+              errorBuilder: (_, __, ___) => Image.asset(
+                'assets/images/warning.png',
+                height: 24,
+                color: _currentIndex == 1 ? const Color(0xFF3A7D6B) : Colors.grey,
+              ),
+            ),
             label: "Search",
           ),
           BottomNavigationBarItem(
-            icon: Image.asset('assets/images/bookmark.png', height: 24),
+            icon: Image.asset(
+              'assets/images/bookmark.png',
+              height: 24,
+              color: _currentIndex == 2 ? const Color(0xFF3A7D6B) : Colors.grey,
+              errorBuilder: (_, __, ___) => Image.asset(
+                'assets/images/warning.png',
+                height: 24,
+                color: _currentIndex == 2 ? const Color(0xFF3A7D6B) : Colors.grey,
+              ),
+            ),
             label: "Saved",
           ),
           BottomNavigationBarItem(
-            icon: Image.asset('assets/images/profile.png', height: 24),
+            icon: Image.asset(
+              'assets/images/profile.png',
+              height: 24,
+              color: _currentIndex == 3 ? const Color(0xFF3A7D6B) : Colors.grey,
+              errorBuilder: (_, __, ___) => Image.asset(
+                'assets/images/warning.png',
+                height: 24,
+                color: _currentIndex == 3 ? const Color(0xFF3A7D6B) : Colors.grey,
+              ),
+            ),
             label: "Profile",
           ),
         ],
@@ -370,8 +526,424 @@ class _SavedAccommodationCard extends StatelessWidget {
         width: 80,
         height: 80,
         color: const Color(0xFFE8F5E9),
-        child: const Icon(Icons.home, color: Color(0xFF4F7F67)),
+        child: Center(
+          child: Image.asset(
+            'assets/images/home.png',
+            width: 36,
+            height: 36,
+            color: const Color(0xFF4F7F67),
+            errorBuilder: (_, __, ___) => const SizedBox(width: 36, height: 36),
+          ),
+        ),
       );
+}
+
+class _SavedLists {
+  final List<Accommodation> accommodations;
+  final List<FoodGrocery> foods;
+  final List<Job> jobs;
+  final List<Service> services;
+  final List<CommunityPost> guides;
+
+  const _SavedLists({
+    required this.accommodations,
+    required this.foods,
+    required this.jobs,
+    required this.services,
+    required this.guides,
+  });
+}
+
+class _SavedThumbnail extends StatelessWidget {
+  final String? image;
+  final String fallbackAsset;
+  final double width;
+  final double height;
+  final BorderRadius borderRadius;
+
+  const _SavedThumbnail({
+    required this.image,
+    required this.fallbackAsset,
+    required this.width,
+    required this.height,
+    required this.borderRadius,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final img = (image ?? '').trim();
+
+    Widget child;
+    if (img.isEmpty) {
+      child = Image.asset(fallbackAsset, width: width, height: height, fit: BoxFit.cover);
+    } else if (img.startsWith('http')) {
+      child = Image.network(
+        img,
+        width: width,
+        height: height,
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) => Image.asset(
+          fallbackAsset,
+          width: width,
+          height: height,
+          fit: BoxFit.cover,
+        ),
+      );
+    } else if (img.startsWith('assets/')) {
+      child = Image.asset(
+        img,
+        width: width,
+        height: height,
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) => Image.asset(
+          fallbackAsset,
+          width: width,
+          height: height,
+          fit: BoxFit.cover,
+        ),
+      );
+    } else {
+      // Treat unknown strings as local asset path fallback.
+      child = Image.asset(
+        fallbackAsset,
+        width: width,
+        height: height,
+        fit: BoxFit.cover,
+      );
+    }
+
+    return ClipRRect(
+      borderRadius: borderRadius,
+      child: child,
+    );
+  }
+}
+
+class _SavedFoodCard extends StatelessWidget {
+  final FoodGrocery item;
+  final VoidCallback onTap;
+  final VoidCallback onRemove;
+
+  const _SavedFoodCard({
+    required this.item,
+    required this.onTap,
+    required this.onRemove,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final rating = item.averageRating > 0
+        ? item.averageRating.toStringAsFixed(1)
+        : (item.rating > 0 ? item.rating.toStringAsFixed(1) : '4.5');
+    final location = item.city.trim().isNotEmpty
+        ? item.city
+        : (item.location.trim().isNotEmpty ? item.location : item.address);
+
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 14),
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(14),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _SavedThumbnail(
+              image: item.image,
+              fallbackAsset: 'assets/images/restaurant.jpg',
+              width: 80,
+              height: 80,
+              borderRadius: BorderRadius.circular(10),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          item.title,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ),
+                      InkWell(
+                        onTap: onRemove,
+                        child: Image.asset(
+                          'assets/images/bookmark.png',
+                          width: 18,
+                          height: 18,
+                          color: Colors.black,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 5),
+                  Row(
+                    children: [
+                      Image.asset(
+                        'assets/images/location.png',
+                        width: 13,
+                        height: 13,
+                        color: Colors.grey,
+                      ),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: Text(
+                          location,
+                          style: const TextStyle(
+                            color: Colors.grey,
+                            fontSize: 12,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 5),
+                  Row(
+                    children: [
+                      Image.asset(
+                        'assets/images/star.png',
+                        width: 13,
+                        height: 13,
+                        color: Colors.orange,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(rating, style: const TextStyle(fontSize: 12)),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _SavedJobCard extends StatelessWidget {
+  final Job item;
+  final VoidCallback onTap;
+  final VoidCallback onRemove;
+
+  const _SavedJobCard({
+    required this.item,
+    required this.onTap,
+    required this.onRemove,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final location = [item.city.trim(), (item.state ?? '').trim()]
+        .where((e) => e.isNotEmpty)
+        .join(', ');
+
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 14),
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(14),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _SavedThumbnail(
+              image: item.companyLogo,
+              fallbackAsset: 'assets/images/google.png',
+              width: 80,
+              height: 80,
+              borderRadius: BorderRadius.circular(10),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          item.title,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ),
+                      InkWell(
+                        onTap: onRemove,
+                        child: Image.asset(
+                          'assets/images/bookmark.png',
+                          width: 18,
+                          height: 18,
+                          color: Colors.black,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  if (item.company.trim().isNotEmpty)
+                    Text(
+                      item.company,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  const SizedBox(height: 5),
+                  Row(
+                    children: [
+                      Image.asset(
+                        'assets/images/location.png',
+                        width: 13,
+                        height: 13,
+                        color: Colors.grey,
+                      ),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: Text(
+                          location.isNotEmpty ? location : item.location,
+                          style: const TextStyle(color: Colors.grey, fontSize: 12),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _SavedServiceCard extends StatelessWidget {
+  final Service item;
+  final VoidCallback onTap;
+  final VoidCallback onRemove;
+
+  const _SavedServiceCard({
+    required this.item,
+    required this.onTap,
+    required this.onRemove,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final location = item.city.trim().isNotEmpty
+        ? item.city
+        : (item.address ?? '').trim();
+
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 14),
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(14),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _SavedThumbnail(
+              image: item.image,
+              fallbackAsset: 'assets/images/service.jpg',
+              width: 80,
+              height: 80,
+              borderRadius: BorderRadius.circular(10),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          item.title,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ),
+                      InkWell(
+                        onTap: onRemove,
+                        child: Image.asset(
+                          'assets/images/bookmark.png',
+                          width: 18,
+                          height: 18,
+                          color: Colors.black,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  if ((item.provider ?? '').trim().isNotEmpty)
+                    Text(
+                      item.provider!,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  const SizedBox(height: 5),
+                  Row(
+                    children: [
+                      Image.asset(
+                        'assets/images/location.png',
+                        width: 13,
+                        height: 13,
+                        color: Colors.grey,
+                      ),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: Text(
+                          location,
+                          style: const TextStyle(color: Colors.grey, fontSize: 12),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 5),
+                  Text(
+                    item.serviceType,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: Colors.grey,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 class SavedCard extends StatelessWidget {
@@ -540,8 +1112,10 @@ class _SavedGuideCard extends StatelessWidget {
                 ),
                 InkWell(
                   onTap: onRemove,
-                  child: const Icon(
-                    Icons.bookmark,
+                  child: Image.asset(
+                    'assets/images/bookmark.png',
+                    width: 18,
+                    height: 18,
                     color: Colors.black,
                   ),
                 ),

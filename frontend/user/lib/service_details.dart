@@ -75,8 +75,24 @@ ${widget.item.priceRange != null ? 'ðŸ’° ${widget.item.priceRange}' : ''}
         title: const Text("Service Details", style: TextStyle(color: Colors.black, fontWeight: FontWeight.w600)),
         centerTitle: true,
         actions: [
-          IconButton(onPressed: _toggleSave, icon: Icon(isSaved ? Icons.bookmark : Icons.bookmark_border, color: isSaved ? const Color(0xFF4E7F6D) : Colors.black)),
-          IconButton(onPressed: _shareItem, icon: const Icon(Icons.share, color: Colors.black)),
+          IconButton(
+            onPressed: _toggleSave,
+            icon: Image.asset(
+              'assets/images/bookmark.png',
+              height: 22,
+              width: 22,
+              color: isSaved ? const Color(0xFF4E7F6D) : Colors.black54,
+            ),
+          ),
+          IconButton(
+            onPressed: _shareItem,
+            icon: Image.asset(
+              'assets/images/share.png',
+              height: 22,
+              width: 22,
+              color: Colors.black,
+            ),
+          ),
         ],
       ),
       body: Stack(
@@ -100,9 +116,22 @@ ${widget.item.priceRange != null ? 'ðŸ’° ${widget.item.priceRange}' : ''}
                             child: widget.item.image != null && widget.item.image!.isNotEmpty
                                 ? ClipRRect(
                                     borderRadius: BorderRadius.circular(10),
-                                    child: Image.network(widget.item.image!, fit: BoxFit.cover, errorBuilder: (_, _, _) => const Icon(Icons.business, color: Colors.grey, size: 40)),
+                                    child: Image.network(
+                                      widget.item.image!,
+                                      fit: BoxFit.cover,
+                                      errorBuilder: (_, __, ___) => Image.asset(
+                                        'assets/images/service.jpg',
+                                        fit: BoxFit.cover,
+                                      ),
+                                    ),
                                   )
-                                : const Icon(Icons.business, color: Colors.grey, size: 40),
+                                : ClipRRect(
+                                    borderRadius: BorderRadius.circular(10),
+                                    child: Image.asset(
+                                      'assets/images/service.jpg',
+                                      fit: BoxFit.cover,
+                                    ),
+                                  ),
                           ),
                           const SizedBox(width: 12),
                           Expanded(
@@ -115,7 +144,12 @@ ${widget.item.priceRange != null ? 'ðŸ’° ${widget.item.priceRange}' : ''}
                                 const SizedBox(height: 8),
                                 Row(
                                   children: [
-                                    const Icon(Icons.location_on, size: 16, color: Colors.grey),
+                                    Image.asset(
+                                      'assets/images/location.png',
+                                      height: 16,
+                                      width: 16,
+                                      color: Colors.grey,
+                                    ),
                                     const SizedBox(width: 4),
                                     Expanded(child: Text(widget.item.city, style: const TextStyle(fontSize: 13, color: Colors.grey))),
                                   ],
@@ -160,11 +194,11 @@ ${widget.item.priceRange != null ? 'ðŸ’° ${widget.item.priceRange}' : ''}
                     children: [
                       const Text("Contact Information", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                       const SizedBox(height: 12),
-                      if (widget.item.address != null) _infoRow(icon: Icons.location_on_outlined, title: "Address", value: widget.item.address!),
-                      _infoRow(icon: Icons.location_city, title: "City", value: widget.item.city),
-                      if (widget.item.phone != null) _infoRow(icon: Icons.phone_outlined, title: "Phone", value: widget.item.phone!),
-                      if (widget.item.email != null) _infoRow(icon: Icons.email_outlined, title: "Email", value: widget.item.email!, valueColor: Colors.blue),
-                      if (widget.item.website != null) InkWell(onTap: _openWebsite, child: _infoRow(icon: Icons.language, title: "Website", value: widget.item.website!, valueColor: Colors.blue)),
+                      if (widget.item.address != null) _infoRow(iconAsset: 'assets/images/location.png', title: "Address", value: widget.item.address!),
+                      _infoRow(iconAsset: 'assets/images/location.png', title: "City", value: widget.item.city),
+                      if (widget.item.phone != null) _infoRow(iconAsset: 'assets/images/call.png', title: "Phone", value: widget.item.phone!),
+                      if (widget.item.email != null) _infoRow(iconAsset: 'assets/images/msg.png', title: "Email", value: widget.item.email!, valueColor: Colors.blue),
+                      if (widget.item.website != null) InkWell(onTap: _openWebsite, child: _infoRow(iconAsset: 'assets/images/link.png', title: "Website", value: widget.item.website!, valueColor: Colors.blue)),
                     ],
                   ),
                 ),
@@ -205,7 +239,12 @@ ${widget.item.priceRange != null ? 'ðŸ’° ${widget.item.priceRange}' : ''}
                       height: 56,
                       child: OutlinedButton.icon(
                         onPressed: _makePhoneCall,
-                        icon: const Icon(Icons.phone, color: Color(0xFF4F7F67)),
+                        icon: Image.asset(
+                          'assets/images/call.png',
+                          height: 20,
+                          width: 20,
+                          color: const Color(0xFF4F7F67),
+                        ),
                         label: const Text("Call", style: TextStyle(fontSize: 16, color: Color(0xFF4F7F67), fontWeight: FontWeight.bold)),
                         style: OutlinedButton.styleFrom(side: const BorderSide(color: Color(0xFF4F7F67)), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18))),
                       ),
@@ -240,13 +279,18 @@ ${widget.item.priceRange != null ? 'ðŸ’° ${widget.item.priceRange}' : ''}
     );
   }
 
-  Widget _infoRow({required IconData icon, required String title, required String value, Color? valueColor}) {
+  Widget _infoRow({required String iconAsset, required String title, required String value, Color? valueColor}) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, size: 20, color: const Color(0xFF4E7F6D)),
+          Image.asset(
+            iconAsset,
+            height: 20,
+            width: 20,
+            color: const Color(0xFF4E7F6D),
+          ),
           const SizedBox(width: 12),
           Expanded(
             child: Column(

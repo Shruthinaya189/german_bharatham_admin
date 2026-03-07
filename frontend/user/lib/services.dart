@@ -193,9 +193,21 @@ class _ServiceCardState extends State<ServiceCard> {
               child: widget.item.image != null && widget.item.image!.isNotEmpty
                   ? ClipRRect(
                       borderRadius: BorderRadius.circular(10),
-                      child: Image.network(widget.item.image!, fit: BoxFit.cover, errorBuilder: (_, _, _) => const Icon(Icons.business, color: Colors.grey)),
+                      child: Image.network(
+                        widget.item.image!,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => Image.asset(
+                          'assets/images/service.jpg',
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+                        ),
+                      ),
                     )
-                  : const Icon(Icons.business, color: Colors.grey, size: 30),
+                  : Image.asset(
+                      'assets/images/service.jpg',
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+                    ),
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -209,7 +221,13 @@ class _ServiceCardState extends State<ServiceCard> {
                   const SizedBox(height: 6),
                   Row(
                     children: [
-                      Image.asset('assets/images/location.png', width: 16, height: 16),
+                      Image.asset(
+                        'assets/images/location.png',
+                        width: 16,
+                        height: 16,
+                        color: Colors.grey,
+                        errorBuilder: (_, __, ___) => const SizedBox(width: 16, height: 16),
+                      ),
                       const SizedBox(width: 4),
                       Expanded(child: Text(widget.item.city, style: const TextStyle(color: Colors.grey, fontSize: 12))),
                     ],
@@ -234,7 +252,12 @@ class _ServiceCardState extends State<ServiceCard> {
             ),
             InkWell(
               onTap: _toggleSave,
-              child: Icon(isSaved ? Icons.bookmark : Icons.bookmark_border, color: isSaved ? const Color(0xFF4E7F6D) : Colors.grey, size: 22),
+              child: Image.asset(
+                'assets/images/bookmark.png',
+                width: 22,
+                height: 22,
+                color: isSaved ? const Color(0xFF4E7F6D) : Colors.grey,
+              ),
             ),
           ],
         ),

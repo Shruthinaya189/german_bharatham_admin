@@ -148,19 +148,55 @@ CategoryTile(
         },
         items: [
           BottomNavigationBarItem(
-            icon: Image.asset('assets/images/home.png', height: 24),
+            icon: Image.asset(
+              'assets/images/home.png',
+              height: 24,
+              color: _currentIndex == 0 ? HomePage.primaryGreen : Colors.grey,
+              errorBuilder: (_, __, ___) => Image.asset(
+                'assets/images/warning.png',
+                height: 24,
+                color: _currentIndex == 0 ? HomePage.primaryGreen : Colors.grey,
+              ),
+            ),
             label: "Home",
           ),
           BottomNavigationBarItem(
-            icon: Image.asset('assets/images/search.png', height: 24),
+            icon: Image.asset(
+              'assets/images/search.png',
+              height: 24,
+              color: _currentIndex == 1 ? HomePage.primaryGreen : Colors.grey,
+              errorBuilder: (_, __, ___) => Image.asset(
+                'assets/images/warning.png',
+                height: 24,
+                color: _currentIndex == 1 ? HomePage.primaryGreen : Colors.grey,
+              ),
+            ),
             label: "Search",
           ),
           BottomNavigationBarItem(
-            icon: Image.asset('assets/images/bookmark.png', height: 24),
+            icon: Image.asset(
+              'assets/images/bookmark.png',
+              height: 24,
+              color: _currentIndex == 2 ? HomePage.primaryGreen : Colors.grey,
+              errorBuilder: (_, __, ___) => Image.asset(
+                'assets/images/warning.png',
+                height: 24,
+                color: _currentIndex == 2 ? HomePage.primaryGreen : Colors.grey,
+              ),
+            ),
             label: "Saved",
           ),
           BottomNavigationBarItem(
-            icon: Image.asset('assets/images/profile.png', height: 24),
+            icon: Image.asset(
+              'assets/images/profile.png',
+              height: 24,
+              color: _currentIndex == 3 ? HomePage.primaryGreen : Colors.grey,
+              errorBuilder: (_, __, ___) => Image.asset(
+                'assets/images/warning.png',
+                height: 24,
+                color: _currentIndex == 3 ? HomePage.primaryGreen : Colors.grey,
+              ),
+            ),
             label: "Profile",
           ),
         ],

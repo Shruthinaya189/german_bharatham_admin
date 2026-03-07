@@ -105,7 +105,12 @@ class _JobDetailsPageState extends State<JobDetailsPage> {
                   ),
                   IconButton(
                     onPressed: _shareItem,
-                    icon: const Icon(Icons.share, color: Colors.black),
+                    icon: Image.asset(
+                      'assets/images/share.png',
+                      height: 22,
+                      width: 22,
+                      color: Colors.black,
+                    ),
                     iconSize: 22,
                     padding: EdgeInsets.zero,
                     constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
@@ -138,7 +143,12 @@ class _JobDetailsPageState extends State<JobDetailsPage> {
               // Row 3: Location (left), Salary (right)
               Row(
                 children: [
-                  const Icon(Icons.location_on, size: 18, color: Colors.grey),
+                  Image.asset(
+                    'assets/images/location.png',
+                    height: 18,
+                    width: 18,
+                    color: Colors.grey,
+                  ),
                   const SizedBox(width: 4),
                   Expanded(
                     child: Text(

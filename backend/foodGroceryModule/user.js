@@ -192,8 +192,4 @@ router.get("/:id/ratings", async (req, res) => {
   }
 });
 
-<<<<<<< HEAD
 module.exports = router;
-=======
-module.exports = router;
->>>>>>> 6f65e9b (local changes before pull)

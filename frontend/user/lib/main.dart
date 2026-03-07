@@ -6,11 +6,23 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'user_session.dart';
+import 'saved_food_manager.dart';
+import 'saved_job_manager.dart';
 import 'saved_manager.dart';
+import 'saved_service_manager.dart';
 import 'user_profiles_page.dart';
 
-void main() {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Ensure saved/bookmarked items are loaded before the UI renders.
+  await Future.wait([
+    SavedManager.instance.initialize(),
+    SavedFoodManager.instance.initialize(),
+    SavedJobManager.instance.initialize(),
+    SavedServiceManager.instance.initialize(),
+  ]);
+
   runApp(const MyApp());
 }
 
@@ -109,11 +121,12 @@ class WelcomeScreen extends StatelessWidget {
     height: 32,
     fit: BoxFit.cover,
     errorBuilder: (context, error, stackTrace) {
-      return const Icon(
-        Icons.location_on,
-        color: Color(0xFF2E7D32),
-        size: 20,
-      );
+                return Image.asset(
+                  'assets/images/location.png',
+                  width: 20,
+                  height: 20,
+                  color: const Color(0xFF2E7D32),
+                );
     },
   ),
 ),

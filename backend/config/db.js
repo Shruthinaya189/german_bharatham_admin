@@ -1,8 +1,18 @@
 const mongoose = require("mongoose");
 const dns = require("dns");
 
-// Set DNS resolver to use Google DNS
-dns.setServers(["8.8.8.8", "1.1.1.1"]);
+// Optional custom DNS servers for MongoDB SRV lookups.
+// Some networks block public DNS (8.8.8.8/1.1.1.1), which can cause querySrv timeouts.
+// If you need to override DNS, set:
+//   DNS_SERVERS=8.8.8.8,1.1.1.1
+const dnsServers = (process.env.DNS_SERVERS || "")
+  .split(",")
+  .map((s) => s.trim())
+  .filter(Boolean);
+
+if (dnsServers.length > 0) {
+  dns.setServers(dnsServers);
+}
 
 const connectDB = async () => {
   try {

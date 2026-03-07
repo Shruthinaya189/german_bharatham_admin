@@ -68,6 +68,7 @@ class AccommodationDetailPage extends StatelessWidget {
                               'assets/images/location.png',
                               width: 14,
                               height: 14,
+                              color: const Color(0xFF7A7A7A),
                             ),
                             const SizedBox(width: 4),
                             Text(
@@ -238,7 +239,14 @@ class AccommodationDetailPage extends StatelessWidget {
       width: double.infinity,
       height: height,
       color: Colors.grey[200],
-      child: const Icon(Icons.home, color: Colors.grey, size: 80),
+      child: Center(
+        child: Image.asset(
+          'assets/images/accommodation.png',
+          width: 110,
+          height: 110,
+          fit: BoxFit.contain,
+        ),
+      ),
     );
   }
 
