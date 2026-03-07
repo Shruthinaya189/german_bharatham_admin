@@ -10,7 +10,7 @@ const app = express();
 // Middleware
 const allowedOrigins = [
   "http://localhost:3000",
-  process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null,
+  "https://germanbharatham.vercel.app/",
   process.env.FRONTEND_URL,
 ].filter(Boolean);
 
