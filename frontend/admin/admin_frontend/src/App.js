@@ -3,7 +3,6 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import Login from './components/Login';
 import Dashboard from './components/Dashboard';
 import Listings from './components/Listings';
-import JobListings from './components/JobsListings';
 import Categories from './components/Categories';
 import AccommodationListings from './components/AccommodationListings';
 import FoodListings from './components/FoodListings';
@@ -39,7 +38,7 @@ function App() {
           <Route path="/" element={<Navigate to="/dashboard" />} />
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/listings" element={<Listings />} />
-          <Route path="/job-listings" element={<JobListings />} />
+          <Route path="/job-listings" element={<JobsListings />} />
           <Route path="/categories" element={<Categories />} />
           <Route path="/accommodation-listings" element={<AccommodationListings />} />
           <Route path="/food-listings" element={<FoodListings />} />
