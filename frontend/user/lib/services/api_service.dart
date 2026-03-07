@@ -2,10 +2,11 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../models/food_grocery_model.dart';
 import '../models/rating_model.dart';
+import 'api_config.dart';
 
 class ApiService {
   // Update this to your backend URL
-  static const String baseUrl = 'http://10.166.137.12:5000';
+  static const String baseUrl = ApiConfig.baseUrl;
   
   // For Android emulator use: http://10.0.2.2:5000
   // For iOS simulator use: http://localhost:5000
