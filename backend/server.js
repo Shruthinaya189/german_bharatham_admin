@@ -8,22 +8,10 @@ const { protect, adminOnly } = require("./middleware/auth");
 const app = express();
 
 // Middleware
-const allowedOrigins = [
-  "http://localhost:3000",
-  "https://germanbharatham.vercel.app/",
-  process.env.FRONTEND_URL,
-].filter(Boolean);
-
 app.use(cors({
-  origin: (origin, callback) => {
-    // Allow requests with no origin (mobile apps, curl, Render health checks)
-    if (!origin) return callback(null, true);
-    if (allowedOrigins.includes(origin) || origin.endsWith(".vercel.app")) {
-      return callback(null, true);
-    }
-    callback(new Error("Not allowed by CORS"));
-  },
-  credentials: true,
+  origin: "*",
+  methods: ["GET", "POST", "PUT", "DELETE"],
+  credentials: false,
 }));
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
@@ -66,6 +54,9 @@ app.use("/api/admin/community", require("./communityModule/admin/Routes/communit
 app.use("/api/custom-categories", protect, require("./categoryModule/admin"));
 
 // ── Utility routes ───────────────────────────────────────────────────────────
+app.get("/", (req, res) => {
+  res.send("German Bharatham Backend Running");
+});
 app.get("/api/health", (req, res) => {
   res.status(200).json({ message: "Server is running", status: "OK" });
 });
