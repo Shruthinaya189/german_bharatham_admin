@@ -10,6 +10,9 @@ import 'services.dart';
 import 'community.dart';
 import 'search.dart';
 import 'user_session.dart';
+import 'user_profiles_page.dart';
+import 'profile_pages/notifications.dart';
+import 'notification_manager.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -22,6 +25,12 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   int _currentIndex = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    NotificationManager.instance.refresh();
+  }
 
   ImageProvider _avatarProvider(String? photoBase64) {
     if (photoBase64 != null && photoBase64.trim().isNotEmpty) {
@@ -121,10 +130,12 @@ CategoryTile(
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex,
         type: BottomNavigationBarType.fixed,
+        selectedItemColor: HomePage.primaryGreen,
+        unselectedItemColor: Colors.grey,
         onTap: (index) async {
           setState(() => _currentIndex = index);
 
-          if (index == 2) {
+          if (index == 3) {
             Navigator.push(
               context,
               MaterialPageRoute(builder: (_) => const SavedPage()),
@@ -137,7 +148,13 @@ CategoryTile(
                   builder: (_) => const SearchPage()),
             );
           }
-          if (index == 3) {
+          else if (index == 2) {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (_) => const UserProfilesPage()),
+            );
+          }
+          if (index == 4) {
             await Navigator.push(
               context,
               MaterialPageRoute(builder: (_) => const ProfilePage()),
@@ -175,7 +192,7 @@ CategoryTile(
           ),
           BottomNavigationBarItem(
             icon: Image.asset(
-              'assets/images/bookmark.png',
+              'assets/images/social.png',
               height: 24,
               color: _currentIndex == 2 ? HomePage.primaryGreen : Colors.grey,
               errorBuilder: (_, __, ___) => Image.asset(
@@ -184,17 +201,30 @@ CategoryTile(
                 color: _currentIndex == 2 ? HomePage.primaryGreen : Colors.grey,
               ),
             ),
-            label: "Saved",
+            label: "Profiles",
           ),
           BottomNavigationBarItem(
             icon: Image.asset(
-              'assets/images/profile.png',
+              'assets/images/bookmark.png',
               height: 24,
               color: _currentIndex == 3 ? HomePage.primaryGreen : Colors.grey,
               errorBuilder: (_, __, ___) => Image.asset(
                 'assets/images/warning.png',
                 height: 24,
                 color: _currentIndex == 3 ? HomePage.primaryGreen : Colors.grey,
+              ),
+            ),
+            label: "Saved",
+          ),
+          BottomNavigationBarItem(
+            icon: Image.asset(
+              'assets/images/profile.png',
+              height: 24,
+              color: _currentIndex == 4 ? HomePage.primaryGreen : Colors.grey,
+              errorBuilder: (_, __, ___) => Image.asset(
+                'assets/images/warning.png',
+                height: 24,
+                color: _currentIndex == 4 ? HomePage.primaryGreen : Colors.grey,
               ),
             ),
             label: "Profile",
@@ -237,14 +267,44 @@ Widget _header() {
       ),
 
       // 🔔 Bell icon in header (NO AppBar)
-      IconButton(
-        icon: Image.asset(
-          'assets/images/bell.png',
-          width: 22,
-          height: 22,
-          color: HomePage.primaryGreen,
-        ),
-        onPressed: () {},
+      ValueListenableBuilder<int>(
+        valueListenable: NotificationManager.instance.unreadCount,
+        builder: (context, unread, _) {
+          return IconButton(
+            icon: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                Image.asset(
+                  'assets/images/bell.png',
+                  width: 22,
+                  height: 22,
+                  color: HomePage.primaryGreen,
+                ),
+                if (unread > 0)
+                  Positioned(
+                    right: -1,
+                    top: -1,
+                    child: Container(
+                      width: 9,
+                      height: 9,
+                      decoration: const BoxDecoration(
+                        color: Colors.red,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+            onPressed: () async {
+              await Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const NotificationsPage()),
+              );
+              if (!mounted) return;
+              await NotificationManager.instance.refresh();
+            },
+          );
+        },
       ),
     ],
   );

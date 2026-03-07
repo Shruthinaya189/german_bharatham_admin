@@ -47,11 +47,14 @@ class _UserProfilesPageState extends State<UserProfilesPage> {
   bool isLoading = true;
   String? errorMessage;
   List<PublicUserProfile> users = [];
-  int index = 0;
+  int currentIndex = 0;
+  late final PageController _pageController;
 
   @override
   void initState() {
     super.initState();
+
+    _pageController = PageController(viewportFraction: 0.86);
 
     final currentUserId = UserSession.instance.userId;
     if (currentUserId != null) {
@@ -61,6 +64,12 @@ class _UserProfilesPageState extends State<UserProfilesPage> {
     }
 
     _loadUsers();
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
   }
 
   Future<void> _loadUsers() async {
@@ -89,8 +98,15 @@ class _UserProfilesPageState extends State<UserProfilesPage> {
         if (!mounted) return;
         setState(() {
           users = loaded;
-          index = 0;
+          currentIndex = 0;
           isLoading = false;
+        });
+
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted) return;
+          if (_pageController.hasClients) {
+            _pageController.jumpToPage(0);
+          }
         });
       } else {
         if (!mounted) return;
@@ -117,12 +133,17 @@ class _UserProfilesPageState extends State<UserProfilesPage> {
         return MemoryImage(base64Decode(raw));
       } catch (_) {}
     }
-    return const AssetImage('assets/images/profile.png');
+    return const AssetImage('assets/images/person.jpeg');
   }
 
   Future<void> _toggleLike(PublicUserProfile user) async {
     final nowLiked = await LikedUserManager.instance.toggle(user.id);
     if (!mounted) return;
+
+    if (nowLiked) {
+      // Fire-and-forget: store notification for the liked user (shows in their Notifications page)
+      _sendLikeNotification(user.id);
+    }
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -135,18 +156,22 @@ class _UserProfilesPageState extends State<UserProfilesPage> {
     setState(() {});
   }
 
-  void _prev() {
-    if (users.isEmpty) return;
-    setState(() {
-      index = (index - 1) < 0 ? users.length - 1 : index - 1;
-    });
-  }
+  Future<void> _sendLikeNotification(String targetUserId) async {
+    try {
+      final token = UserSession.instance.token;
+      if (token == null || token.trim().isEmpty) return;
 
-  void _next() {
-    if (users.isEmpty) return;
-    setState(() {
-      index = (index + 1) % users.length;
-    });
+      await http.post(
+        Uri.parse('${ApiConfig.baseUrl}/api/user/notifications/like'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode({'targetUserId': targetUserId}),
+      );
+    } catch (_) {
+      // Ignore: notifications are a best-effort enhancement
+    }
   }
 
   void _continueToHome() {
@@ -165,13 +190,13 @@ class _UserProfilesPageState extends State<UserProfilesPage> {
         _continueToHome();
       },
       child: Scaffold(
-        backgroundColor: const Color(0xFFF7FAFC),
+        backgroundColor: primaryGreen,
         appBar: AppBar(
-          backgroundColor: Colors.white,
+          backgroundColor: primaryGreen,
           elevation: 0,
           title: const Text(
             'Users',
-            style: TextStyle(color: Colors.black, fontWeight: FontWeight.w600),
+            style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
           ),
           centerTitle: true,
           automaticallyImplyLeading: false,
@@ -180,41 +205,6 @@ class _UserProfilesPageState extends State<UserProfilesPage> {
           padding: const EdgeInsets.all(16),
           child: Column(
             children: [
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.grey.shade200),
-                ),
-                child: Row(
-                  children: [
-                    Image.asset(
-                      'assets/images/profile.png',
-                      width: 20,
-                      height: 20,
-                      color: primaryGreen.withValues(alpha: 0.9),
-                    ),
-                    const SizedBox(width: 10),
-                    const Expanded(
-                      child: Text(
-                        'Browse user profiles',
-                        style: TextStyle(
-                          fontWeight: FontWeight.w600,
-                          color: Colors.black87,
-                        ),
-                      ),
-                    ),
-                    if (!isLoading && errorMessage == null && users.isNotEmpty)
-                      Text(
-                        '${index + 1}/${users.length}',
-                        style: const TextStyle(color: Colors.grey),
-                      ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 14),
               Expanded(
                 child: isLoading
                     ? const Center(
@@ -240,6 +230,17 @@ class _UserProfilesPageState extends State<UserProfilesPage> {
                                 child: _carousel(),
                               ),
               ),
+              if (!isLoading && errorMessage == null && users.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: Text(
+                    '${currentIndex + 1} / ${users.length}',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
               SizedBox(
                 width: double.infinity,
                 height: 54,
@@ -252,13 +253,25 @@ class _UserProfilesPageState extends State<UserProfilesPage> {
                       borderRadius: BorderRadius.circular(10),
                     ),
                   ),
-                  child: const Text(
-                    'Continue',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w600,
-                      fontSize: 16,
-                    ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Image.asset(
+                        'assets/images/left-arrow.png',
+                        width: 18,
+                        height: 18,
+                        color: Colors.white,
+                      ),
+                      const SizedBox(width: 10),
+                      const Text(
+                        'Back',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 16,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),
@@ -270,163 +283,208 @@ class _UserProfilesPageState extends State<UserProfilesPage> {
   }
 
   Widget _carousel() {
-    final user = users[index];
-    final liked = LikedUserManager.instance.isLiked(user.id);
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 460),
+        child: PageView.builder(
+          controller: _pageController,
+          itemCount: users.length,
+          onPageChanged: (i) {
+            setState(() => currentIndex = i);
+          },
+          itemBuilder: (context, i) {
+            final user = users[i];
+            final liked = LikedUserManager.instance.isLiked(user.id);
 
-    return Row(
-      children: [
-        IconButton(
-          onPressed: _prev,
-          padding: EdgeInsets.zero,
-          constraints: const BoxConstraints.tightFor(width: 44, height: 44),
-          icon: Image.asset(
-            'assets/images/left-arrow.png',
-            width: 18,
-            height: 18,
-            color: Colors.black54,
-          ),
-        ),
-        const SizedBox(width: 6),
-        Expanded(
-          child: Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 420),
-              child: Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(18),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: Colors.grey.shade200),
-                ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    CircleAvatar(
-                      radius: 64,
-                      backgroundImage: _avatarProvider(user.photoBase64),
-                      backgroundColor: const Color(0xFFF7FAFC),
-                    ),
-                    const SizedBox(height: 14),
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(14),
-                      decoration: BoxDecoration(
-                        color: primaryGreen.withValues(alpha: 0.10),
-                        borderRadius: BorderRadius.circular(14),
-                        border: Border.all(
-                          color: primaryGreen.withValues(alpha: 0.22),
-                        ),
-                      ),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            user.name,
-                            textAlign: TextAlign.center,
-                            style: const TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.w700,
-                              color: Colors.black87,
+            return AnimatedBuilder(
+              animation: _pageController,
+              builder: (context, child) {
+                double scale = 1.0;
+                if (_pageController.hasClients &&
+                    _pageController.position.haveDimensions) {
+                  final page = _pageController.page ??
+                      _pageController.initialPage.toDouble();
+                  final diff = (page - i).abs();
+                  scale = (1 - (diff * 0.08)).clamp(0.92, 1.0);
+                }
+                return Center(
+                  child: Transform.scale(
+                    scale: scale,
+                    child: child,
+                  ),
+                );
+              },
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                child: Material(
+                  elevation: 6,
+                  borderRadius: BorderRadius.circular(20),
+                  clipBehavior: Clip.antiAlias,
+                  child: Stack(
+                    children: [
+                      Positioned.fill(
+                        child: DecoratedBox(
+                          decoration: BoxDecoration(
+                            image: DecorationImage(
+                              image: _avatarProvider(user.photoBase64),
+                              fit: BoxFit.cover,
+                              alignment: Alignment.topCenter,
                             ),
                           ),
-                          const SizedBox(height: 12),
-                          if ((user.phone ?? '').trim().isNotEmpty)
-                            Padding(
-                              padding: const EdgeInsets.only(bottom: 6),
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
+                        ),
+                      ),
+                      Positioned.fill(
+                        child: DecoratedBox(
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                              colors: [
+                                Colors.black.withValues(alpha: 0.08),
+                                Colors.black.withValues(alpha: 0.00),
+                                Colors.black.withValues(alpha: 0.55),
+                              ],
+                              stops: const [0.0, 0.55, 1.0],
+                            ),
+                          ),
+                        ),
+                      ),
+                      Positioned(
+                        top: 12,
+                        right: 12,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: Colors.black.withValues(alpha: 0.35),
+                            borderRadius: BorderRadius.circular(999),
+                            border: Border.all(
+                              color: Colors.white.withValues(alpha: 0.25),
+                            ),
+                          ),
+                          child: Text(
+                            '${i + 1}/${users.length}',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ),
+                      Positioned(
+                        left: 14,
+                        right: 14,
+                        bottom: 14,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              user.name,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 26,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: 0.2,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            if ((user.phone ?? '').trim().isNotEmpty)
+                              Padding(
+                                padding: const EdgeInsets.only(bottom: 6),
+                                child: Row(
+                                  children: [
+                                    Image.asset(
+                                      'assets/images/call.png',
+                                      width: 16,
+                                      height: 16,
+                                      color: Colors.white,
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: Text(
+                                        user.phone!.trim(),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            if ((user.email ?? '').trim().isNotEmpty)
+                              Row(
                                 children: [
                                   Image.asset(
-                                    'assets/images/call.png',
+                                    'assets/images/msg.png',
                                     width: 16,
                                     height: 16,
-                                    color: primaryGreen.withValues(alpha: 0.85),
+                                    color: Colors.white,
                                   ),
                                   const SizedBox(width: 8),
-                                  Flexible(
+                                  Expanded(
                                     child: Text(
-                                      user.phone!.trim(),
+                                      user.email!.trim(),
+                                      maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
-                                      style: const TextStyle(color: Colors.black54),
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.w600,
+                                      ),
                                     ),
                                   ),
                                 ],
                               ),
-                            ),
-                          if ((user.email ?? '').trim().isNotEmpty)
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Image.asset(
-                                  'assets/images/msg.png',
-                                  width: 16,
-                                  height: 16,
-                                  color: primaryGreen.withValues(alpha: 0.85),
-                                ),
-                                const SizedBox(width: 8),
-                                Flexible(
-                                  child: Text(
-                                    user.email!.trim(),
-                                    overflow: TextOverflow.ellipsis,
-                                    style: const TextStyle(color: Colors.black54),
+                            const SizedBox(height: 12),
+                            SizedBox(
+                              width: double.infinity,
+                              height: 48,
+                              child: ElevatedButton(
+                                onPressed: () => _toggleLike(user),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.white,
+                                  foregroundColor: primaryGreen,
+                                  elevation: 0,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(14),
                                   ),
                                 ),
-                              ],
-                            ),
-                          const SizedBox(height: 18),
-                          SizedBox(
-                            width: double.infinity,
-                            height: 48,
-                            child: OutlinedButton.icon(
-                              onPressed: () => _toggleLike(user),
-                              style: OutlinedButton.styleFrom(
-                                side: BorderSide(
-                                  color: liked ? primaryGreen : Colors.grey.shade400,
-                                ),
-                                backgroundColor: Colors.white,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                              ),
-                              icon: Image.asset(
-                                'assets/images/star.png',
-                                width: 20,
-                                height: 20,
-                                color: liked ? primaryGreen : Colors.grey,
-                              ),
-                              label: Text(
-                                liked ? 'Liked' : 'Like',
-                                style: TextStyle(
-                                  color: liked ? primaryGreen : Colors.black54,
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 16,
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Image.asset(
+                                      'assets/images/star.png',
+                                      width: 20,
+                                      height: 20,
+                                      color: liked ? primaryGreen : Colors.grey,
+                                    ),
+                                    const SizedBox(width: 10),
+                                    Text(
+                                      liked ? 'Liked' : 'Like',
+                                      style: TextStyle(
+                                        color: liked ? primaryGreen : Colors.black87,
+                                        fontWeight: FontWeight.w800,
+                                        fontSize: 16,
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
-            ),
-          ),
+            );
+          },
         ),
-        const SizedBox(width: 6),
-        IconButton(
-          onPressed: _next,
-          padding: EdgeInsets.zero,
-          constraints: const BoxConstraints.tightFor(width: 44, height: 44),
-          icon: Image.asset(
-            'assets/images/right-arrow.png',
-            width: 18,
-            height: 18,
-            color: Colors.black54,
-          ),
-        ),
-      ],
+      ),
     );
   }
 }

@@ -1,9 +1,173 @@
-import 'package:flutter/material.dart';
+import 'dart:convert';
 
-class NotificationsPage extends StatelessWidget {
+import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+
+import '../services/api_config.dart';
+import '../user_session.dart';
+import '../notification_manager.dart';
+
+class AppNotification {
+  final String id;
+  final String title;
+  final String message;
+  final bool read;
+  final DateTime? createdAt;
+  final String? senderName;
+  final String? senderPhoto;
+
+  AppNotification({
+    required this.id,
+    required this.title,
+    required this.message,
+    required this.read,
+    required this.createdAt,
+    required this.senderName,
+    required this.senderPhoto,
+  });
+
+  factory AppNotification.fromJson(Map<String, dynamic> json) {
+    DateTime? parseDt(dynamic v) {
+      if (v == null) return null;
+      try {
+        return DateTime.parse(v.toString());
+      } catch (_) {
+        return null;
+      }
+    }
+
+    return AppNotification(
+      id: (json['_id'] ?? json['id'] ?? '').toString(),
+      title: (json['title'] ?? 'Notification').toString(),
+      message: (json['message'] ?? '').toString(),
+      read: (json['read'] ?? false) == true,
+      createdAt: parseDt(json['createdAt']),
+      senderName: json['senderName']?.toString(),
+      senderPhoto: json['senderPhoto']?.toString(),
+    );
+  }
+
+  AppNotification copyWith({bool? read}) {
+    return AppNotification(
+      id: id,
+      title: title,
+      message: message,
+      read: read ?? this.read,
+      createdAt: createdAt,
+      senderName: senderName,
+      senderPhoto: senderPhoto,
+    );
+  }
+}
+
+class NotificationsPage extends StatefulWidget {
   const NotificationsPage({super.key});
 
+  @override
+  State<NotificationsPage> createState() => _NotificationsPageState();
+}
+
+class _NotificationsPageState extends State<NotificationsPage> {
+  bool _loading = true;
+  String? _error;
+  List<AppNotification> _items = [];
+
   static const Color primaryGreen = Color(0xFF4E7F6D);
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+
+    try {
+      final token = UserSession.instance.token;
+      if (token == null || token.trim().isEmpty) {
+        throw Exception('Please login again');
+      }
+
+      final response = await http.get(
+        Uri.parse('${ApiConfig.baseUrl}/api/user/notifications'),
+        headers: {'Authorization': 'Bearer $token'},
+      );
+
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        final decoded = jsonDecode(response.body);
+        final list = decoded is List ? decoded : (decoded['data'] ?? []) as List;
+
+        setState(() {
+          _items = list
+              .whereType<Map<String, dynamic>>()
+              .map(AppNotification.fromJson)
+              .toList();
+          _loading = false;
+        });
+
+        NotificationManager.instance.refresh();
+        return;
+      }
+
+      final decoded = response.body.isNotEmpty ? jsonDecode(response.body) : null;
+      final msg = (decoded is Map && decoded['message'] != null)
+          ? decoded['message'].toString()
+          : 'Failed to load notifications';
+      throw Exception(msg);
+    } catch (e) {
+      setState(() {
+        _loading = false;
+        _error = e.toString();
+      });
+    }
+  }
+
+  Future<void> _markRead(AppNotification n) async {
+    if (n.read) return;
+    try {
+      final token = UserSession.instance.token;
+      if (token == null || token.trim().isEmpty) return;
+
+      await http.put(
+        Uri.parse('${ApiConfig.baseUrl}/api/user/notifications/${n.id}/read'),
+        headers: {'Authorization': 'Bearer $token'},
+      );
+
+      setState(() {
+        _items = _items
+            .map((x) => x.id == n.id ? x.copyWith(read: true) : x)
+            .toList();
+      });
+
+      NotificationManager.instance.refresh();
+    } catch (_) {
+      // best-effort
+    }
+  }
+
+  String _relativeTime(DateTime? dt) {
+    if (dt == null) return '';
+    final diff = DateTime.now().difference(dt);
+    if (diff.inSeconds < 60) return 'Just now';
+    if (diff.inMinutes < 60) return '${diff.inMinutes}m ago';
+    if (diff.inHours < 24) return '${diff.inHours}h ago';
+    if (diff.inDays < 7) return '${diff.inDays}d ago';
+    return '${dt.day}/${dt.month}/${dt.year}';
+  }
+
+  ImageProvider? _senderAvatar(String? photo) {
+    if (photo == null || photo.trim().isEmpty) return null;
+    try {
+      final raw = photo.contains(',') ? photo.split(',').last : photo;
+      return MemoryImage(base64Decode(raw));
+    } catch (_) {
+      return null;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -27,28 +191,52 @@ class NotificationsPage extends StatelessWidget {
         ),
       ),
 
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: const [
-          _NotificationTile(
-            title: "New Job Alert",
-            message: "A new job has been posted near your location",
-            time: "2m ago",
-            unread: true,
-          ),
-          _NotificationTile(
-            title: "Price Drop",
-            message: "Apartment price has been reduced",
-            time: "1h ago",
-            unread: true,
-          ),
-          _NotificationTile(
-            title: "Support",
-            message: "You have a new message from support",
-            time: "Yesterday",
-            unread: false,
-          ),
-        ],
+      body: RefreshIndicator(
+        color: primaryGreen,
+        onRefresh: _load,
+        child: _loading
+            ? const Center(
+                child: CircularProgressIndicator(color: primaryGreen),
+              )
+            : (_error != null)
+                ? ListView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    padding: const EdgeInsets.all(16),
+                    children: [
+                      Text(
+                        _error!,
+                        style: const TextStyle(color: Colors.grey),
+                      ),
+                    ],
+                  )
+                : (_items.isEmpty)
+                    ? ListView(
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        padding: const EdgeInsets.all(16),
+                        children: const [
+                          Text(
+                            'No notifications yet',
+                            style: TextStyle(color: Colors.grey),
+                          ),
+                        ],
+                      )
+                    : ListView.builder(
+                        padding: const EdgeInsets.all(16),
+                        itemCount: _items.length,
+                        itemBuilder: (context, index) {
+                          final n = _items[index];
+                          return GestureDetector(
+                            onTap: () => _markRead(n),
+                            child: _NotificationTile(
+                              title: n.title,
+                              message: n.message,
+                              time: _relativeTime(n.createdAt),
+                              unread: !n.read,
+                              avatar: _senderAvatar(n.senderPhoto),
+                            ),
+                          );
+                        },
+                      ),
       ),
     );
   }
@@ -59,12 +247,14 @@ class _NotificationTile extends StatelessWidget {
   final String message;
   final String time;
   final bool unread;
+  final ImageProvider? avatar;
 
   const _NotificationTile({
     required this.title,
     required this.message,
     required this.time,
     required this.unread,
+    this.avatar,
   });
 
   static const Color primaryGreen = Color(0xFF4E7F6D);
@@ -91,12 +281,15 @@ class _NotificationTile extends StatelessWidget {
           CircleAvatar(
             radius: 22,
             backgroundColor: const Color(0xFFEAF2EF),
-            child: Image.asset(
-              'assets/images/msg.png',
-              width: 20,
-              height: 20,
-              color: primaryGreen,
-            ),
+            backgroundImage: avatar,
+            child: avatar == null
+                ? Image.asset(
+                    'assets/images/msg.png',
+                    width: 20,
+                    height: 20,
+                    color: primaryGreen,
+                  )
+                : null,
           ),
 
           const SizedBox(width: 12),

@@ -10,6 +10,7 @@ import 'saved_food_manager.dart';
 import 'saved_job_manager.dart';
 import 'saved_manager.dart';
 import 'saved_service_manager.dart';
+import 'home.dart';
 import 'user_profiles_page.dart';
 
 Future<void> main() async {
@@ -949,7 +950,7 @@ class _SplashScreenState extends State<SplashScreen> {
         context,
         MaterialPageRoute(
           builder: (_) => UserSession.instance.isLoggedIn
-              ? const UserProfilesPage()
+              ? const HomePage()
               : const WelcomeScreen(),
         ),
       );

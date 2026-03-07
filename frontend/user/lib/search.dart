@@ -19,6 +19,7 @@ import 'services/api_config.dart';
 import 'saved_food_manager.dart';
 import 'saved_job_manager.dart';
 import 'saved_service_manager.dart';
+import 'user_profiles_page.dart';
 
 class SearchPage extends StatefulWidget {
   const SearchPage({super.key});
@@ -486,6 +487,8 @@ class _SearchPageState extends State<SearchPage> {
         backgroundColor: Colors.transparent,
         elevation: 0,
         type: BottomNavigationBarType.fixed,
+        selectedItemColor: const Color(0xFF4E7F6D),
+        unselectedItemColor: Colors.grey,
         onTap: (index) {
           if (index == 0) {
             Navigator.pushReplacement(
@@ -493,9 +496,15 @@ class _SearchPageState extends State<SearchPage> {
           }
           if (index == 2) {
             Navigator.pushReplacement(
-                context, MaterialPageRoute(builder: (_) => const SavedPage()));
+              context,
+              MaterialPageRoute(builder: (_) => const UserProfilesPage()),
+            );
           }
           if (index == 3) {
+            Navigator.pushReplacement(
+                context, MaterialPageRoute(builder: (_) => const SavedPage()));
+          }
+          if (index == 4) {
             Navigator.pushReplacement(
                 context, MaterialPageRoute(builder: (_) => const ProfilePage()));
           }
@@ -529,13 +538,26 @@ class _SearchPageState extends State<SearchPage> {
           ),
           BottomNavigationBarItem(
             icon: Image.asset(
-              'assets/images/bookmark.png',
+              'assets/images/social.png',
               height: 24,
               color: bottomIndex == 2 ? const Color(0xFF4E7F6D) : Colors.grey,
               errorBuilder: (_, __, ___) => Icon(
-                Icons.bookmark,
+                Icons.people,
                 size: 24,
                 color: bottomIndex == 2 ? const Color(0xFF4E7F6D) : Colors.grey,
+              ),
+            ),
+            label: 'Profiles',
+          ),
+          BottomNavigationBarItem(
+            icon: Image.asset(
+              'assets/images/bookmark.png',
+              height: 24,
+              color: bottomIndex == 3 ? const Color(0xFF4E7F6D) : Colors.grey,
+              errorBuilder: (_, __, ___) => Icon(
+                Icons.bookmark,
+                size: 24,
+                color: bottomIndex == 3 ? const Color(0xFF4E7F6D) : Colors.grey,
               ),
             ),
             label: 'Saved',
@@ -544,11 +566,11 @@ class _SearchPageState extends State<SearchPage> {
             icon: Image.asset(
               'assets/images/profile.png',
               height: 24,
-              color: bottomIndex == 3 ? const Color(0xFF4E7F6D) : Colors.grey,
+              color: bottomIndex == 4 ? const Color(0xFF4E7F6D) : Colors.grey,
               errorBuilder: (_, __, ___) => Icon(
                 Icons.person,
                 size: 24,
-                color: bottomIndex == 3 ? const Color(0xFF4E7F6D) : Colors.grey,
+                color: bottomIndex == 4 ? const Color(0xFF4E7F6D) : Colors.grey,
               ),
             ),
             label: 'Profile',

@@ -17,6 +17,7 @@ import 'profile_pages/edit_profile.dart';
 import 'user_session.dart';
 import 'saved_manager.dart';
 import 'main.dart';
+import 'user_profiles_page.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -26,7 +27,7 @@ class ProfilePage extends StatefulWidget {
 }
 
 class _ProfilePageState extends State<ProfilePage> {
-  int _currentIndex = 3;
+  int _currentIndex = 4;
 
   static const Color primaryGreen = Color(0xFF4E7F6D);
 
@@ -256,6 +257,8 @@ class _ProfilePageState extends State<ProfilePage> {
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex,
         type: BottomNavigationBarType.fixed,
+        selectedItemColor: primaryGreen,
+        unselectedItemColor: Colors.grey,
         onTap: (index) {
           if (index == _currentIndex) return;
 
@@ -274,6 +277,11 @@ class _ProfilePageState extends State<ProfilePage> {
                   builder: (_) => const SearchPage()),
             );
           } else if (index == 2) {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (_) => const UserProfilesPage()),
+            );
+          } else if (index == 3) {
             Navigator.pushReplacement(
               context,
               MaterialPageRoute(
@@ -310,7 +318,7 @@ class _ProfilePageState extends State<ProfilePage> {
           ),
           BottomNavigationBarItem(
             icon: Image.asset(
-              'assets/images/bookmark.png',
+              'assets/images/social.png',
               height: 24,
               color: _currentIndex == 2 ? primaryGreen : Colors.grey,
               errorBuilder: (_, __, ___) => Image.asset(
@@ -319,17 +327,30 @@ class _ProfilePageState extends State<ProfilePage> {
                 color: _currentIndex == 2 ? primaryGreen : Colors.grey,
               ),
             ),
-            label: "Saved",
+            label: "Profiles",
           ),
           BottomNavigationBarItem(
             icon: Image.asset(
-              'assets/images/profile.png',
+              'assets/images/bookmark.png',
               height: 24,
               color: _currentIndex == 3 ? primaryGreen : Colors.grey,
               errorBuilder: (_, __, ___) => Image.asset(
                 'assets/images/warning.png',
                 height: 24,
                 color: _currentIndex == 3 ? primaryGreen : Colors.grey,
+              ),
+            ),
+            label: "Saved",
+          ),
+          BottomNavigationBarItem(
+            icon: Image.asset(
+              'assets/images/profile.png',
+              height: 24,
+              color: _currentIndex == 4 ? primaryGreen : Colors.grey,
+              errorBuilder: (_, __, ___) => Image.asset(
+                'assets/images/warning.png',
+                height: 24,
+                color: _currentIndex == 4 ? primaryGreen : Colors.grey,
               ),
             ),
             label: "Profile",

@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:http/http.dart' as http;
 import '../user_session.dart';
-import '../accommodation.dart'; // for apiBaseUrl
+import '../services/api_config.dart';
 
 class EditProfilePage extends StatefulWidget {
   const EditProfilePage({super.key});
@@ -72,23 +72,36 @@ class _EditProfilePageState extends State<EditProfilePage> {
     setState(() => _saving = true);
     try {
       final token = UserSession.instance.token;
-      if (token != null) {
-        final body = <String, dynamic>{'name': name, 'phone': phone};
-        if (_photoBase64 != null) body['photo'] = _photoBase64;
-        await http.put(
-          Uri.parse('$apiBaseUrl/api/user/profile'),
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': 'Bearer $token',
-          },
-          body: jsonEncode(body),
-        );
+      if (token == null || token.trim().isEmpty) {
+        throw Exception('Missing auth token');
       }
-      await UserSession.instance.updateProfile(
-        name: name,
-        phone: phone,
-        photoBase64: _photoBase64,
+
+      final body = <String, dynamic>{'name': name, 'phone': phone};
+      if (_photoBase64 != null) body['photo'] = _photoBase64;
+
+      final response = await http.put(
+        Uri.parse('${ApiConfig.baseUrl}/api/user/profile'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode(body),
       );
+
+      final Map<String, dynamic>? updatedUser =
+          response.body.isNotEmpty ? jsonDecode(response.body) : null;
+
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        final msg = (updatedUser?['message'] ?? 'Failed to update profile').toString();
+        throw Exception(msg);
+      }
+
+      await UserSession.instance.updateProfile(
+        name: (updatedUser?['name'] ?? name).toString(),
+        phone: (updatedUser?['phone'] ?? phone).toString(),
+        photoBase64: updatedUser?['photo']?.toString() ?? _photoBase64,
+      );
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -99,12 +112,12 @@ class _EditProfilePageState extends State<EditProfilePage> {
         Navigator.pop(context);
       }
     } catch (_) {
-      await UserSession.instance.updateProfile(
-        name: name, phone: phone, photoBase64: _photoBase64);
       if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(const SnackBar(content: Text('Saved locally (offline)')));
-        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Could not save to server. Admin will not see this change.'),
+          ),
+        );
       }
     } finally {
       if (mounted) setState(() => _saving = false);
@@ -156,11 +169,6 @@ class _EditProfilePageState extends State<EditProfilePage> {
                           width: 16,
                           height: 16,
                           color: Colors.white,
-                          errorBuilder: (_, _, _) => const Icon(
-                            Icons.camera_alt,
-                            size: 16,
-                            color: Colors.white,
-                          ),
                         ),
                       ),
                     ),

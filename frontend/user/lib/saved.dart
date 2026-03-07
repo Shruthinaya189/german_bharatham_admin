@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'home.dart';
 import 'profile.dart';
 import 'search.dart';
+import 'user_profiles_page.dart';
 import 'accommodation.dart';
 import 'accommodation_details.dart';
 import 'food_details.dart';
@@ -26,7 +27,7 @@ class SavedPage extends StatefulWidget {
 }
 
 class _SavedPageState extends State<SavedPage> {
-  int _currentIndex = 2;
+  int _currentIndex = 3;
   int _selectedCategory = 0;
 
   Future<_SavedLists> _loadSaved() async {
@@ -283,6 +284,8 @@ class _SavedPageState extends State<SavedPage> {
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex,
         type: BottomNavigationBarType.fixed,
+        selectedItemColor: const Color(0xFF3A7D6B),
+        unselectedItemColor: Colors.grey,
         onTap: (index) {
           if (index == _currentIndex) return;
           setState(() => _currentIndex = index);
@@ -296,7 +299,12 @@ class _SavedPageState extends State<SavedPage> {
               context,
               MaterialPageRoute(builder: (_) => const SearchPage()),
             );
-          } else if (index == 3) {
+          } else if (index == 2) {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (_) => const UserProfilesPage()),
+            );
+          } else if (index == 4) {
             Navigator.pushReplacement(
               context,
               MaterialPageRoute(builder: (_) => const ProfilePage()),
@@ -332,7 +340,7 @@ class _SavedPageState extends State<SavedPage> {
           ),
           BottomNavigationBarItem(
             icon: Image.asset(
-              'assets/images/bookmark.png',
+              'assets/images/social.png',
               height: 24,
               color: _currentIndex == 2 ? const Color(0xFF3A7D6B) : Colors.grey,
               errorBuilder: (_, __, ___) => Image.asset(
@@ -341,17 +349,30 @@ class _SavedPageState extends State<SavedPage> {
                 color: _currentIndex == 2 ? const Color(0xFF3A7D6B) : Colors.grey,
               ),
             ),
-            label: "Saved",
+            label: "Profiles",
           ),
           BottomNavigationBarItem(
             icon: Image.asset(
-              'assets/images/profile.png',
+              'assets/images/bookmark.png',
               height: 24,
               color: _currentIndex == 3 ? const Color(0xFF3A7D6B) : Colors.grey,
               errorBuilder: (_, __, ___) => Image.asset(
                 'assets/images/warning.png',
                 height: 24,
                 color: _currentIndex == 3 ? const Color(0xFF3A7D6B) : Colors.grey,
+              ),
+            ),
+            label: "Saved",
+          ),
+          BottomNavigationBarItem(
+            icon: Image.asset(
+              'assets/images/profile.png',
+              height: 24,
+              color: _currentIndex == 4 ? const Color(0xFF3A7D6B) : Colors.grey,
+              errorBuilder: (_, __, ___) => Image.asset(
+                'assets/images/warning.png',
+                height: 24,
+                color: _currentIndex == 4 ? const Color(0xFF3A7D6B) : Colors.grey,
               ),
             ),
             label: "Profile",

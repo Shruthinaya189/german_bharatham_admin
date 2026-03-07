@@ -3,12 +3,26 @@ const userController = require("../controllers/userController");
 const express = require("express");
 const router = express.Router();
 const controller = require("../controllers/authController");
+const notificationController = require("../controllers/notificationController");
 
 router.post("/register", controller.register);
 router.post("/login", controller.login);
 router.get("/profile", protect, controller.getProfile);
 router.put("/profile", protect, controller.updateProfile);
 router.put("/change-password", protect, controller.changePassword);
+
+// Notifications (protected)
+router.get("/notifications", protect, notificationController.getMyNotifications);
+router.post(
+	"/notifications/like",
+	protect,
+	notificationController.createLikeNotification
+);
+router.put(
+	"/notifications/:id/read",
+	protect,
+	notificationController.markNotificationRead
+);
 // Public-safe user listing (no auth)
 router.get("/public-users", userController.getPublicUsers);
 // 👑 Admin Routes
