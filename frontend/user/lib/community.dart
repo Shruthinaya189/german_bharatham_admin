@@ -6,7 +6,6 @@ import 'models/community_model.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
-import 'services/api_config.dart';
 
 class CommunityPage extends StatefulWidget {
   const CommunityPage({super.key});
@@ -106,7 +105,7 @@ class _CommunityPageState extends State<CommunityPage> {
   Future<void> fetchGuides() async {
     try {
       final response = await http.get(
-        Uri.parse('${ApiConfig.baseUrl}/api/community'),
+        Uri.parse("http://10.166.137.12:5000/api/community"),
       );
 
       if (response.statusCode == 200) {

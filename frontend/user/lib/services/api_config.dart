@@ -7,7 +7,7 @@ class ApiConfig {
   // - Physical phone must use your PC's LAN IP (same Wi‑Fi) OR use `adb reverse`.
   static const String baseUrl = String.fromEnvironment(
     'API_BASE_URL',
-    defaultValue: 'https://german-bharatham-backend.onrender.com',
+    defaultValue: 'http://10.166.137.12:5000',
   );
   
   // API endpoints

@@ -1,4 +1,6 @@
 import 'dart:convert';
+import 'dart:math' as math;
+import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 import 'home.dart';
@@ -26,10 +28,28 @@ class ProfilePage extends StatefulWidget {
   State<ProfilePage> createState() => _ProfilePageState();
 }
 
-class _ProfilePageState extends State<ProfilePage> {
+class _ProfilePageState extends State<ProfilePage>
+    with SingleTickerProviderStateMixin {
   int _currentIndex = 4;
 
   static const Color primaryGreen = Color(0xFF4E7F6D);
+
+  late final AnimationController _bgController;
+
+  @override
+  void initState() {
+    super.initState();
+    _bgController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 18),
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _bgController.dispose();
+    super.dispose();
+  }
 
   ImageProvider _avatarProvider(String? photoBase64) {
     if (photoBase64 != null && photoBase64.trim().isNotEmpty) {
@@ -65,11 +85,30 @@ class _ProfilePageState extends State<ProfilePage> {
         automaticallyImplyLeading: false,
       ),
 
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
+      body: Stack(
+        children: [
+          Positioned.fill(
+            child: IgnorePointer(
+              child: RepaintBoundary(
+                child: AnimatedBuilder(
+                  animation: _bgController,
+                  builder: (context, _) {
+                    return CustomPaint(
+                      painter: _ProfileBackgroundPainter(
+                        t: _bgController.value,
+                        primary: primaryGreen,
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ),
+          ),
+          SingleChildScrollView(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
             /// 🔹 PROFILE CARD
             Container(
               padding: const EdgeInsets.all(12),
@@ -250,7 +289,9 @@ class _ProfilePageState extends State<ProfilePage> {
               ),
             ),
           ],
-        ),
+            ),
+          ),
+        ],
       ),
 
       /// 🔹 BOTTOM NAV
@@ -414,5 +455,127 @@ class _ProfilePageState extends State<ProfilePage> {
         ),
       ],
     );
+  }
+}
+
+class _ProfileBackgroundPainter extends CustomPainter {
+  final double t;
+  final Color primary;
+
+  _ProfileBackgroundPainter({
+    required this.t,
+    required this.primary,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final rect = Offset.zero & size;
+
+    // Soft base gradient (kept subtle so content remains readable).
+    final basePaint = Paint()
+      ..shader = LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: [
+          primary.withOpacity(0.10),
+          const Color(0xFFF7F8FA),
+          Colors.white,
+        ],
+        stops: const [0.0, 0.55, 1.0],
+      ).createShader(rect);
+    canvas.drawRect(rect, basePaint);
+
+    // Floating blurred blobs (unique, calm profile vibe).
+    final blobBlur = ui.MaskFilter.blur(ui.BlurStyle.normal, 46);
+    final blobPaint = Paint()..maskFilter = blobBlur;
+
+    final minSide = math.min(size.width, size.height);
+    final cx = size.width * 0.5;
+    final cy = size.height * 0.35;
+
+    void blob({
+      required double phase,
+      required double radiusFactor,
+      required double xAmp,
+      required double yAmp,
+      required double opacity,
+      required double lerp,
+    }) {
+      final a = (t * 2 * math.pi) + phase;
+      final x = cx + math.sin(a) * (size.width * xAmp);
+      final y = cy + math.cos(a * 0.9) * (size.height * yAmp);
+      final r = minSide * radiusFactor * (0.92 + 0.08 * math.sin(a * 1.3));
+      blobPaint.color = Color.lerp(primary, Colors.white, lerp)!
+          .withOpacity(opacity);
+      canvas.drawCircle(Offset(x, y), r, blobPaint);
+    }
+
+    blob(
+      phase: 0.3,
+      radiusFactor: 0.34,
+      xAmp: 0.18,
+      yAmp: 0.10,
+      opacity: 0.22,
+      lerp: 0.10,
+    );
+    blob(
+      phase: 2.1,
+      radiusFactor: 0.26,
+      xAmp: 0.22,
+      yAmp: 0.14,
+      opacity: 0.18,
+      lerp: 0.22,
+    );
+    blob(
+      phase: 4.2,
+      radiusFactor: 0.20,
+      xAmp: 0.16,
+      yAmp: 0.18,
+      opacity: 0.16,
+      lerp: 0.32,
+    );
+
+    // Subtle wave lines to add depth without distracting.
+    final wavePaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.2
+      ..color = primary.withOpacity(0.10);
+
+    Path wave({required double yBase, required double amp, required double f}) {
+      final p = Path();
+      final steps = 42;
+      for (int i = 0; i <= steps; i++) {
+        final x = size.width * (i / steps);
+        final y = yBase + math.sin((x / size.width) * math.pi * 2 * f + t * 2 * math.pi) * amp;
+        if (i == 0) {
+          p.moveTo(x, y);
+        } else {
+          p.lineTo(x, y);
+        }
+      }
+      return p;
+    }
+
+    canvas.drawPath(
+      wave(
+        yBase: size.height * 0.18,
+        amp: 10,
+        f: 1.2,
+      ),
+      wavePaint,
+    );
+    canvas.drawPath(
+      wave(
+        yBase: size.height * 0.82,
+        amp: 12,
+        f: 0.9,
+      ),
+      wavePaint..color = primary.withOpacity(0.08),
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant _ProfileBackgroundPainter oldDelegate) {
+    return oldDelegate.t != t || oldDelegate.primary != primary;
   }
 }

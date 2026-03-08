@@ -10,7 +10,6 @@ import 'saved_food_manager.dart';
 import 'saved_job_manager.dart';
 import 'saved_manager.dart';
 import 'saved_service_manager.dart';
-import 'services/api_config.dart';
 import 'home.dart';
 import 'user_profiles_page.dart';
 
@@ -317,75 +316,52 @@ class _AuthPageState extends State<AuthPage> {
     _passwordController.dispose();
     super.dispose();
   }
-  String _extractApiMessage(String body, {String fallback = 'Request failed'}) {
-    try {
-      final decoded = jsonDecode(body);
-      if (decoded is Map) {
-        final message = decoded['message'] ?? decoded['error'] ?? decoded['msg'];
-        if (message != null) return message.toString();
-      }
-    } catch (_) {}
-
-    final trimmed = body.trim();
-    if (trimmed.isNotEmpty && trimmed.length <= 200) return trimmed;
-    return fallback;
-  }
-
   Future<void> loginUser() async {
-    setState(() {
-      _loginError = null; // clear old error
-    });
+  setState(() {
+    _loginError = null; // clear old error
+  });
 
-    try {
-      final response = await http
-          .post(
-            Uri.parse(ApiConfig.loginEndpoint),
-            headers: {"Content-Type": "application/json"},
-            body: jsonEncode({
-              "email": _emailController.text.trim(),
-              "password": _passwordController.text.trim(),
-            }),
-          )
-          .timeout(const Duration(seconds: 15));
+  try {
+    final response = await http.post(
+      Uri.parse("http://10.166.137.12:5000/api/user/login"),
+      headers: {"Content-Type": "application/json"},
+      body: jsonEncode({
+        "email": _emailController.text.trim(),
+        "password": _passwordController.text.trim(),
+      }),
+    );
 
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        final user = data['user'];
-        await UserSession.instance.save(
-          userId: user['_id'].toString(),
-          token: data['token'].toString(),
-          name: user['name'].toString(),
-          email: user['email'].toString(),
-          phone: user['phone']?.toString(),
-          photoBase64: user['photo']?.toString(),
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      final user = data['user'];
+      await UserSession.instance.save(
+        userId: user['_id'].toString(),
+        token: data['token'].toString(),
+        name: user['name'].toString(),
+        email: user['email'].toString(),
+        phone: user['phone']?.toString(),
+        photoBase64: user['photo']?.toString(),
+      );
+      SavedManager.instance.switchUser(user['_id'].toString());
+      if (mounted) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (_) => const LocationPermissionPage(),
+          ),
         );
-        SavedManager.instance.switchUser(user['_id'].toString());
-        if (mounted) {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(
-              builder: (_) => const LocationPermissionPage(),
-            ),
-          );
-        }
-      } else {
-        setState(() {
-          _loginError = _extractApiMessage(
-            response.body,
-            fallback: 'Login failed (HTTP ${response.statusCode}).',
-          );
-        });
       }
-    } on TimeoutException {
+    } else {
       setState(() {
-        _loginError = "Request timeout. Please try again.";
-      });
-    } catch (e) {
-      setState(() {
-        _loginError = "Network error. Check internet / API URL.";
+        _loginError = "Username or Password is wrong. Try again.";
       });
     }
+  } catch (e) {
+    setState(() {
+      _loginError = "Server error. Please try again.";
+    });
   }
+}
   @override
   Widget build(BuildContext context) {
     const Color primaryGreen = Color(0xFF4E7F6D);
@@ -646,18 +622,16 @@ class _SignupPageState extends State<SignupPage> {
   });
 
   try {
-    final response = await http
-        .post(
-          Uri.parse(ApiConfig.registerEndpoint),
-          headers: {"Content-Type": "application/json"},
-          body: jsonEncode({
-            "name": _nameController.text.trim(),
-            "email": _emailController.text.trim(),
-            "phone": _phoneController.text.trim(),
-            "password": password,
-          }),
-        )
-        .timeout(const Duration(seconds: 15));
+    final response = await http.post(
+      Uri.parse("http://10.166.137.12:5000/api/user/register"),
+      headers: {"Content-Type": "application/json"},
+      body: jsonEncode({
+        "name": _nameController.text.trim(),
+        "email": _emailController.text.trim(),
+        "phone": _phoneController.text.trim(),
+        "password": password,
+      }),
+    );
 
     if (response.statusCode == 201) {
       final data = jsonDecode(response.body);
@@ -681,19 +655,12 @@ class _SignupPageState extends State<SignupPage> {
       }
     } else {
       setState(() {
-        _passwordError = _extractApiMessage(
-          response.body,
-          fallback: 'Signup failed (HTTP ${response.statusCode}).',
-        );
+        _passwordError = "Signup failed. Try again.";
       });
     }
-  } on TimeoutException {
-    setState(() {
-      _passwordError = "Request timeout. Please try again.";
-    });
   } catch (e) {
     setState(() {
-      _passwordError = "Network error. Check internet / API URL.";
+      _passwordError = "Server error. Try again.";
     });
   }
 }
