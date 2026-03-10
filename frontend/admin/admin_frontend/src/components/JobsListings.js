@@ -1,5 +1,6 @@
 import React from 'react';
 import GenericCategoryListings from './GenericCategoryListings';
+import API_URL from '../config';
 
 const JOBS_FIELDS = {
   title: 'jobTitle',
@@ -24,7 +25,7 @@ export default function JobsListings() {
   return (
     <GenericCategoryListings
       category="Jobs"
-      apiBase="https://german-bharatham-backend.onrender.com/api/jobs/admin"
+      apiBase={`${API_URL}/api/jobs/admin`}
       icon="💼"
       viewFields={JOBS_FIELDS}
     />

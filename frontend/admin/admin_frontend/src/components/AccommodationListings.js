@@ -4,8 +4,9 @@ import { useNavigate } from 'react-router-dom';
 import AddAccommodationModal from './AddAccommodationModal';
 import ViewAccommodationModal from './ViewAccommodationModal';
 import EditAccommodationModal from './EditAccommodationModal';
+import API_URL from '../config';
 
-const API = 'https://german-bharatham-backend.onrender.com/api/accommodation/admin';
+const API = `${API_URL}/api/accommodation/admin`;
 
 const STATUS_COLORS = {
   active:   { bg: '#d1fae5', color: '#065f46' },
@@ -101,8 +102,23 @@ const AccommodationListings = () => {
         <div>
           <button
             onClick={() => navigate('/categories')}
-            style={{ background:'none', border:'none', color:'#6b9976', cursor:'pointer',
-              display:'flex', alignItems:'center', gap:'8px', marginBottom:'10px', fontSize:'14px' }}
+            style={{ 
+              background: '#2d5a3d', 
+              border: 'none', 
+              color: '#fff', 
+              cursor: 'pointer', 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: 6, 
+              marginBottom: 8, 
+              fontSize: 14,
+              padding: '8px 16px',
+              borderRadius: 8,
+              fontWeight: 500,
+              transition: 'all 0.2s'
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.background = '#234a31'}
+            onMouseLeave={(e) => e.currentTarget.style.background = '#2d5a3d'}
           >
             <ArrowLeft size={16} /> Back to Categories
           </button>

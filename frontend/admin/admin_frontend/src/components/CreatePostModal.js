@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { X, Upload } from 'lucide-react';
+import API_URL from '../config';
 
 const CreatePostModal = ({ onClose, onPostCreated }) => {
   const [postData, setPostData] = useState({
@@ -38,12 +39,11 @@ const handleSubmit = async (e) => {
 
   const token = localStorage.getItem("adminToken");
   console.log("TOKEN:", token);
-  const BASE = "https://german-bharatham-backend.onrender.com";
 
   const parsed = parseContent(postData.content);
 
   try {
-    const response = await fetch(`${BASE}/api/admin/community`, {
+    const response = await fetch(`${API_URL}/api/admin/community`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

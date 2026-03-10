@@ -1,14 +1,13 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Plus, Edit2, Trash2, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-
-const BASE = 'https://german-bharatham-backend.onrender.com';
+import API_URL from '../config';
 
 const DEFAULT_CATEGORIES = [
-  { id: 'accommodation', name: 'Accommodation', icon: '🏠', description: 'Housing, apartments, student housing, and shared accommodations', api: `${BASE}/api/accommodation/admin`, route: '/accommodation-listings', status: 'active' },
-  { id: 'food', name: 'Food', icon: '🍴', description: 'Indian grocery stores, restaurants, and food delivery services', api: `${BASE}/api/food/admin`, route: '/food-listings', status: 'active' },
-  { id: 'services', name: 'Services', icon: '🔧', description: 'Immigration, legal, financial, and consultation services', api: `${BASE}/api/services/admin`, route: '/services-listings', status: 'disabled' },
-  { id: 'jobs', name: 'Jobs', icon: '💼', description: 'Job listings, career opportunities, and employment services', api: `${BASE}/api/jobs/admin`, route: '/jobs-listings', status: 'active' },
+  { id: 'accommodation', name: 'Accommodation', icon: '🏠', description: 'Housing, apartments, student housing, and shared accommodations', api: `${API_URL}/api/accommodation/admin`, route: '/accommodation-listings', status: 'active' },
+  { id: 'food', name: 'Food', icon: '🍴', description: 'Indian grocery stores, restaurants, and food delivery services', api: `${API_URL}/api/admin/foodgrocery`, route: '/food-listings', status: 'active' },
+  { id: 'services', name: 'Services', icon: '🔧', description: 'Immigration, legal, financial, and consultation services', api: `${API_URL}/api/services/admin`, route: '/services-listings', status: 'disabled' },
+  { id: 'jobs', name: 'Jobs', icon: '💼', description: 'Job listings, career opportunities, and employment services', api: `${API_URL}/api/jobs/admin`, route: '/jobs-listings', status: 'active' },
 ];
 
 const CategoryFormModal = ({ title, initial, onClose, onSave }) => {

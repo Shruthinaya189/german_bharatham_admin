@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { X, Upload, MapPin, Phone, Mail, Globe, Clock, DollarSign } from 'lucide-react';
+import API_URL from '../config';
 
 const AddFoodGroceryModal = ({ onClose, onSuccess }) => {
   const [formData, setFormData] = useState({
@@ -112,7 +113,7 @@ const AddFoodGroceryModal = ({ onClose, onSuccess }) => {
         category: 'Food'
       };
       
-      const response = await fetch('https://german-bharatham-backend.onrender.com/api/food/admin', {
+      const response = await fetch(`${API_URL}/api/admin/foodgrocery`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

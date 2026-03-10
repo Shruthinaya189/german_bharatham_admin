@@ -3,6 +3,7 @@ import { Plus, Edit, Trash2, ChevronLeft, ChevronRight, Search, Eye } from 'luci
 import AddFoodGroceryModal from './AddFoodGroceryModal';
 import EditFoodGroceryModal from './EditFoodGroceryModal';
 import ViewFoodGroceryModal from './ViewFoodGroceryModal';
+import API_URL from '../config';
 
 const FoodGrocery = () => {
   const [showAddModal, setShowAddModal] = useState(false);
@@ -22,8 +23,8 @@ const FoodGrocery = () => {
   const fetchListings = async () => {
     try {
       setLoading(true);
-      const token = localStorage.getItem('token');
-      const response = await fetch('https://german-bharatham-backend.onrender.com/api/food/admin', {
+      const token = localStorage.getItem('adminToken');
+      const response = await fetch(`${API_URL}/api/admin/foodgrocery`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -49,8 +50,8 @@ const FoodGrocery = () => {
     if (!window.confirm('Are you sure you want to delete this listing?')) return;
     
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`https://german-bharatham-backend.onrender.com/api/food/admin/${id}`, {
+      const token = localStorage.getItem('adminToken');
+      const response = await fetch(`${API_URL}/api/admin/foodgrocery/${id}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`

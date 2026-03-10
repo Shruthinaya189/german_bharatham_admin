@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import API_URL from '../config';
 
 const ITEMS_PER_PAGE = 10;
 
@@ -7,7 +8,7 @@ const Users = () => {
   const [filterBy, setFilterBy] = useState('all');
   const [users, setUsers]     = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
-  const BASE = "https://german-bharatham-backend.onrender.com";
+  const BASE = API_URL;
 
   const getUserPhotoSrc = (user) => {
     const p = user?.photo;

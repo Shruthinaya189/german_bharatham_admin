@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Plus, Edit, Trash2, ArrowLeft, Eye } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
+import API_URL from '../config';
 
-const BASE = 'https://german-bharatham-backend.onrender.com';
+const BASE = API_URL;
 
 const STATUS_COLORS = {
   active:   { bg: '#d1fae5', color: '#065f46' },

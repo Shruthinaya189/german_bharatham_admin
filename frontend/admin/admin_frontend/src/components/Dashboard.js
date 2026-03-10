@@ -1,13 +1,13 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Plus, TrendingUp, FolderOpen, Users, Clock } from 'lucide-react';
-import SimpleAddListingModal from './SimpleAddListingModal';
+import AddListingModal from './AddListingModal';
+import API_URL from '../config';
 
-const BASE = 'https://german-bharatham-backend.onrender.com';
 const CATEGORY_APIS = {
-  Accommodation: `${BASE}/api/accommodation/admin`,
-  Food:          `${BASE}/api/food/admin`,
-  Jobs:          `${BASE}/api/jobs/admin`,
-  Services:      `${BASE}/api/services/admin`,
+  Accommodation: `${API_URL}/api/accommodation/admin`,
+  Food:          `${API_URL}/api/admin/foodgrocery`,
+  Jobs:          `${API_URL}/api/jobs/admin`,
+  Services:      `${API_URL}/api/services/admin`,
 };
 
 const Dashboard = () => {
@@ -47,13 +47,13 @@ const Dashboard = () => {
 
     // ── 2. Custom category listings ──────────────────────────────────────────
     try {
-      const catsRes = await fetch(`${BASE}/api/custom-categories`, { headers });
+      const catsRes = await fetch(`${API_URL}/api/custom-categories`, { headers });
       if (catsRes.ok) {
         const customCats = await catsRes.json();
         // Fetch each category's listing count
         const customResults = await Promise.allSettled(
           customCats.map(c =>
-            fetch(`${BASE}/api/custom-categories/${c._id}/listings`, { headers })
+            fetch(`${API_URL}/api/custom-categories/${c._id}/listings`, { headers })
               .then(r => r.json())
               .then(d => ({ cat: c.name, count: d.count || 0, data: d.data || [] }))
           )
@@ -80,7 +80,7 @@ const Dashboard = () => {
 
     // ── 3. User count (customers only, no admins) ────────────────────────────
     try {
-      const ur = await fetch(`${BASE}/api/user/all-users`, { headers });
+      const ur = await fetch(`${API_URL}/api/user/all-users`, { headers });
       if (ur.ok) {
         const ud = await ur.json();
         setUserCount(Array.isArray(ud) ? ud.length : 0);
@@ -207,7 +207,7 @@ const Dashboard = () => {
       </div>
 
       {showAddModal && (
-        <SimpleAddListingModal
+        <AddListingModal
           onClose={() => setShowAddModal(false)}
           onSuccess={() => { setShowAddModal(false); fetchAll(); }}
         />

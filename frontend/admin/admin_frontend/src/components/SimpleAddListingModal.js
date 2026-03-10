@@ -1,7 +1,6 @@
 import React, { useState } from "react";
 import { X } from "lucide-react";
-
-const BASE = "https://german-bharatham-backend.onrender.com";
+import API_URL from '../config';
 
 const DEFAULT_AMENITIES = ["WiFi", "Parking", "Balcony", "Garden", "Elevator"];
 
@@ -113,7 +112,7 @@ const SimpleAddListingModal = ({ onClose, onSuccess }) => {
         adminControls: { isActive: form.status.toLowerCase() === "active" },
       };
 
-      const res = await fetch(`${BASE}/api/accommodation/admin`, {
+      const res = await fetch(`${API_URL}/api/accommodation/admin`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

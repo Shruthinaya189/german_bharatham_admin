@@ -1,23 +1,27 @@
 import React from 'react';
 import GenericCategoryListings from './GenericCategoryListings';
+import API_URL from '../config';
 
 const FOOD_FIELDS = {
-  title: 'name',
-  subKey: 'restaurantName',
-  subLabel: 'RESTAURANT',
+  title: 'title',
+  subKey: 'subCategory',
+  subLabel: 'SUB CATEGORY',
   rows: [
-    ['Name', 'name'],
-    ['Restaurant', 'restaurantName'],
-    ['Cuisine', 'cuisine'],
+    ['Name', 'title'],
+    ['Sub Category', 'subCategory'],
+    ['Type', 'type'],
     ['City', 'city'],
-    ['Area', 'area'],
-    ['Postal Code', 'postalCode'],
+    ['State', 'state'],
+    ['Zip Code', 'zipCode'],
     ['Address', 'address'],
-    ['Contact Phone', 'contactPhone'],
+    ['Phone', 'phone'],
+    ['Email', 'email'],
+    ['Website', 'website'],
     ['Price Range', 'priceRange'],
     ['Opening Hours', 'openingHours'],
+    ['Cuisine', 'cuisine'],
+    ['Specialties', 'specialties'],
     ['Description', 'description'],
-    ['Features / Amenities', 'amenities'],
     ['Status', 'status'],
   ],
 };
@@ -26,7 +30,7 @@ export default function FoodListings() {
   return (
     <GenericCategoryListings
       category="Food"
-      apiBase="https://german-bharatham-backend.onrender.com/api/food/admin"
+      apiBase={`${API_URL}/api/admin/foodgrocery`}
       icon="🍴"
       viewFields={FOOD_FIELDS}
     />

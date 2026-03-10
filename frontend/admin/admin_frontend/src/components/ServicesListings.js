@@ -1,6 +1,5 @@
 import React from 'react';
-import GenericCategoryListings from './GenericCategoryListings';
-
+import GenericCategoryListings from './GenericCategoryListings';import API_URL from '../config';
 const SERVICES_FIELDS = {
   title: 'serviceName',
   subKey: 'providerName',
@@ -24,7 +23,7 @@ export default function ServicesListings() {
   return (
     <GenericCategoryListings
       category="Services"
-      apiBase="https://german-bharatham-backend.onrender.com/api/services/admin"
+      apiBase={`${API_URL}/api/services/admin`}
       icon="🔧"
       viewFields={SERVICES_FIELDS}
     />

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Plus, ChevronRight } from "lucide-react";
 import CreatePostModal from "./CreatePostModal";
 import EditPostModal from "./EditPostModal";
+import API_URL from '../config';
 
 const Community = () => {
   const [view, setView] = useState("list");
@@ -9,7 +10,7 @@ const Community = () => {
   const [selectedPost, setSelectedPost] = useState(null);
   const [showEditModal, setShowEditModal] = useState(false);
 
-  const BASE = "https://german-bharatham-backend.onrender.com";
+  const BASE = API_URL;
 
   useEffect(() => {
     fetchPosts();

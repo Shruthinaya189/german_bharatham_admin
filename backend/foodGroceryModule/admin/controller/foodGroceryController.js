@@ -5,8 +5,8 @@ exports.getAllFoodGrocery = async (req, res) => {
   try {
     const items = await FoodGrocery.find().sort({ createdAt: -1 });
     console.log(`📊 Found ${items.length} food/grocery items`);
-    // Return in format expected by Dashboard: {data, count}
-    res.json(items);
+    // Return in format expected by frontend: {data, count}
+    res.json({ data: items, count: items.length });
   } catch (err) {
     console.error('Error fetching food items:', err);
     res.status(500).json({ message: err.message });

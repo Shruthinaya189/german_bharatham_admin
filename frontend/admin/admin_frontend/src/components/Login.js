@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Eye, EyeOff } from 'lucide-react';
+import API_URL from '../config';
 
 const Login = ({ onLogin }) => {
   const [email, setEmail] = useState('');
@@ -10,7 +11,7 @@ const Login = ({ onLogin }) => {
   e.preventDefault();
 
   try {
-    const response = await fetch("https://german-bharatham-backend.onrender.com/api/admin/login", {
+    const response = await fetch(`${API_URL}/api/admin/login`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -43,7 +44,7 @@ const fetchProtectedData = async () => {
 
   const token = localStorage.getItem("adminToken");
 
-const response = await fetch("https://german-bharatham-backend.onrender.com/api/admin/dashboard", {
+const response = await fetch(`${API_URL}/api/admin/dashboard`, {
   method: "GET",
   headers: {
     "Content-Type": "application/json",

@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { X } from 'lucide-react';
+import API_URL from '../config';
 
-const BASE = 'https://german-bharatham-backend.onrender.com';
+const BASE = API_URL;
 const DEFAULT_AMENITIES = ['WiFi', 'Parking', 'Balcony', 'Garden', 'Elevator'];
 
 const EditAccommodationModal = ({ accommodation: acc, onClose, onSuccess }) => {

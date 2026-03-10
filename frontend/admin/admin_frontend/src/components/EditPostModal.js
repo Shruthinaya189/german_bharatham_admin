@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { X, Upload } from "lucide-react";
+import API_URL from '../config';
 
 const EditPostModal = ({ post, onClose, onPostUpdated }) => {
   const [postData, setPostData] = useState({
@@ -9,7 +10,7 @@ const EditPostModal = ({ post, onClose, onPostUpdated }) => {
     content: "",
   });
 
-  const BASE = "https://german-bharatham-backend.onrender.com";
+  const BASE = API_URL;
 
   // 🔥 Convert DB data back into textarea format
   const buildContentString = (post) => {

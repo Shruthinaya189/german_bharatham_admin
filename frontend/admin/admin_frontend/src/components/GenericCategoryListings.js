@@ -6,7 +6,7 @@ import AddListingModal from './AddListingModal';
 const STATUS_COLORS = {
   active: { bg: '#d1fae5', color: '#065f46' },
   pending: { bg: '#fef3c7', color: '#92400e' },
-  disabled: { bg: '#f3f4f6', color: '#6b7280' },
+  disabled: { bg: '#fee2e2', color: '#991b1b' },
 };
 
 const Badge = ({ label, active }) => (
@@ -27,7 +27,7 @@ const ViewModal = ({ item, category, fields, onClose }) => {
     <div className="modal-overlay">
       <div className="modal-content modal-large" style={{ maxHeight: '90vh', overflowY: 'auto' }}>
         <div className="modal-header">
-          <h2>{item[fields.title] || 'Details'}</h2>
+          <h2 style={{ color: '#2d5a3d' }}>{item[fields.title] || 'Details'}</h2>
           <button className="close-btn" onClick={onClose}>✕</button>
         </div>
         {images.length > 0 && (
@@ -51,15 +51,15 @@ const ViewModal = ({ item, category, fields, onClose }) => {
             if (Array.isArray(val) && typeof val[0] === 'string') {
               return (
                 <div key={key} style={{ marginBottom: 10 }}>
-                  <span style={{ color: '#6b7280', minWidth: 140, display: 'inline-block' }}>{label}:</span>
+                  <span style={{ color: '#1f2937', fontWeight: 700, minWidth: 140, display: 'inline-block' }}>{label}:</span>
                   <div style={{ marginTop: 4 }}>{val.map(v => <Badge key={v} label={v} active />)}</div>
                 </div>
               );
             }
             return (
               <div key={key} style={{ display: 'flex', gap: 8, marginBottom: 6 }}>
-                <span style={{ color: '#6b7280', minWidth: 140 }}>{label}:</span>
-                <span style={{ color: '#111827', fontWeight: 500 }}>{String(val)}</span>
+                <span style={{ color: '#1f2937', fontWeight: 700, minWidth: 140 }}>{label}:</span>
+                <span style={{ color: '#6b7280', fontWeight: 400 }}>{String(val)}</span>
               </div>
             );
           })}
@@ -242,7 +242,23 @@ const GenericCategoryListings = ({ category, apiBase, icon, viewFields }) => {
       <div className="listings-header">
         <div>
           <button onClick={() => navigate('/categories')}
-            style={{ background: 'none', border: 'none', color: '#6b9976', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8, fontSize: 14 }}>
+            style={{ 
+              background: '#2d5a3d', 
+              border: 'none', 
+              color: '#fff', 
+              cursor: 'pointer', 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: 6, 
+              marginBottom: 8, 
+              fontSize: 14,
+              padding: '8px 16px',
+              borderRadius: 8,
+              fontWeight: 500,
+              transition: 'all 0.2s'
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.background = '#234a31'}
+            onMouseLeave={(e) => e.currentTarget.style.background = '#2d5a3d'}>
             <ArrowLeft size={16} /> Back to Categories
           </button>
           <h1>{icon} {category} Listings</h1>
@@ -284,8 +300,8 @@ const GenericCategoryListings = ({ category, apiBase, icon, viewFields }) => {
               {items.map(item => (
                 <tr key={item._id}>
                   <td>
-                    {(item.media?.images?.[0] || (item.images && item.images[0]))
-                      ? <img src={item.media?.images?.[0] || item.images[0]} alt=""
+                    {(item.media?.images?.[0] || item.images?.[0] || item.image)
+                      ? <img src={item.media?.images?.[0] || item.images?.[0] || item.image} alt=""
                           style={{ width: 56, height: 44, objectFit: 'cover', borderRadius: 6, border: '1px solid #e5e7eb' }} />
                       : <div style={{ width: 56, height: 44, background: '#f3f4f6', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18 }}>📷</div>
                     }
@@ -293,15 +309,27 @@ const GenericCategoryListings = ({ category, apiBase, icon, viewFields }) => {
                   <td className="listing-title">{getTitle(item)}</td>
                   <td>{getSub(item) || '—'}</td>
                   <td>{getLoc(item)}</td>
-                  <td>{item.contactPhone || '—'}</td>
+                  <td>{item.phone || item.contactPhone || '—'}</td>
                   <td>
                     <select
                       value={item.status || 'active'}
                       onChange={e => patchStatus(item._id, e.target.value)}
-                      style={{ padding: '3px 8px', borderRadius: 12, fontSize: 12, fontWeight: 600, border: '1px solid #e5e7eb', background: STATUS_COLORS[item.status || 'active']?.bg, color: STATUS_COLORS[item.status || 'active']?.color, cursor: 'pointer' }}>
-                      <option value="active">Active</option>
-                      <option value="pending">Pending</option>
-                      <option value="disabled">Disabled</option>
+                      style={{ 
+                        padding: '6px 24px 6px 10px', 
+                        borderRadius: 12, 
+                        fontSize: 12, 
+                        fontWeight: 600, 
+                        border: '1px solid #e5e7eb', 
+                        backgroundColor: (item.status === 'pending' ? '#fef3c7' : item.status === 'disabled' ? '#fee2e2' : '#d1fae5'),
+                        color: (item.status === 'pending' ? '#92400e' : item.status === 'disabled' ? '#991b1b' : '#065f46'),
+                        cursor: 'pointer',
+                        outline: 'none',
+                        appearance: 'auto',
+                        WebkitAppearance: 'auto'
+                      }}>
+                      <option value="active" style={{ backgroundColor: '#d1fae5', color: '#065f46' }}>Active</option>
+                      <option value="pending" style={{ backgroundColor: '#fef3c7', color: '#92400e' }}>Pending</option>
+                      <option value="disabled" style={{ backgroundColor: '#fee2e2', color: '#991b1b' }}>Disabled</option>
                     </select>
                   </td>
                   <td>{item.createdAt ? new Date(item.createdAt).toLocaleDateString('en-GB') : 'N/A'}</td>
@@ -324,6 +352,7 @@ const GenericCategoryListings = ({ category, apiBase, icon, viewFields }) => {
           onClose={() => setShowAdd(false)}
           onSuccess={() => fetchItems()}
           defaultCategory={category}
+          lockCategory={true}
         />
       )}
       {viewItem && (
