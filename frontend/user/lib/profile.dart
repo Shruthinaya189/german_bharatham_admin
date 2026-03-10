@@ -60,7 +60,7 @@ class _ProfilePageState extends State<ProfilePage>
         return MemoryImage(base64Decode(raw));
       } catch (_) {}
     }
-    return const AssetImage('assets/images/profile.jpg');
+    return const AssetImage('assets/images/profile.png');
   }
 
   @override

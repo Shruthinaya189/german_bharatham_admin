@@ -3,7 +3,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
-import '../accommodation.dart'; // apiBaseUrl
+import '../services/api_config.dart';
 import '../user_session.dart';
 
 class ChangePasswordPage extends StatefulWidget {
@@ -64,7 +64,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
     setState(() => _saving = true);
     try {
       final response = await http.put(
-        Uri.parse('$apiBaseUrl/api/user/change-password'),
+        Uri.parse('${ApiConfig.baseUrl}/api/user/change-password'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',

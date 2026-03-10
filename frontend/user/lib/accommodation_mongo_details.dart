@@ -383,13 +383,16 @@ class AccommodationMongoDetailsPage extends StatelessWidget {
                                     BoxShadow(color: Colors.black26, blurRadius: 4)
                                   ],
                                 ),
-                                child: const Row(
+                                child: Row(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
-                                    Icon(Icons.navigation,
-                                        size: 14, color: Color(0xFF1A56DB)),
-                                    SizedBox(width: 4),
-                                    Text(
+                                    Image.asset(
+                                      'assets/images/google.png',
+                                      width: 14,
+                                      height: 14,
+                                    ),
+                                    const SizedBox(width: 4),
+                                    const Text(
                                       'Open in Maps',
                                       style: TextStyle(
                                         fontSize: 12,
@@ -605,7 +608,12 @@ class _FallbackMapTile extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.location_on, color: Color(0xFF4E7F6D), size: 36),
+            Image.asset(
+              'assets/images/location.png',
+              width: 36,
+              height: 36,
+              color: const Color(0xFF4E7F6D),
+            ),
             const SizedBox(height: 8),
             Text(
               '${lat.toStringAsFixed(5)}, ${lon.toStringAsFixed(5)}',

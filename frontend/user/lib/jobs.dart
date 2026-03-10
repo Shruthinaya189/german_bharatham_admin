@@ -5,10 +5,7 @@ import 'models/job_model.dart';
 import 'saved_job_manager.dart';
 import 'job_details.dart';
 import 'jobs_filter_page.dart';
-
-// const String baseUrl = 'http://10.225.39.31:5000'; // Physical device on local network
-// const String baseUrl = 'http://10.0.2.2:5000'; // Android emulator
-const String baseUrl = 'http://localhost:5000'; // Web / iOS simulator
+import 'services/api_config.dart';
 
 class JobsPage extends StatefulWidget {
   const JobsPage({super.key});
@@ -36,7 +33,7 @@ class _JobsPageState extends State<JobsPage> {
     
     try {
       final response = await http.get(
-        Uri.parse('$baseUrl/api/jobs/user'),
+        Uri.parse(ApiConfig.jobsEndpoint),
       );
 
       if (response.statusCode == 200) {

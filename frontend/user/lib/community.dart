@@ -3,6 +3,7 @@ import 'guide_details.dart';
 import 'saved_guides_manager.dart';
 import 'community_filter_page.dart';
 import 'models/community_model.dart';
+import 'services/api_config.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
@@ -105,7 +106,7 @@ class _CommunityPageState extends State<CommunityPage> {
   Future<void> fetchGuides() async {
     try {
       final response = await http.get(
-        Uri.parse("http://localhost:5000/api/community"),
+        Uri.parse('${ApiConfig.baseUrl}/api/community'),
       );
 
       if (response.statusCode == 200) {

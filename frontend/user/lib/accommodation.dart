@@ -2,13 +2,10 @@ import 'package:flutter/material.dart';
 import 'accommodation_details.dart';
 import 'filter_page.dart';
 import 'saved_manager.dart';
+import 'services/api_config.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'dart:typed_data';
-import 'services/api_config.dart';
-
-// Use localhost for web, 10.0.2.2 for emulator, or machine IP for real device
-final String apiBaseUrl = ApiConfig.baseUrl;
 
 /// =======================
 /// DATA MODEL
@@ -116,20 +113,34 @@ class Accommodation {
       .map((word) => word[0].toUpperCase() + word.substring(1))
       .join(' ');
 
+    final String rawImage = (json['media']?['images'] != null &&
+            (json['media']['images'] as List).isNotEmpty)
+        ? (() {
+            final img = json['media']['images'][0];
+            if (img is String) return img;
+            if (img is Map) {
+              return (img['url'] ?? img['uri'] ?? 'assets/images/room.jpg')
+                  .toString();
+            }
+            return 'assets/images/room.jpg';
+          })()
+        : 'assets/images/room.jpg';
+
+    final String resolvedImageUrl = ApiConfig.getImageUrl(rawImage);
+    final String normalizedImage = (rawImage.startsWith('http') ||
+        rawImage.startsWith('data:image') ||
+        rawImage.startsWith('assets/'))
+      ? rawImage
+      : (resolvedImageUrl.isNotEmpty
+        ? resolvedImageUrl
+        : 'assets/images/room.jpg');
+
     return Accommodation(
       id: (json['_id'] ?? '').toString(),
       title: (json['title'] ?? 'Untitled').toString(),
       description: (json['description'] ?? '').toString(),
       location: location.isNotEmpty ? location : 'Location not specified',
-      image: (json['media']?['images'] != null && 
-             (json['media']['images'] as List).isNotEmpty)
-          ? (() {
-              final img = json['media']['images'][0];
-              if (img is String) return img;
-              if (img is Map) return (img['url'] ?? img['uri'] ?? 'assets/images/room.jpg').toString();
-              return 'assets/images/room.jpg';
-            })()
-          : 'assets/images/room.jpg',
+      image: normalizedImage,
       rating: 4.5, // Default rating since it's not in schema
       price: displayPrice,
       amenities: extractedAmenities.take(3).toList(),
@@ -260,7 +271,7 @@ class _AccommodationPageState extends State<AccommodationPage> {
     
     try {
       final response = await http.get(
-        Uri.parse('$apiBaseUrl/api/accommodation/user'),
+        Uri.parse(ApiConfig.accommodationEndpoint),
         headers: {
           'x-user-id': 'user123',
           'x-user-role': 'user',
@@ -536,9 +547,13 @@ class AccommodationCard extends StatelessWidget {
                         errorBuilder: (_, __, ___) => const Icon(Icons.location_on, size: 16, color: Color(0xFF4F7F67)),
                       ),
                       const SizedBox(width: 4),
-                      Text(
-                        accommodation.location,
-                        style: const TextStyle(color: Color(0xFF6B7280),fontSize: 12,fontWeight: FontWeight.w400,),
+                      Expanded(
+                        child: Text(
+                          accommodation.location,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(color: Color(0xFF6B7280),fontSize: 12,fontWeight: FontWeight.w400,),
+                        ),
                       ),
                     ],
                   ),

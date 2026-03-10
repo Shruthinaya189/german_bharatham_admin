@@ -67,26 +67,32 @@ class AccommodationDetailPage extends StatelessWidget {
 
                     /// LOCATION + PRICE
                     Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Row(
-                          children: [
-                            Image.asset(
-                              'assets/images/location.png',
-                              width: 14,
-                              height: 14,
-                              color: const Color(0xFF7A7A7A),
-                            ),
-                            const SizedBox(width: 4),
-                            Text(
-                              item.location,
-                              style: GoogleFonts.roboto(
-                                fontSize: 14,
+                        Expanded(
+                          child: Row(
+                            children: [
+                              Image.asset(
+                                'assets/images/location.png',
+                                width: 14,
+                                height: 14,
                                 color: const Color(0xFF7A7A7A),
                               ),
-                            ),
-                          ],
+                              const SizedBox(width: 4),
+                              Expanded(
+                                child: Text(
+                                  item.location,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: GoogleFonts.roboto(
+                                    fontSize: 14,
+                                    color: const Color(0xFF7A7A7A),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
+                        const SizedBox(width: 10),
                         Text(
                           "€${item.price} / per month",
                           style: GoogleFonts.roboto(
@@ -281,13 +287,17 @@ class AccommodationDetailPage extends StatelessWidget {
               borderRadius: BorderRadius.circular(12),
               border: Border.all(color: const Color(0xFF4E7F6D)),
             ),
-            child: const Center(
+            child: Center(
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.map_outlined, color: Color(0xFF4E7F6D)),
-                  SizedBox(width: 8),
-                  Text(
+                  Image.asset(
+                    'assets/images/google.png',
+                    width: 18,
+                    height: 18,
+                  ),
+                  const SizedBox(width: 8),
+                  const Text(
                     'Open location in Google Maps',
                     style: TextStyle(
                       fontSize: 14,
@@ -629,13 +639,16 @@ class _AccommodationMapWidgetState extends State<_AccommodationMapWidget> {
                       BoxShadow(color: Colors.black26, blurRadius: 4)
                     ],
                   ),
-                  child: const Row(
+                  child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.navigation,
-                          size: 14, color: Color(0xFF1A56DB)),
-                      SizedBox(width: 4),
-                      Text(
+                      Image.asset(
+                        'assets/images/google.png',
+                        width: 14,
+                        height: 14,
+                      ),
+                      const SizedBox(width: 4),
+                      const Text(
                         'Open in Google Maps',
                         style: TextStyle(
                           fontSize: 12,
