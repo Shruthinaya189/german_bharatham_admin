@@ -217,6 +217,21 @@ exports.forgotPassword = async (req, res) => {
       return res.status(200).json({ message: "If the email exists, a reset link was sent." });
     }
 
+    // If SMTP isn't configured, optionally return the link in dev.
+    if (!hasSmtpConfig()) {
+      console.warn(
+        "[forgotPassword] SMTP not configured; set SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, SMTP_FROM"
+      );
+      if (devReturnLink) {
+        console.log("[DEV] Password reset link:", resetLink);
+        return res.status(200).json({
+          message: "SMTP not configured; returning reset link for dev.",
+          resetLink,
+        });
+      }
+      return res.status(200).json({ message: "If the email exists, a reset link was sent." });
+    }
+
     const subject = "Reset your German Bharatham password";
     const text = `You requested a password reset. Open this link to set a new password: ${resetLink}`;
     const html = `
@@ -225,27 +240,10 @@ exports.forgotPassword = async (req, res) => {
       <p>This link expires in 1 hour.</p>
     `;
 
-    try {
-      await sendMail({ to: user.email, subject, text, html });
-    } catch (mailErr) {
-      // Never fail the response (avoid leaking which emails exist); log for debugging.
-      if (mailErr && mailErr.code === "SMTP_NOT_CONFIGURED") {
-        console.warn(
-          "[forgotPassword] SMTP not configured; set SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, SMTP_FROM"
-        );
-        if (devReturnLink) {
-          console.log("[DEV] Password reset link:", resetLink);
-          return res.status(200).json({
-            message: "SMTP not configured; returning reset link for dev.",
-            resetLink,
-          });
-        }
-        return res.status(200).json({ message: "If the email exists, a reset link was sent." });
-      }
-
+    // Fire-and-forget email send so hosted environments don't time out the HTTP request.
+    sendMail({ to: user.email, subject, text, html }).catch((mailErr) => {
       console.error("[forgotPassword] Failed to send reset email:", mailErr);
-      return res.status(200).json({ message: "If the email exists, a reset link was sent." });
-    }
+    });
 
     return res.status(200).json({ message: "If the email exists, a reset link was sent." });
   } catch (error) {
