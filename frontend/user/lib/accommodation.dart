@@ -5,9 +5,10 @@ import 'saved_manager.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'dart:typed_data';
+import 'services/api_config.dart';
 
 // Use localhost for web, 10.0.2.2 for emulator, or machine IP for real device
-const String apiBaseUrl = 'http://localhost:5000';
+final String apiBaseUrl = ApiConfig.baseUrl;
 
 /// =======================
 /// DATA MODEL
