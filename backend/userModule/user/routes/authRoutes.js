@@ -7,6 +7,8 @@ const notificationController = require("../controllers/notificationController");
 
 router.post("/register", controller.register);
 router.post("/login", controller.login);
+router.post("/forgot-password", controller.forgotPassword);
+router.post("/reset-password", controller.resetPassword);
 router.get("/profile", protect, controller.getProfile);
 router.put("/profile", protect, controller.updateProfile);
 router.put("/change-password", protect, controller.changePassword);
