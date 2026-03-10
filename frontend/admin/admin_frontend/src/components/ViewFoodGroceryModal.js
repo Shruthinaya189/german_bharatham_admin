@@ -187,6 +187,44 @@ const ViewFoodGroceryModal = ({ item, onClose, onEdit }) => {
             </div>
           </div>
 
+          {/* Map Preview */}
+          {item.latitude && item.longitude && (
+            <div className="view-section">
+              <h3>
+                <MapPin size={18} />
+                Location Map
+              </h3>
+              <div
+                onClick={() => {
+                  const url = `https://www.google.com/maps/dir/?api=1&destination=${item.latitude},${item.longitude}`;
+                  window.open(url, '_blank', 'noopener,noreferrer');
+                }}
+                title="Click to open Google Maps navigation"
+                style={{
+                  position: 'relative', cursor: 'pointer', borderRadius: 10,
+                  overflow: 'hidden', border: '2px solid #4caf50',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.12)'
+                }}
+              >
+                <iframe
+                  title="food-map"
+                  src={`https://www.openstreetmap.org/export/embed.html?bbox=${item.longitude - 0.015},${item.latitude - 0.015},${item.longitude + 0.015},${item.latitude + 0.015}&layer=mapnik&marker=${item.latitude},${item.longitude}`}
+                  style={{ width: '100%', height: 200, border: 0, display: 'block', pointerEvents: 'none' }}
+                />
+                {/* Transparent overlay makes entire tile clickable */}
+                <div style={{ position: 'absolute', inset: 0 }} />
+                <div style={{
+                  position: 'absolute', bottom: 8, right: 8,
+                  background: 'rgba(255,255,255,0.92)', borderRadius: 6,
+                  padding: '4px 10px', fontSize: 12, fontWeight: 600,
+                  color: '#1a56db', boxShadow: '0 1px 4px rgba(0,0,0,0.15)'
+                }}>
+                  Click to navigate ↗
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Metadata */}
           <div className="view-section metadata">
             <div className="info-grid">

@@ -1,4 +1,25 @@
 const FoodGrocery = require("../model/FoodGrocery");
+const axios = require("axios");
+
+// ── Geocode an address string → { latitude, longitude } using Nominatim ──────
+async function geocode(address) {
+  try {
+    const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}&limit=1`;
+    const { data } = await axios.get(url, {
+      headers: { "User-Agent": "GermanBharathamApp/1.0" },
+      timeout: 8000,
+    });
+    if (data && data.length > 0) {
+      return {
+        latitude:  parseFloat(data[0].lat),
+        longitude: parseFloat(data[0].lon),
+      };
+    }
+  } catch (_) {
+    // Geocoding failure must not block the save
+  }
+  return {};
+}
 
 // Get all food/grocery items - most recent first
 exports.getAllFoodGrocery = async (req, res) => {
@@ -34,6 +55,16 @@ exports.createFoodGrocery = async (req, res) => {
       location: req.body.location || `${req.body.city}, ${req.body.address}`, // Ensure location field exists
       status: req.body.status || "Pending" // Default to Pending
     };
+
+    // Auto-geocode from city or address
+    const locationQuery = itemData.city || itemData.address;
+    if (locationQuery) {
+      const coords = await geocode(locationQuery);
+      if (coords.latitude) {
+        itemData.latitude  = coords.latitude;
+        itemData.longitude = coords.longitude;
+      }
+    }
     
     const item = new FoodGrocery(itemData);
     const saved = await item.save();
@@ -55,6 +86,16 @@ exports.updateFoodGrocery = async (req, res) => {
     
     if (req.body.city || req.body.address) {
       updateData.location = `${req.body.city || ''}, ${req.body.address || ''}`.trim();
+    }
+
+    // Re-geocode if city/address changed
+    const locationQuery = req.body.city || req.body.address;
+    if (locationQuery) {
+      const coords = await geocode(locationQuery);
+      if (coords.latitude) {
+        updateData.latitude  = coords.latitude;
+        updateData.longitude = coords.longitude;
+      }
     }
     
     const updated = await FoodGrocery.findByIdAndUpdate(

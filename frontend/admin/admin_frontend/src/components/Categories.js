@@ -81,7 +81,7 @@ const Categories = () => {
   // Fetch custom categories from backend
   const fetchCustomCats = useCallback(async () => {
     try {
-      const res = await fetch(`${BASE}/api/custom-categories`, { headers: getAuthHeaders() });
+      const res = await fetch(`${API_URL}/api/custom-categories`, { headers: getAuthHeaders() });
       if (res.ok) {
         const data = await res.json();
         setCustomCats(data.map(c => ({
@@ -91,7 +91,7 @@ const Categories = () => {
           icon:        c.icon,
           description: c.description,
           status:      c.status,
-          api:         `${BASE}/api/custom-categories/${c._id}/listings`,
+          api:         `${API_URL}/api/custom-categories/${c._id}/listings`,
           route:       `/custom-category/${c._id}`,
           isCustom:    true,
         })));
@@ -132,7 +132,7 @@ const Categories = () => {
   // ── Add (custom category → backend) ────────────────────────────────────────
   const handleAdd = async form => {
     try {
-      const res = await fetch(`${BASE}/api/custom-categories`, {
+      const res = await fetch(`${API_URL}/api/custom-categories`, {
         method: 'POST',
         headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: form.name, description: form.description, icon: form.icon, status: form.status }),
@@ -146,7 +146,7 @@ const Categories = () => {
   const handleEditSave = async form => {
     if (form.isCustom) {
       try {
-        const res = await fetch(`${BASE}/api/custom-categories/${form._id}`, {
+        const res = await fetch(`${API_URL}/api/custom-categories/${form._id}`, {
           method: 'PUT',
           headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
           body: JSON.stringify({ name: form.name, description: form.description, icon: form.icon, status: form.status }),
@@ -166,7 +166,7 @@ const Categories = () => {
   const handleToggleStatus = async (id, newStatus, isCustom) => {
     if (isCustom) {
       try {
-        await fetch(`${BASE}/api/custom-categories/${id}`, {
+        await fetch(`${API_URL}/api/custom-categories/${id}`, {
           method: 'PUT',
           headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
           body: JSON.stringify({ status: newStatus }),
@@ -187,7 +187,7 @@ const Categories = () => {
     if (!cat.isCustom) { alert('Built-in categories cannot be deleted.'); return; }
     if (!window.confirm(`Delete "${cat.name}" and all its listings?`)) return;
     try {
-      const res = await fetch(`${BASE}/api/custom-categories/${cat._id}`, {
+      const res = await fetch(`${API_URL}/api/custom-categories/${cat._id}`, {
         method: 'DELETE', headers: getAuthHeaders(),
       });
       if (res.ok) fetchCustomCats();

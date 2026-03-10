@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 /// Extended detail page showing all MongoDB accommodation data
 class AccommodationMongoDetailsPage extends StatelessWidget {
@@ -333,21 +334,74 @@ class AccommodationMongoDetailsPage extends StatelessWidget {
                       const SizedBox(height: 20),
                     ],
 
-                    /// COORDINATES
+                    /// GOOGLE MAPS BUTTON
                     if (item.latitude != null && item.longitude != null) ...[
-                      Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFECF0F1),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Text(
-                          'Coordinates: ${item.latitude?.toStringAsFixed(6)}, ${item.longitude?.toStringAsFixed(6)}',
-                          style: const TextStyle(
-                            fontSize: 12,
-                            color: Color(0xFF555555),
-                            fontFamily: 'monospace',
-                          ),
+                      const SizedBox(height: 20),
+                      const Text(
+                        'Location',
+                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+                      ),
+                      const SizedBox(height: 10),
+                      GestureDetector(
+                        onTap: () async {
+                          final url = Uri.parse(
+                            'https://www.google.com/maps/dir/?api=1'
+                            '&destination=${item.latitude},${item.longitude}',
+                          );
+                          if (await canLaunchUrl(url)) {
+                            await launchUrl(url, mode: LaunchMode.externalApplication);
+                          }
+                        },
+                        child: Stack(
+                          children: [
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(12),
+                              child: Image.network(
+                                'https://maps.googleapis.com/maps/api/staticmap'
+                                '?center=${item.latitude},${item.longitude}&zoom=14&size=600x200'
+                                '&markers=color:red%7C${item.latitude},${item.longitude}'
+                                '&maptype=roadmap',
+                                height: 160,
+                                width: double.infinity,
+                                fit: BoxFit.cover,
+                                errorBuilder: (_, __, ___) => _FallbackMapTile(
+                                  lat: item.latitude!,
+                                  lon: item.longitude!,
+                                ),
+                              ),
+                            ),
+                            Positioned(
+                              bottom: 8,
+                              right: 8,
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 10, vertical: 5),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withOpacity(0.92),
+                                  borderRadius: BorderRadius.circular(8),
+                                  boxShadow: const [
+                                    BoxShadow(color: Colors.black26, blurRadius: 4)
+                                  ],
+                                ),
+                                child: const Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(Icons.navigation,
+                                        size: 14, color: Color(0xFF1A56DB)),
+                                    SizedBox(width: 4),
+                                    Text(
+                                      'Open in Maps',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w600,
+                                        color: Color(0xFF1A56DB),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ],
@@ -519,6 +573,55 @@ class _HighlightChip extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _FallbackMapTile extends StatelessWidget {
+  final double lat;
+  final double lon;
+
+  const _FallbackMapTile({required this.lat, required this.lon});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: () async {
+        final url = Uri.parse(
+          'https://www.google.com/maps/dir/?api=1&destination=$lat,$lon',
+        );
+        if (await canLaunchUrl(url)) {
+          await launchUrl(url, mode: LaunchMode.externalApplication);
+        }
+      },
+      child: Container(
+        height: 160,
+        decoration: BoxDecoration(
+          color: const Color(0xFFE8F5E9),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: const Color(0xFF4E7F6D)),
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.location_on, color: Color(0xFF4E7F6D), size: 36),
+            const SizedBox(height: 8),
+            Text(
+              '${lat.toStringAsFixed(5)}, ${lon.toStringAsFixed(5)}',
+              style: const TextStyle(fontSize: 12, color: Color(0xFF6E6E6E)),
+            ),
+            const SizedBox(height: 4),
+            const Text(
+              'Tap to open in Google Maps',
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF4E7F6D),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

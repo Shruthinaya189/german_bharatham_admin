@@ -24,6 +24,8 @@ const accommodationSchema = new mongoose.Schema(
     utilities: { type: String }, // e.g., "Included", "Not Included"
     availableFrom: { type: Date },
     image: { type: String },
+    latitude:  { type: Number },
+    longitude: { type: Number },
     status: { type: String, enum: ['Active', 'Pending', 'Inactive'], default: 'Pending' },
     featured: { type: Boolean, default: false },
   },

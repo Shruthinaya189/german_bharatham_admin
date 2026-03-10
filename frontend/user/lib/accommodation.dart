@@ -6,8 +6,8 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'dart:typed_data';
 
-// Use machine IP for real device, 10.0.2.2 for emulator
-const String apiBaseUrl = 'http://10.166.137.12:5000';
+// Use localhost for web, 10.0.2.2 for emulator, or machine IP for real device
+const String apiBaseUrl = 'http://localhost:5000';
 
 /// =======================
 /// DATA MODEL

@@ -1,4 +1,9 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:http/http.dart' as http;
+import 'package:latlong2/latlong.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:share_plus/share_plus.dart';
@@ -259,15 +264,7 @@ ${widget.item.phone != null && widget.item.phone!.isNotEmpty ? 'Phone: ${widget.
 
                     const SizedBox(height: 10),
 
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(12),
-                      child: Image.asset(
-                        'assets/images/map.jpeg',
-                        height: 160,
-                        width: double.infinity,
-                        fit: BoxFit.cover,
-                      ),
-                    ),
+                    _buildMapSection(widget.item.latitude, widget.item.longitude, widget.item.address),
                   ],
                 ),
               ),
@@ -405,6 +402,303 @@ ${widget.item.phone != null && widget.item.phone!.isNotEmpty ? 'Phone: ${widget.
           ),
         ),
       ],
+    );
+  }
+
+  Future<Map<String, double>?> _geocodeAddress(String address) async {
+    if (address.isEmpty) return null;
+    try {
+      final encoded = Uri.encodeComponent(address);
+      final response = await http.get(
+        Uri.parse(
+            'https://nominatim.openstreetmap.org/search?q=$encoded&format=json&limit=1'),
+        headers: {'User-Agent': 'GermanBharatham/1.0'},
+      );
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body) as List;
+        if (data.isNotEmpty) {
+          return {
+            'lat': double.parse(data[0]['lat'] as String),
+            'lon': double.parse(data[0]['lon'] as String),
+          };
+        }
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  Widget _buildMapSection(double? latitude, double? longitude, String address) {
+    if (latitude != null && longitude != null) {
+      return _FoodMapWidget(lat: latitude, lon: longitude, address: address);
+    }
+
+    return FutureBuilder<Map<String, double>?>(
+      future: _geocodeAddress(address),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: Container(
+              height: 200,
+              color: Colors.grey[200],
+              child: const Center(child: CircularProgressIndicator()),
+            ),
+          );
+        }
+        if (snapshot.hasData && snapshot.data != null) {
+          return _FoodMapWidget(
+            lat: snapshot.data!['lat']!,
+            lon: snapshot.data!['lon']!,
+            address: address,
+          );
+        }
+        // Geocoding failed — fallback button
+        return GestureDetector(
+          onTap: () async {
+            final query = Uri.encodeComponent(address);
+            final url = Uri.parse(
+                'https://www.google.com/maps/search/?api=1&query=$query');
+            if (await canLaunchUrl(url)) {
+              await launchUrl(url, mode: LaunchMode.externalApplication);
+            }
+          },
+          child: Container(
+            height: 70,
+            decoration: BoxDecoration(
+              color: const Color(0xFFE8F5E9),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: const Color(0xFF4E7F6D)),
+            ),
+            child: const Center(
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.map_outlined, color: Color(0xFF4E7F6D)),
+                  SizedBox(width: 8),
+                  Text(
+                    'Open location in Google Maps',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF4E7F6D),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+/// MAP WIDGET with user-location support
+class _FoodMapWidget extends StatefulWidget {
+  final double lat;
+  final double lon;
+  final String address;
+
+  const _FoodMapWidget({
+    required this.lat,
+    required this.lon,
+    required this.address,
+  });
+
+  @override
+  State<_FoodMapWidget> createState() => _FoodMapWidgetState();
+}
+
+class _FoodMapWidgetState extends State<_FoodMapWidget> {
+  final MapController _mapController = MapController();
+  LatLng? _userLocation;
+  bool _locating = false;
+
+  Future<void> _locateUser() async {
+    setState(() => _locating = true);
+    try {
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+      }
+      if (permission == LocationPermission.denied ||
+          permission == LocationPermission.deniedForever) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Location permission denied'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+        setState(() => _locating = false);
+        return;
+      }
+      final position = await Geolocator.getCurrentPosition(
+        locationSettings:
+            const LocationSettings(accuracy: LocationAccuracy.high),
+      );
+      final userLatLng = LatLng(position.latitude, position.longitude);
+      if (mounted) {
+        setState(() {
+          _userLocation = userLatLng;
+          _locating = false;
+        });
+        _mapController.move(userLatLng, 14);
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _locating = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Could not get location: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _openGoogleMaps() async {
+    final url = Uri.parse(
+      'https://www.google.com/maps/dir/?api=1&destination=${widget.lat},${widget.lon}',
+    );
+    if (await canLaunchUrl(url)) {
+      await launchUrl(url, mode: LaunchMode.externalApplication);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(12),
+      child: SizedBox(
+        height: 200,
+        child: Stack(
+          children: [
+            FlutterMap(
+              mapController: _mapController,
+              options: MapOptions(
+                initialCenter: LatLng(widget.lat, widget.lon),
+                initialZoom: 15,
+                interactionOptions: const InteractionOptions(
+                  flags: InteractiveFlag.none,
+                ),
+              ),
+              children: [
+                TileLayer(
+                  urlTemplate:
+                      'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                  userAgentPackageName: 'com.germanbharatham.app',
+                ),
+                MarkerLayer(
+                  markers: [
+                    // Restaurant/shop pin — red
+                    Marker(
+                      point: LatLng(widget.lat, widget.lon),
+                      width: 40,
+                      height: 40,
+                      child: Image.asset(
+                        'assets/images/location.png',
+                        width: 40,
+                        height: 40,
+                        color: Colors.red,
+                      ),
+                    ),
+                    // User location — blue dot
+                    if (_userLocation != null)
+                      Marker(
+                        point: _userLocation!,
+                        width: 22,
+                        height: 22,
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF1A73E8),
+                            shape: BoxShape.circle,
+                            border:
+                                Border.all(color: Colors.white, width: 2.5),
+                            boxShadow: const [
+                              BoxShadow(color: Colors.black26, blurRadius: 4)
+                            ],
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ],
+            ),
+
+            /// "Open in Google Maps" — bottom right
+            Positioned(
+              bottom: 8,
+              right: 8,
+              child: GestureDetector(
+                onTap: _openGoogleMaps,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 10, vertical: 5),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.92),
+                    borderRadius: BorderRadius.circular(8),
+                    boxShadow: const [
+                      BoxShadow(color: Colors.black26, blurRadius: 4)
+                    ],
+                  ),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.navigation,
+                          size: 14, color: Color(0xFF1A56DB)),
+                      SizedBox(width: 4),
+                      Text(
+                        'Open in Google Maps',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF1A56DB),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+
+            /// "My Location" button — top right
+            Positioned(
+              top: 8,
+              right: 8,
+              child: GestureDetector(
+                onTap: _locating ? null : _locateUser,
+                child: Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    shape: BoxShape.circle,
+                    boxShadow: const [
+                      BoxShadow(color: Colors.black26, blurRadius: 4)
+                    ],
+                  ),
+                  child: _locating
+                      ? const Padding(
+                          padding: EdgeInsets.all(8),
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : Image.asset(
+                          'assets/images/location.png',
+                          width: 20,
+                          height: 20,
+                          color: _userLocation != null
+                              ? const Color(0xFF1A56DB)
+                              : Colors.grey[600],
+                        ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

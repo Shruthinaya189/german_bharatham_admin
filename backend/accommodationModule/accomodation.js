@@ -82,6 +82,10 @@ const accommodationSchema = new mongoose.Schema(
 
     contactPhone: { type: String, trim: true },
     status: { type: String, enum: ['Active', 'Pending', 'Inactive', 'active', 'disabled', 'pending'], default: 'Pending' },
+
+    // Geocoded coordinates (auto-populated from city on save)
+    latitude:  { type: Number },
+    longitude: { type: Number },
   },
   { timestamps: true, versionKey: false }
 );

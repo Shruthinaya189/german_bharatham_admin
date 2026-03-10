@@ -105,7 +105,7 @@ class _CommunityPageState extends State<CommunityPage> {
   Future<void> fetchGuides() async {
     try {
       final response = await http.get(
-        Uri.parse("http://10.166.137.12:5000/api/community"),
+        Uri.parse("http://localhost:5000/api/community"),
       );
 
       if (response.statusCode == 200) {

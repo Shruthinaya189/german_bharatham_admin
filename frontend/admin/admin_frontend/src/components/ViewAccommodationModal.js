@@ -112,6 +112,37 @@ const ViewAccommodationModal = ({ accommodation: acc, onClose }) => {
               </div>
             </div>
           )}
+
+          {/* ── Map Preview ───────────────────────────────────────────────── */}
+          {acc.latitude && acc.longitude && (
+            <div style={{ marginTop: 16 }}>
+              <span style={{ color: '#6b7280', fontSize: 14, display: 'block', marginBottom: 6 }}>
+                Location Map
+              </span>
+              <div
+                onClick={() => {
+                  const url = `https://www.google.com/maps/dir/?api=1&destination=${acc.latitude},${acc.longitude}`;
+                  window.open(url, '_blank', 'noopener,noreferrer');
+                }}
+                title="Tap to open Google Maps navigation"
+                style={{ position: 'relative', cursor: 'pointer', borderRadius: 10, overflow: 'hidden',
+                  border: '2px solid #6b9976', boxShadow: '0 2px 8px rgba(0,0,0,0.12)' }}
+              >
+                <iframe
+                  title="accommodation-map"
+                  src={`https://www.openstreetmap.org/export/embed.html?bbox=${acc.longitude - 0.015},${acc.latitude - 0.015},${acc.longitude + 0.015},${acc.latitude + 0.015}&layer=mapnik&marker=${acc.latitude},${acc.longitude}`}
+                  style={{ width: '100%', height: 200, border: 0, display: 'block', pointerEvents: 'none' }}
+                />
+                {/* Transparent overlay so the whole tile is clickable */}
+                <div style={{ position: 'absolute', inset: 0 }} />
+                <div style={{ position: 'absolute', bottom: 8, right: 8, background: 'rgba(255,255,255,0.92)',
+                  borderRadius: 6, padding: '4px 10px', fontSize: 12, fontWeight: 600, color: '#1a56db',
+                  boxShadow: '0 1px 4px rgba(0,0,0,0.15)' }}>
+                  Tap to navigate ↗
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="form-actions" style={{ marginTop: 20 }}>

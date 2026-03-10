@@ -122,6 +122,8 @@ class FoodGrocery {
   final bool dineInAvailable;
   final bool cateringAvailable;
   final String? image;
+  final double? latitude;
+  final double? longitude;
   final String status;
   final double averageRating;
   final int totalRatings;
@@ -153,6 +155,8 @@ class FoodGrocery {
     this.dineInAvailable = false,
     this.cateringAvailable = false,
     this.image,
+    this.latitude,
+    this.longitude,
     this.status = 'Active',
     this.averageRating = 0.0,
     this.totalRatings = 0,
@@ -198,6 +202,8 @@ class FoodGrocery {
       dineInAvailable: _toBool(json['dineInAvailable']),
       cateringAvailable: _toBool(json['cateringAvailable']),
       image: chosenImage.trim().isEmpty ? null : _toAbsoluteImageUrl(chosenImage),
+      latitude: (json['latitude'] as num?)?.toDouble(),
+      longitude: (json['longitude'] as num?)?.toDouble(),
       status: _normalizeStatus(json['status'] ?? 'Active'),
       averageRating: _toDouble(json['averageRating']),
       totalRatings: _toInt(json['totalRatings']),
@@ -232,6 +238,8 @@ class FoodGrocery {
       'dineInAvailable': dineInAvailable,
       'cateringAvailable': cateringAvailable,
       'image': image,
+      'latitude': latitude,
+      'longitude': longitude,
       'status': status,
       'averageRating': averageRating,
       'totalRatings': totalRatings,
