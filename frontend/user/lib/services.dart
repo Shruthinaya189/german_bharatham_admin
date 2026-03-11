@@ -6,7 +6,7 @@ import 'saved_service_manager.dart';
 import 'service_details.dart';
 import 'services/api_config.dart';
 
-final String baseUrl = ApiConfig.baseUrl;
+String get baseUrl => ApiConfig.baseUrl;
 
 class ServicesPage extends StatefulWidget {
   const ServicesPage({super.key});

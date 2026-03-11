@@ -15,7 +15,7 @@ class FoodGroceryPage extends StatefulWidget {
 }
 
 class _FoodGroceryPageState extends State<FoodGroceryPage> {
-  static const String baseUrl = ApiConfig.baseUrl;
+  String get baseUrl => ApiConfig.baseUrl;
   List<FoodGrocery> allItems = [];
   List<FoodGrocery> filteredItems = [];
   bool isLoading = true;

@@ -5,7 +5,7 @@ import '../models/food_grocery_model.dart';
 import '../models/rating_model.dart';
 
 class ApiService {
-  static const String baseUrl = ApiConfig.baseUrl;
+  static String get baseUrl => ApiConfig.baseUrl;
   
   /// Fetch all Food & Grocery listings
   static Future<List<FoodGrocery>> getFoodGroceryListings({
@@ -147,8 +147,6 @@ class ApiService {
 
   /// Helper method to get base URL based on platform
   static String getBaseUrl() {
-    // You can make this dynamic based on debug/release mode
-    // or detect platform
     return baseUrl;
   }
 }
