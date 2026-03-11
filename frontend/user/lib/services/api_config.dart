@@ -4,15 +4,15 @@ class ApiConfig {
   // Production backend (Render)
   static const String _prodBaseUrl = 'https://german-bharatham-backend.onrender.com';
 
-  // Local backend (use Android emulator loopback by default in debug)
-  // - Android emulator: http://10.0.2.2:5000
-  // - iOS simulator: http://127.0.0.1:5000
-  // - Physical device: http://<YOUR_PC_LAN_IP>:5000
-  static const String _devDefaultBaseUrl = 'http://10.0.2.2:5000';
+  // Default backend in debug.
+  // If you want local/LAN testing, override with:
+  //   flutter run --dart-define=API_BASE_URL=http://<YOUR_PC_LAN_IP>:5000
+  // (Android emulator local: http://10.0.2.2:5000)
+  static const String _devDefaultBaseUrl = _prodBaseUrl;
 
   /// Base URL selection:
   /// - If provided: `--dart-define=API_BASE_URL=...` wins
-  /// - Else: release uses Render; debug uses local dev default
+  /// - Else: uses default (Render)
   static String get baseUrl {
     const override = String.fromEnvironment('API_BASE_URL', defaultValue: '');
     if (override.trim().isNotEmpty) return override.trim();

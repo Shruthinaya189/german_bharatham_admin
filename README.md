@@ -15,7 +15,7 @@ german_bharatham_admin/
 │   ├── servicesModule/          # Services APIs
 │   ├── communityModule/         # Community guides APIs
 │   ├── userModule/              # User authentication
-│   └── serve.js                 # Main server file
+│   └── server.js                # Main server file
 ├── frontend/
 │   ├── admin/                   # React admin dashboard
 │   │   └── admin_frontend/      # Admin panel (port 3000)
@@ -56,13 +56,18 @@ cp .env.example .env
 # - PORT: Server port (default: 5000)
 
 # Start the backend server
-node serve.js
+node server.js
 ```
 
-The backend will be available at `http://localhost:5000`
+Backend URLs:
+ - Local dev: `http://localhost:5000`
+ - Render (production): `https://german-bharatham-backend.onrender.com`
 
 ### 2. Admin Frontend Setup
 
+ - Flutter app default API base URL is the Render backend: `https://german-bharatham-backend.onrender.com`
+ - For local/LAN testing, override using:
+	 - `flutter run --dart-define=API_BASE_URL=http://<YOUR_PC_LAN_IP>:5000`
 ```bash
 # Navigate to admin frontend directory
 cd frontend/admin/admin_frontend
@@ -162,8 +167,10 @@ PORT=5000
 ## Development Tips
 
 ### Backend
-- Use `node serve.js` to start the server
+- Use `node server.js` to start the server
 - API base URL: `http://localhost:5000`
+ - Use `node server.js` to start the server
+ - API base URL (Render): `https://german-bharatham-backend.onrender.com`
 - All admin routes require Bearer token authentication
 - CORS is enabled for `http://localhost:3000`
 
@@ -182,7 +189,7 @@ PORT=5000
 
 ### Backend
 1. Set environment variables on your hosting platform
-2. Update CORS origins in `serve.js` to include your frontend domain
+2. Update CORS origins in `server.js` to include your frontend domain
 3. Deploy to platforms like Heroku, AWS, or DigitalOcean
 
 ### Admin Frontend

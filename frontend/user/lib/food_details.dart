@@ -464,10 +464,18 @@ ${widget.item.phone != null && widget.item.phone!.isNotEmpty ? 'Phone: ${widget.
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Icon(
-          fallbackIcon,
-          size: 20,
+        Image.asset(
+          iconAsset,
+          height: 20,
+          width: 20,
           color: const Color(0xFF4E7F6D),
+          errorBuilder: (context, error, stackTrace) {
+            return Icon(
+              fallbackIcon,
+              size: 20,
+              color: const Color(0xFF4E7F6D),
+            );
+          },
         ),
         const SizedBox(width: 10),
         Expanded(

@@ -236,7 +236,7 @@ const AddAccommodationModal = ({ onClose, onSuccess }) => {
         }
       };
 
-      const response = await fetch('http://localhost:5000/api/accommodation/admin', {
+      const response = await fetch('https://german-bharatham-backend.onrender.com/api/accommodation/admin', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

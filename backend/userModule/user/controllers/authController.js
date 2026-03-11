@@ -2,7 +2,7 @@ const User = require("../models/User");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
-const { sendMail, hasSmtpConfig } = require("../../../services/mailer");
+const { sendEmail } = require("../../../services/mailer");
 
 const sanitizeUser = (userDoc) => {
   if (!userDoc) return null;
@@ -22,11 +22,13 @@ const generateToken = (user) => {
 const sha256 = (value) =>
   crypto.createHash("sha256").update(String(value)).digest("hex");
 
-const buildResetLink = (token) => {
-  const base = process.env.USER_RESET_PASSWORD_URL_BASE;
-  if (!base) return null;
-  const joiner = base.includes("?") ? "&" : "?";
-  return `${base}${joiner}token=${encodeURIComponent(token)}`;
+const getAppBaseUrl = (req) => {
+  const configured = String(process.env.BACKEND_URL || "").trim();
+  if (configured) return configured.replace(/\/$/, "");
+  const proto = req.headers["x-forwarded-proto"]
+    ? String(req.headers["x-forwarded-proto"]).split(",")[0].trim()
+    : req.protocol;
+  return `${proto}://${req.get("host")}`;
 };
 
 // REGISTER
@@ -178,90 +180,67 @@ exports.changePassword = async (req, res) => {
 // FORGOT PASSWORD (send reset link)
 exports.forgotPassword = async (req, res) => {
   try {
-    const email = String(req.body.email || "").trim().toLowerCase();
-    if (!email) return res.status(400).json({ message: "Email is required" });
+    const emailRaw = String(req.body.email || "").trim().toLowerCase();
+    if (!emailRaw) return res.status(400).json({ message: "Email is required" });
 
-    const maskEmailForLog = (value) => {
-      const e = String(value || "");
-      const at = e.indexOf("@");
-      if (at <= 1) return "***";
-      const name = e.slice(0, at);
-      const domain = e.slice(at + 1);
-      const head = name.slice(0, 2);
-      return `${head}***@${domain}`;
-    };
-
-    const user = await User.findOne({ email });
+    const user = await User.findOne({ email: emailRaw });
 
     // Always respond success to avoid leaking which emails exist.
-    if (!user) {
-      return res.status(200).json({ message: "If the email exists, a reset link was sent." });
+    if (!user || user.isActive === false) {
+      return res
+        .status(200)
+        .json({ message: "If the email exists, a reset link was sent." });
     }
 
-    if (user.isActive === false) {
-      return res.status(200).json({ message: "If the email exists, a reset link was sent." });
-    }
-
-    const token = crypto.randomBytes(32).toString("hex");
-    user.resetPasswordToken = sha256(token);
+    const resetToken = crypto.randomBytes(32).toString("hex");
+    user.resetPasswordToken = sha256(resetToken);
     user.resetPasswordExpires = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
     await user.save();
 
-    const resetLink = buildResetLink(token);
+    const baseUrl = getAppBaseUrl(req);
+    const resetUrl = `${baseUrl}/reset-password?token=${resetToken}`;
 
-    const devReturnLink = String(process.env.DEV_RETURN_RESET_LINK || "").toLowerCase() === "true";
+    const devReturnLink =
+      String(process.env.DEV_RETURN_RESET_LINK || "").toLowerCase() === "true" &&
+      String(process.env.NODE_ENV || "").toLowerCase() !== "production";
 
-    // If no URL base is configured, we can't build a usable link.
-    if (!resetLink) {
-      console.warn(
-        "[forgotPassword] USER_RESET_PASSWORD_URL_BASE is not configured; cannot email reset link."
-      );
-      if (devReturnLink) {
-        return res.status(200).json({
-          message:
-            "Reset link generated (dev). Configure USER_RESET_PASSWORD_URL_BASE to email it.",
-          resetLink: `/reset-password?token=${token}`,
-        });
-      }
-      // Always respond success to avoid leaking which emails exist.
-      return res.status(200).json({ message: "If the email exists, a reset link was sent." });
-    }
-
-    // If SMTP isn't configured, optionally return the link in dev.
-    if (!hasSmtpConfig()) {
-      console.warn(
-        "[forgotPassword] SMTP not configured; set SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, SMTP_FROM"
-      );
-      if (devReturnLink) {
-        console.log("[DEV] Password reset link:", resetLink);
-        return res.status(200).json({
-          message: "SMTP not configured; returning reset link for dev.",
-          resetLink,
-        });
-      }
-      return res.status(200).json({ message: "If the email exists, a reset link was sent." });
-    }
-
-    const subject = "Reset your German Bharatham password";
-    const text = `You requested a password reset. Open this link to set a new password: ${resetLink}`;
+    const subject = "Reset your password";
+    const text = `You requested a password reset. Open this link to set a new password: ${resetUrl}`;
     const html = `
-      <p>You requested a password reset.</p>
-      <p><a href="${resetLink}">Click here to reset your password</a></p>
-      <p>This link expires in 1 hour.</p>
+      <div style="font-family:Arial,sans-serif;line-height:1.5">
+        <h2 style="margin:0 0 12px">Reset your password</h2>
+        <p>We received a request to reset your password.</p>
+        <p><a href="${resetUrl}" style="display:inline-block;padding:10px 14px;background:#4E7F6D;color:#fff;text-decoration:none;border-radius:6px">Reset Password</a></p>
+        <p style="color:#555">This link expires in 1 hour.</p>
+        <p style="color:#777;font-size:12px">If you didn’t request this, you can ignore this email.</p>
+      </div>
     `;
 
-    // Fire-and-forget email send so hosted environments don't time out the HTTP request.
-    sendMail({ to: user.email, subject, text, html })
-      .then((info) => {
-        console.log(
-          "[forgotPassword] Reset email sent:",
-          maskEmailForLog(user.email),
-          info && info.messageId ? `messageId=${info.messageId}` : ""
-        );
-      })
-      .catch((mailErr) => {
-        console.error("[forgotPassword] Failed to send reset email:", mailErr);
+    let emailSent = true;
+    try {
+      const info = await sendEmail({ to: emailRaw, subject, text, html });
+      try {
+        console.log("[forgotPassword] Reset email sent", {
+          to: emailRaw,
+          messageId: info && info.messageId,
+          accepted: info && info.accepted,
+          rejected: info && info.rejected,
+        });
+      } catch (_) {}
+    } catch (mailErr) {
+      emailSent = false;
+      console.error("[forgotPassword] Failed to send reset email:", mailErr);
+    }
+
+    if (devReturnLink) {
+      return res.status(200).json({
+        message: emailSent
+          ? "Reset link generated. Returning reset link for dev."
+          : "Email not sent. Returning reset link for dev.",
+        resetUrl,
+        emailSent,
       });
+    }
 
     return res.status(200).json({ message: "If the email exists, a reset link was sent." });
   } catch (error) {
@@ -280,18 +259,17 @@ exports.resetPassword = async (req, res) => {
     }
 
     if (newPassword.length < 6) {
-      return res.status(400).json({ message: "New password must be at least 6 characters" });
+      return res
+        .status(400)
+        .json({ message: "New password must be at least 6 characters" });
     }
 
-    const tokenHash = sha256(token);
     const user = await User.findOne({
-      resetPasswordToken: tokenHash,
+      resetPasswordToken: sha256(token),
       resetPasswordExpires: { $gt: new Date() },
     });
 
-    if (!user) {
-      return res.status(400).json({ message: "Invalid or expired reset token" });
-    }
+    if (!user) return res.status(400).json({ message: "Invalid or expired token" });
 
     user.password = await bcrypt.hash(newPassword, 10);
     user.resetPasswordToken = null;

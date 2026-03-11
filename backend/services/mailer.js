@@ -1,66 +1,79 @@
 const nodemailer = require("nodemailer");
 
-const hasSmtpConfig = () => {
-  const host = String(process.env.SMTP_HOST || "").trim();
-  const port = String(process.env.SMTP_PORT || "").trim();
-  const user = String(process.env.SMTP_USER || "").trim();
-  const pass = String(process.env.SMTP_PASS || "").trim();
-  const from = String(process.env.SMTP_FROM || "").trim();
-  return Boolean(host && port && user && pass && from);
-};
+const transientNetworkErrorCodes = new Set([
+  "ETIMEDOUT",
+  "ECONNRESET",
+  "ECONNREFUSED",
+  "EHOSTUNREACH",
+  "ENETUNREACH",
+]);
 
-const toBool = (value, defaultValue = false) => {
-  if (value === undefined || value === null || value === "") return defaultValue;
-  const v = String(value).trim().toLowerCase();
-  if (["1", "true", "yes", "y", "on"].includes(v)) return true;
-  if (["0", "false", "no", "n", "off"].includes(v)) return false;
-  return defaultValue;
-};
-
-const createTransporter = () => {
-  const host = String(process.env.SMTP_HOST || "").trim();
-  const port = Number(String(process.env.SMTP_PORT || "").trim());
-  const user = String(process.env.SMTP_USER || "").trim();
-  // App passwords are frequently copied with spaces; strip all whitespace.
-  const pass = String(process.env.SMTP_PASS || "").replace(/\s+/g, "");
-
-  // For some providers, forcing secure/STARTTLS helps.
-  const secure = toBool(process.env.SMTP_SECURE, port === 465);
-  const requireTLS = toBool(process.env.SMTP_REQUIRE_TLS, false);
-  const rejectUnauthorized = toBool(process.env.SMTP_TLS_REJECT_UNAUTHORIZED, true);
-
+function buildTransport({ host, port, secure, user, pass }) {
   return nodemailer.createTransport({
     host,
     port,
     secure,
-    auth: { user, pass },
-    requireTLS,
-    tls: { rejectUnauthorized },
-
-    // Keep HTTP fast on hosted envs; fail quickly if SMTP is blocked.
-    connectionTimeout: 10_000,
-    greetingTimeout: 10_000,
-    socketTimeout: 20_000,
+    auth: user && pass ? { user, pass } : undefined,
   });
-};
+}
 
-async function sendMail({ to, subject, text, html }) {
-  if (!hasSmtpConfig()) {
+function smtpConfig() {
+  const host = String(process.env.SMTP_HOST || "smtp.gmail.com").trim();
+  const port = Number(process.env.SMTP_PORT || 587);
+  const secureEnv = String(process.env.SMTP_SECURE || "").trim();
+  const secure = secureEnv ? secureEnv.toLowerCase() === "true" : port === 465;
+
+  const user = String(process.env.SMTP_USER || "").trim();
+  let pass = String(process.env.SMTP_PASS || "").trim();
+  // Gmail app passwords are often displayed with spaces; authentication expects no spaces.
+  if (/^smtp\.gmail\.com$/i.test(host)) {
+    pass = pass.replace(/\s+/g, "");
+  }
+  const from = String(process.env.SMTP_FROM || user).trim();
+
+  return { host, port, secure, user, pass, from };
+}
+
+async function sendEmail({ to, subject, text, html }) {
+  const cfg = smtpConfig();
+  if (!cfg.user || !cfg.pass) {
     const err = new Error(
-      "SMTP is not configured. Set SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, SMTP_FROM"
+      "SMTP not configured. Set SMTP_USER and SMTP_PASS (and optionally SMTP_HOST/SMTP_PORT/SMTP_FROM)."
     );
     err.code = "SMTP_NOT_CONFIGURED";
     throw err;
   }
 
-  const transporter = createTransporter();
-  return transporter.sendMail({
-    from: String(process.env.SMTP_FROM || "").trim(),
+  const transporter = buildTransport(cfg);
+
+  const mail = {
+    from: cfg.from,
     to,
     subject,
-    text,
-    html,
-  });
+    ...(text ? { text } : {}),
+    ...(html ? { html } : {}),
+  };
+
+  try {
+    return await transporter.sendMail(mail);
+  } catch (err) {
+    // Common on some hosts: port 465 blocked/timeouts. If configured with 465, retry on 587.
+    const code = err && (err.code || err.errno);
+    const shouldRetry =
+      cfg.port === 465 &&
+      (transientNetworkErrorCodes.has(String(code)) ||
+        /timeout/i.test(String(err.message || "")));
+
+    if (!shouldRetry) throw err;
+
+    const fallbackCfg = {
+      ...cfg,
+      port: 587,
+      secure: false,
+    };
+    const fallbackTransporter = buildTransport(fallbackCfg);
+    return fallbackTransporter.sendMail({ ...mail, from: fallbackCfg.from });
+  }
 }
 
-module.exports = { sendMail, hasSmtpConfig };
+module.exports = { sendEmail };

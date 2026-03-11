@@ -16,14 +16,32 @@ if (dnsServers.length > 0) {
 
 const connectDB = async () => {
   try {
-    const conn = await mongoose.connect(process.env.MONGO_URI, {
+    const mongoUri = String(process.env.MONGO_URI || "").trim();
+    if (!mongoUri) {
+      console.error(
+        "DB connection failed: MONGO_URI is missing. Set it in your .env (local) or in Render Environment Variables (production)."
+      );
+      process.exit(1);
+    }
+
+    const conn = await mongoose.connect(mongoUri, {
       serverSelectionTimeoutMS: 10000,
       socketTimeoutMS: 45000,
       family: 4, // Use IPv4, skip trying IPv6
     });
     console.log(`MongoDB Connected: ${conn.connection.host}`);
   } catch (error) {
-    console.error("DB connection failed:", error.message);
+    console.error("DB connection failed:", error && error.message ? error.message : error);
+    // Print extra details for diagnosing Atlas connectivity problems
+    if (error) {
+      if (error.name) console.error("DB error name:", error.name);
+      if (error.code) console.error("DB error code:", error.code);
+      if (error.reason) console.error("DB error reason:", error.reason);
+      if (error.cause) console.error("DB error cause:", error.cause);
+      try {
+        console.error("DB error stack:", error.stack);
+      } catch (_) {}
+    }
     process.exit(1);
   }
 };

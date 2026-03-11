@@ -11,7 +11,7 @@ const JobListings = () => {
   const fetchJobs = async () => {
     try {
       const res = await axios.get(
-        "http://localhost:5000/api/admin/jobs"
+        "https://german-bharatham-backend.onrender.com/api/admin/jobs"
       );
       setJobs(res.data);
     } catch (error) {
@@ -31,7 +31,7 @@ const JobListings = () => {
   const handleDelete = async (id) => {
     try {
       await axios.delete(
-        `http://localhost:5000/api/admin/jobs/${id}`
+        `https://german-bharatham-backend.onrender.com/api/admin/jobs/${id}`
       );
       fetchJobs();
     } catch (error) {

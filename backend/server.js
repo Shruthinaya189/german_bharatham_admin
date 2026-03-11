@@ -8,56 +8,65 @@ const { protect, adminOnly } = require("./middleware/auth");
 const app = express();
 
 // Middleware
-app.use(cors({
-  origin: "*",
-  methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
-  credentials: false,
-}));
-app.use(express.json({ limit: '50mb' }));
-app.use(express.urlencoded({ extended: true, limit: '50mb' }));
+app.use(
+  cors({
+    origin: "*",
+    methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
+    credentials: false,
+  })
+);
+app.use(express.json({ limit: "50mb" }));
+app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 
 // Serve static files (uploaded images)
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 // ── User Module ─────────────────────────────────────────────────────────────
 app.use("/api/admin", require("./userModule/admin/adminRoutes"));
 app.use("/api/user", require("./userModule/user/routes/authRoutes"));
 
-// ── Accommodation Module ─────────────────────────────────────────────────────
+// ── Accommodation Module ────────────────────────────────────────────────────
 app.use("/api/accommodation/admin", protect, require("./accommodationModule/admin"));
 app.use("/api/accommodation/user", require("./accommodationModule/user"));
 
-// ── Food & Grocery Module ────────────────────────────────────
+// ── Food & Grocery Module ───────────────────────────────────────────────────
 const foodGroceryRoutes = require("./foodGroceryModule/admin/routes/foodGroceryRoutes");
 console.log("Food Grocery routes loaded:", typeof foodGroceryRoutes);
-app.use("/api/admin/foodgrocery", (req, res, next) => {
-  console.log(`📍 Food Grocery route accessed: ${req.method} ${req.path}`);
-  next();
-}, protect, foodGroceryRoutes);
-const foodGroceryUserRoutes = require("./foodGroceryModule/user");
+app.use(
+  "/api/admin/foodgrocery",
+  (req, res, next) => {
+    console.log(`📍 Food Grocery route accessed: ${req.method} ${req.path}`);
+    next();
+  },
+  protect,
+  foodGroceryRoutes
+);
+app.use("/api/user/foodgrocery", require("./foodGroceryModule/user"));
 
-app.use("/api/user/foodgrocery", foodGroceryUserRoutes);
-
-// ── Jobs Module ──────────────────────────────────────────────
+// ── Jobs Module ─────────────────────────────────────────────────────────────
 app.use("/api/jobs/admin", protect, require("./jobsModule/admin"));
 app.use("/api/jobs/user", require("./jobsModule/user"));
 
-// ── Services Module ────────────────────────────────────────
+// ── Services Module ─────────────────────────────────────────────────────────
 app.use("/api/services/admin", protect, require("./servicesModule/admin"));
 app.use("/api/services/user", require("./servicesModule/user"));
-// ── Universal Rating Module ──────────────────────────────────────────
+// ── Universal Rating Module ─────────────────────────────────────────────────
 app.use("/api/ratings", require("./routes/ratingRoutes"));
-// ── Community Module ─────────────────────────────────────────────────────────
-app.use("/api/community", require("./communityModule/user/routes/communityRoutes"));
-app.use("/api/admin/community", require("./communityModule/admin/Routes/communityRoutes"));
 
-// ── Custom Category Module ───────────────────────────────────────────────────
+// ── Community Module ────────────────────────────────────────────────────────
+app.use("/api/community", require("./communityModule/user/routes/communityRoutes"));
+app.use(
+  "/api/admin/community",
+  require("./communityModule/admin/Routes/communityRoutes")
+);
+
+// ── Custom Category Module ──────────────────────────────────────────────────
 app.use("/api/custom-categories", protect, require("./categoryModule/admin"));
 
-// ── Settings Module ──────────────────────────────────────────────────────────
+// ── Settings Module ─────────────────────────────────────────────────────────
 app.use("/api/admin/settings", require("./userModule/admin/settingsRoutes"));
 
-// ── Utility routes ───────────────────────────────────────────────────────────
+// ── Utility routes ──────────────────────────────────────────────────────────
 app.get("/", (req, res) => {
   res.send("German Bharatham Backend Running");
 });
@@ -65,149 +74,100 @@ app.get("/api/health", (req, res) => {
   res.status(200).json({ message: "Server is running", status: "OK" });
 });
 
-// Minimal reset password page (for links emailed to users)
+// Password reset page (for email reset-link flow)
 app.get("/reset-password", (req, res) => {
+  const token = String(req.query.token || "").trim();
   res.setHeader("Content-Type", "text/html; charset=utf-8");
   res.send(`<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Reset Password</title>
-    <style>
-      :root { --primary: #4E7F6D; --bg: #F7F7F7; --text: #1b1b1b; --muted: #666; --danger: #b00020; }
-      * { box-sizing: border-box; }
-      body { margin: 0; font-family: Arial, sans-serif; background: var(--bg); color: var(--text); }
-      .appbar { background: var(--primary); color: #fff; padding: 14px 16px; display: flex; align-items: center; justify-content: center; }
-      .title { font-size: 18px; font-weight: 700; }
-      .wrap { max-width: 520px; margin: 0 auto; padding: 18px 16px 28px; }
-      .card { background: #fff; border-radius: 14px; padding: 16px; box-shadow: 0 1px 2px rgba(0,0,0,0.06); }
-      p { margin: 0 0 12px; color: var(--muted); }
-      label { display: block; margin: 12px 0 6px; font-size: 14px; }
-      input { width: 100%; padding: 12px 12px; font-size: 14px; border: 1px solid #d0d0d0; border-radius: 10px; outline: none; }
-      input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(78,127,109,0.18); }
-      button.primary { width: 100%; height: 46px; margin-top: 14px; padding: 10px 14px; font-size: 15px; cursor: pointer; border: 0; border-radius: 12px; background: var(--primary); color: #fff; font-weight: 700; }
-      button.primary:disabled { opacity: 0.6; cursor: not-allowed; }
-      .msg { margin-top: 12px; white-space: pre-wrap; font-size: 14px; }
-      .error { color: var(--danger); }
-      .ok { color: var(--primary); }
-    </style>
-  </head>
-  <body>
-    <div class="appbar">
-      <div class="title">Reset Password</div>
-    </div>
+  <html lang="en">
+    <head>
+      <meta charset="utf-8" />
+      <meta name="viewport" content="width=device-width, initial-scale=1" />
+      <title>Reset Password</title>
+      <style>
+        body{font-family:Arial,sans-serif;max-width:420px;margin:40px auto;padding:0 16px;}
+        h1{font-size:20px;margin:0 0 12px;}
+        label{display:block;margin:12px 0 6px;font-size:14px;}
+        input{width:100%;padding:10px;border:1px solid #ccc;border-radius:8px;}
+        button{margin-top:14px;width:100%;padding:10px;border:0;border-radius:8px;background:#4E7F6D;color:#fff;font-size:14px;cursor:pointer;}
+        .msg{margin-top:12px;font-size:13px;white-space:pre-wrap;}
+        .err{color:#b00020;}
+        .ok{color:#1b5e20;}
+      </style>
+    </head>
+    <body>
+      <h1>Reset Password</h1>
+      <p style="margin:0;color:#555;font-size:13px">Enter a new password to complete the reset.</p>
 
-    <div class="wrap">
-      <div class="card">
-        <p>Enter your new password below.</p>
+      <form id="f">
+        <label for="pw">New password</label>
+        <input id="pw" type="password" minlength="6" required />
 
-        <form id="form">
-          <label for="password">New password</label>
-          <input id="password" type="password" minlength="6" required />
+        <label for="pw2">Confirm password</label>
+        <input id="pw2" type="password" minlength="6" required />
 
-          <label for="confirm">Confirm new password</label>
-          <input id="confirm" type="password" minlength="6" required />
+        <button type="submit">Update Password</button>
+      </form>
 
-          <button class="primary" id="btn" type="submit">Reset password</button>
-        </form>
+      <div id="msg" class="msg"></div>
 
-        <div id="msg" class="msg"></div>
-      </div>
-    </div>
-
-    <script>
-      (function () {
-        var params = new URLSearchParams(window.location.search);
-        var token = params.get('token') || '';
-        var msgEl = document.getElementById('msg');
-        var form = document.getElementById('form');
-        var btn = document.getElementById('btn');
+      <script>
+        const token = ${JSON.stringify(token)};
+        const msg = document.getElementById('msg');
+        const form = document.getElementById('f');
 
         if (!token) {
-          msgEl.className = 'msg error';
-          msgEl.textContent = 'Missing token. Please open the full link from your email.';
-          btn.disabled = true;
-          return;
+          msg.textContent = 'Missing reset token.';
+          msg.className = 'msg err';
         }
 
-        form.addEventListener('submit', async function (e) {
+        form.addEventListener('submit', async (e) => {
           e.preventDefault();
-          msgEl.className = 'msg';
-          msgEl.textContent = '';
+          if (!token) return;
+          msg.textContent = '';
+          msg.className = 'msg';
 
-          var password = document.getElementById('password').value || '';
-          var confirm = document.getElementById('confirm').value || '';
-          if (password.length < 6) {
-            msgEl.className = 'msg error';
-            msgEl.textContent = 'Password must be at least 6 characters.';
-            return;
-          }
-          if (password !== confirm) {
-            msgEl.className = 'msg error';
-            msgEl.textContent = 'Passwords do not match.';
+          const pw = document.getElementById('pw').value;
+          const pw2 = document.getElementById('pw2').value;
+          if (pw !== pw2) {
+            msg.textContent = 'Passwords do not match.';
+            msg.className = 'msg err';
             return;
           }
 
-          btn.disabled = true;
-          btn.textContent = 'Resetting...';
           try {
-            var resp = await fetch('/api/user/reset-password', {
+            const res = await fetch('/api/user/reset-password', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ token: token, newPassword: password })
+              body: JSON.stringify({ token, newPassword: pw }),
             });
-            var data = null;
-            try { data = await resp.json(); } catch (_) {}
-            if (resp.ok) {
-              msgEl.className = 'msg ok';
-              msgEl.textContent = (data && data.message) ? data.message : 'Password reset successful. Please return to the app and login.';
-              form.reset();
+
+            const data = await res.json().catch(() => ({}));
+            if (res.ok) {
+              msg.textContent = data.message || 'Password updated successfully.';
+              msg.className = 'msg ok';
+              form.querySelector('button').disabled = true;
             } else {
-              msgEl.className = 'msg error';
-              msgEl.textContent = (data && data.message) ? data.message : ('Failed (HTTP ' + resp.status + ')');
+              msg.textContent = data.message || ('Failed (HTTP ' + res.status + ')');
+              msg.className = 'msg err';
             }
           } catch (err) {
-            msgEl.className = 'msg error';
-            msgEl.textContent = 'Network error. Please try again.';
-          } finally {
-            btn.disabled = false;
-            btn.textContent = 'Reset password';
+            msg.textContent = 'Network error. Please try again.';
+            msg.className = 'msg err';
           }
         });
-      })();
-    </script>
-  </body>
-</html>`);
-});
-app.get("/test", (req, res) => {
-  res.send("Test route working");
+      </script>
+    </body>
+  </html>`);
 });
 
-// ── Global error handler ─────────────────────────────────────────────────────
-app.use((err, req, res, next) => {
-  console.error(err);
-  res.status(err.status || 500).json({
-    message: err.message || "Internal Server Error",
-    status: err.status || 500
-  });
-});
-
-// ── Start server (wait for DB first) ─────────────────────────────────────────
+// Connect DB and start server
 const PORT = process.env.PORT || 5000;
+const HOST = process.env.HOST || "0.0.0.0";
 
-const startServer = async () => {
-  try {
-    await connectDB();
-    app.listen(PORT, "0.0.0.0", () => {
-      console.log(`Server running on http://localhost:${PORT}`);
-    });
-  } catch (err) {
-    console.error("DB connection failed:", err.message);
-    process.exit(1);
-  }
-};
-
-startServer();
-
-module.exports = app;
+(async () => {
+  await connectDB();
+  app.listen(PORT, HOST, () => {
+    console.log(`Server running on http://${HOST}:${PORT}`);
+  });
+})();

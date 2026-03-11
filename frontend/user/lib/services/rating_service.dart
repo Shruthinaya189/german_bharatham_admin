@@ -5,7 +5,7 @@ import '../models/rating_model.dart';
 import 'api_config.dart';
 
 class RatingService {
-  static const String baseUrl = ApiConfig.baseUrl;
+  static String get baseUrl => ApiConfig.baseUrl;
 
   // Generate or retrieve guest ID
   static Future<String> _getGuestId() async {

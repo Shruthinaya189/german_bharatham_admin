@@ -26,7 +26,7 @@ class ApiService {
         queryParams['city'] = city;
       }
 
-      final uri = Uri.parse('$baseUrl/api/user/foodgrocery').replace(
+      final uri = Uri.parse(ApiConfig.foodEndpoint).replace(
         queryParameters: queryParams.isNotEmpty ? queryParams : null,
       );
 
@@ -73,7 +73,7 @@ class ApiService {
   static Future<FoodGrocery> getFoodGroceryById(String id) async {
     try {
       final response = await http.get(
-        Uri.parse('$baseUrl/api/user/foodgrocery/$id'),
+        Uri.parse('${ApiConfig.foodEndpoint}/$id'),
         headers: {
           'Content-Type': 'application/json',
         },
@@ -95,7 +95,7 @@ class ApiService {
   static Future<List<Rating>> getRatings(String foodGroceryId) async {
     try {
       final response = await http.get(
-        Uri.parse('$baseUrl/api/user/foodgrocery/$foodGroceryId/ratings'),
+        Uri.parse('${ApiConfig.foodEndpoint}/$foodGroceryId/ratings'),
         headers: {
           'Content-Type': 'application/json',
         },
@@ -122,7 +122,7 @@ class ApiService {
   }) async {
     try {
       final response = await http.post(
-        Uri.parse('$baseUrl/api/user/foodgrocery/$foodGroceryId/rating'),
+        Uri.parse('${ApiConfig.foodEndpoint}/$foodGroceryId/rating'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
@@ -147,6 +147,8 @@ class ApiService {
 
   /// Helper method to get base URL based on platform
   static String getBaseUrl() {
-    return baseUrl;
+    // You can make this dynamic based on debug/release mode
+    // or detect platform
+    return ApiConfig.baseUrl;
   }
 }

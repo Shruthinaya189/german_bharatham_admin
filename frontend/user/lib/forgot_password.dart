@@ -16,6 +16,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
   static const primaryGreen = Color(0xFF4E7F6D);
 
   final _emailController = TextEditingController();
+
   bool _loading = false;
   String? _message;
   bool _isError = false;
@@ -59,24 +60,14 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
 
       final messageFromServer = data?['message']?.toString();
       final ok = response.statusCode >= 200 && response.statusCode < 300;
-        final helpful404 = response.statusCode == 404
-          ? 'Forgot password is not available on this server (HTTP 404).\n'
-            'Your deployed backend currently has no /api/user/forgot-password route.\n'
-            'Fix: redeploy the backend with that route.'
-          : null;
 
       setState(() {
         _isError = !ok;
         _message = messageFromServer ??
-          helpful404 ??
           (ok
-            ? 'Password reset link was sent to your email.'
+            ? 'If the email exists, a reset link was sent.'
             : 'Failed to send reset link (HTTP ${response.statusCode})');
       });
-
-      if (ok && mounted) {
-        Navigator.pop(context);
-      }
     } catch (e) {
       debugPrint('Forgot password error: $e');
       setState(() {
@@ -117,7 +108,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             const Text(
-              'Enter your email. We will send a reset password link.',
+              'Enter your email. We will send a reset link to set a new password.',
               style: TextStyle(fontSize: 14),
             ),
             const SizedBox(height: 12),

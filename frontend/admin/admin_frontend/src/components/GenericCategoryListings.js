@@ -320,7 +320,7 @@ const GenericCategoryListings = ({ category, apiBase, icon, viewFields }) => {
                   <td>
                     {(() => {
                       const imgSrc = item.companyLogo
-                        ? (item.companyLogo.startsWith('data:') || item.companyLogo.startsWith('http') ? item.companyLogo : `http://localhost:5000${item.companyLogo}`)
+                        ? (item.companyLogo.startsWith('data:') || item.companyLogo.startsWith('http') ? item.companyLogo : `https://german-bharatham-backend.onrender.com${item.companyLogo}`)
                         : (item.media?.images?.[0] || item.images?.[0] || item.image || null);
                       return imgSrc
                         ? <img src={imgSrc} alt="" style={{ width: 56, height: 44, objectFit: 'cover', borderRadius: 6, border: '1px solid #e5e7eb' }} />
