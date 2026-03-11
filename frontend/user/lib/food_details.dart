@@ -644,13 +644,20 @@ class _FoodMapWidgetState extends State<_FoodMapWidget> {
                       BoxShadow(color: Colors.black26, blurRadius: 4)
                     ],
                   ),
-                  child: const Row(
+                  child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.navigation,
-                          size: 14, color: Color(0xFF1A56DB)),
-                      SizedBox(width: 4),
-                      Text(
+                      Image.asset(
+                        'assets/images/google.png',
+                        width: 14,
+                        height: 14,
+                        errorBuilder: (_, __, ___) => const SizedBox(
+                          width: 14,
+                          height: 14,
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      const Text(
                         'Open in Google Maps',
                         style: TextStyle(
                           fontSize: 12,

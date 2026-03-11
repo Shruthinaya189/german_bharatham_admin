@@ -69,6 +69,8 @@ class SavedServiceManager {
     return List.from(_userSaved[_currentUserId] ?? []);
   }
 
+  List<Service> get savedServices => getSavedItems();
+
   Future<void> clearCurrentUser() async {
     _userSaved[_currentUserId] = [];
     await _saveToDisk();

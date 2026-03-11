@@ -95,7 +95,7 @@ class _SavedListingsPageState extends State<SavedListingsPage> {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (_) => AccommodationDetailsPage(accommodation: acc),
+                        builder: (_) => AccommodationDetailPage(item: acc),
                       ),
                     );
                   },
@@ -121,7 +121,7 @@ class _SavedListingsPageState extends State<SavedListingsPage> {
                   onTap: () {
                     Navigator.push(
                       context,
-                      MaterialPageRoute(builder: (_) => FoodDetailsPage(food: food)),
+                      MaterialPageRoute(builder: (_) => FoodDetailPage(item: food)),
                     );
                   },
                   onRemove: () async {
@@ -141,7 +141,7 @@ class _SavedListingsPageState extends State<SavedListingsPage> {
                   onTap: () {
                     Navigator.push(
                       context,
-                      MaterialPageRoute(builder: (_) => JobDetailsPage(job: job)),
+                      MaterialPageRoute(builder: (_) => JobDetailsPage(item: job)),
                     );
                   },
                   onRemove: () async {
@@ -170,7 +170,7 @@ class _SavedListingsPageState extends State<SavedListingsPage> {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (_) => ServiceDetailsPage(service: service),
+                        builder: (_) => ServiceDetailsPage(item: service),
                       ),
                     );
                   },
@@ -184,7 +184,7 @@ class _SavedListingsPageState extends State<SavedListingsPage> {
                 (guide) => _SavedListingCard(
                   title: guide.title,
                   subtitle: guide.author,
-                  image: guide.imageUrl,
+                  image: null,
                   fallbackAsset: 'assets/images/guide.jpg',
                   onTap: () {
                     Navigator.push(

@@ -5,12 +5,7 @@ import '../models/food_grocery_model.dart';
 import '../models/rating_model.dart';
 
 class ApiService {
-  // Update this to your backend URL
-  static const String baseUrl = 'http://localhost:5000';
-  
-  // For Android emulator use: http://10.0.2.2:5000
-  // For real device, use your computer's IP address: http://192.168.x.x:5000
-  // For web/iOS simulator use: http://localhost:5000
+  static const String baseUrl = ApiConfig.baseUrl;
   
   /// Fetch all Food & Grocery listings
   static Future<List<FoodGrocery>> getFoodGroceryListings({

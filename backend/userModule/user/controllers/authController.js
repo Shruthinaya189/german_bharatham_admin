@@ -181,6 +181,16 @@ exports.forgotPassword = async (req, res) => {
     const email = String(req.body.email || "").trim().toLowerCase();
     if (!email) return res.status(400).json({ message: "Email is required" });
 
+    const maskEmailForLog = (value) => {
+      const e = String(value || "");
+      const at = e.indexOf("@");
+      if (at <= 1) return "***";
+      const name = e.slice(0, at);
+      const domain = e.slice(at + 1);
+      const head = name.slice(0, 2);
+      return `${head}***@${domain}`;
+    };
+
     const user = await User.findOne({ email });
 
     // Always respond success to avoid leaking which emails exist.
@@ -241,9 +251,17 @@ exports.forgotPassword = async (req, res) => {
     `;
 
     // Fire-and-forget email send so hosted environments don't time out the HTTP request.
-    sendMail({ to: user.email, subject, text, html }).catch((mailErr) => {
-      console.error("[forgotPassword] Failed to send reset email:", mailErr);
-    });
+    sendMail({ to: user.email, subject, text, html })
+      .then((info) => {
+        console.log(
+          "[forgotPassword] Reset email sent:",
+          maskEmailForLog(user.email),
+          info && info.messageId ? `messageId=${info.messageId}` : ""
+        );
+      })
+      .catch((mailErr) => {
+        console.error("[forgotPassword] Failed to send reset email:", mailErr);
+      });
 
     return res.status(200).json({ message: "If the email exists, a reset link was sent." });
   } catch (error) {

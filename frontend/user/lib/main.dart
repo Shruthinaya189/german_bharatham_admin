@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
@@ -12,6 +11,8 @@ import 'saved_manager.dart';
 import 'saved_service_manager.dart';
 import 'home.dart';
 import 'user_profiles_page.dart';
+import 'forgot_password.dart';
+import 'services/api_config.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -322,11 +323,19 @@ class _AuthPageState extends State<AuthPage> {
   });
 
   try {
+    final identifier = _emailController.text.trim();
+    final isEmail = identifier.contains('@');
+
     final response = await http.post(
-      Uri.parse("http://10.166.137.12:5000/api/user/login"),
+      Uri.parse(ApiConfig.loginEndpoint),
       headers: {"Content-Type": "application/json"},
       body: jsonEncode({
-        "email": _emailController.text.trim(),
+        // Backward compatible:
+        // - Old backend expects `email`
+        // - Updated backend accepts `identifier` (email OR phone)
+        "identifier": identifier,
+        "email": identifier,
+        if (!isEmail) "phone": identifier,
         "password": _passwordController.text.trim(),
       }),
     );
@@ -352,13 +361,25 @@ class _AuthPageState extends State<AuthPage> {
         );
       }
     } else {
+      String message;
+      try {
+        final decoded = jsonDecode(response.body);
+        if (decoded is Map<String, dynamic> && decoded['message'] != null) {
+          message = decoded['message'].toString();
+        } else {
+          message = 'Login failed (HTTP ${response.statusCode})';
+        }
+      } catch (_) {
+        message = 'Login failed (HTTP ${response.statusCode})';
+      }
       setState(() {
-        _loginError = "Username or Password is wrong. Try again.";
+        _loginError = message;
       });
     }
   } catch (e) {
+    debugPrint('Login error: $e');
     setState(() {
-      _loginError = "Server error. Please try again.";
+      _loginError = "Network error. Please check your connection and try again.";
     });
   }
 }
@@ -476,7 +497,15 @@ class _AuthPageState extends State<AuthPage> {
                       const Text('Remember me',style: TextStyle(fontSize: 14),),
                     ],
                   ),
-                  TextButton(onPressed: () {}, child: const Text('Forgot Password?', style: TextStyle(color: Color(0xFF4E7F6D)))),
+                  TextButton(
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const ForgotPasswordPage()),
+                      );
+                    },
+                    child: const Text('Forgot Password?', style: TextStyle(color: Color(0xFF4E7F6D))),
+                  ),
                 ],
               ),
 
@@ -623,7 +652,7 @@ class _SignupPageState extends State<SignupPage> {
 
   try {
     final response = await http.post(
-      Uri.parse("http://10.166.137.12:5000/api/user/register"),
+      Uri.parse(ApiConfig.registerEndpoint),
       headers: {"Content-Type": "application/json"},
       body: jsonEncode({
         "name": _nameController.text.trim(),
@@ -654,13 +683,25 @@ class _SignupPageState extends State<SignupPage> {
         );
       }
     } else {
+      String message;
+      try {
+        final decoded = jsonDecode(response.body);
+        if (decoded is Map<String, dynamic> && decoded['message'] != null) {
+          message = decoded['message'].toString();
+        } else {
+          message = 'Signup failed (HTTP ${response.statusCode})';
+        }
+      } catch (_) {
+        message = 'Signup failed (HTTP ${response.statusCode})';
+      }
       setState(() {
-        _passwordError = "Signup failed. Try again.";
+        _passwordError = message;
       });
     }
   } catch (e) {
+    debugPrint('Signup error: $e');
     setState(() {
-      _passwordError = "Server error. Try again.";
+      _passwordError = "Network error. Please check your connection and try again.";
     });
   }
 }

@@ -69,6 +69,8 @@ class SavedJobManager {
     return List.from(_userSaved[_currentUserId] ?? []);
   }
 
+  List<Job> get savedJobs => getSavedItems();
+
   Future<void> clearCurrentUser() async {
     _userSaved[_currentUserId] = [];
     await _saveToDisk();
