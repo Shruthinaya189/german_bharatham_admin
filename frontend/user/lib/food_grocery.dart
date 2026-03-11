@@ -6,6 +6,7 @@ import 'food_filter_page.dart';
 import 'models/food_grocery_model.dart';
 import 'saved_food_manager.dart';
 import 'services/api_config.dart';
+import 'widgets/star_rating_widget.dart';
 
 class FoodGroceryPage extends StatefulWidget {
   const FoodGroceryPage({super.key});
@@ -140,7 +141,6 @@ class _FoodGroceryPageState extends State<FoodGroceryPage> {
                           'assets/images/search.png',
                           height: 20,
                           width: 20,
-                          color: const Color(0xFF9CA3AF),
                         ),
                       ),
                       filled: true,
@@ -311,11 +311,11 @@ class _FoodCardState extends State<FoodCard> {
                         onTap: _toggleSave,
                         child: Image.asset(
                           'assets/images/bookmark.png',
-                          width: 20,
-                          height: 20,
+                          width: 18,
+                          height: 18,
                           color: isSaved
                               ? const Color(0xFF4E7F6D)
-                              : Colors.grey.shade400,
+                              : Colors.grey,
                         ),
                       ),
                     ],
@@ -325,9 +325,9 @@ class _FoodCardState extends State<FoodCard> {
                     children: [
                       Image.asset(
                         'assets/images/location.png',
-                        width: 14,
-                        height: 14,
-                        color: const Color(0xFF9CA3AF),
+                        width: 16,
+                        height: 16,
+                        errorBuilder: (_, _, _) => const Icon(Icons.location_on, size: 16, color: Color(0xFF4F7F67)),
                       ),
                       const SizedBox(width: 4),
                       Expanded(
@@ -346,37 +346,39 @@ class _FoodCardState extends State<FoodCard> {
                   const SizedBox(height: 6),
                   Row(
                     children: [
-                      Image.asset(
-                        'assets/images/star.png',
-                        width: 14,
-                        height: 14,
-                        color: const Color(0xFFFBBF24),
+                      StarRatingWidget(
+                        rating: widget.item.averageRating,
+                        size: 14,
                       ),
                       const SizedBox(width: 4),
-                      Text(
-                        widget.item.averageRating > 0
-                            ? widget.item.averageRating.toStringAsFixed(1)
-                            : '4.5',
-                        style: const TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.black87,
+                      Flexible(
+                        child: Text(
+                          '${widget.item.averageRating > 0 ? widget.item.averageRating.toStringAsFixed(1) : "4.5"} (${widget.item.totalRatings})',
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.black87,
+                          ),
+                          maxLines: 1,
                         ),
                       ),
-                      const Spacer(),
-                      Image.asset(
-                        'assets/images/location.png',
-                        width: 14,
-                        height: 14,
-                        color: const Color(0xFF9CA3AF),
+                      const SizedBox(width: 8),
+                      const Icon(
+                        Icons.location_on,
+                        size: 16,
+                        color: Color(0xFF4F7F67),
                       ),
                       const SizedBox(width: 4),
-                      Text(
-                        '1.2km',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey.shade700,
-                          fontWeight: FontWeight.w500,
+                      Flexible(
+                        child: Text(
+                          '1.2km',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey.shade700,
+                            fontWeight: FontWeight.w500,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
                     ],
@@ -401,7 +403,7 @@ class _FoodCardState extends State<FoodCard> {
           width: 36,
           height: 36,
           color: const Color(0xFF4E7F6D),
-          errorBuilder: (_, __, ___) => const SizedBox(width: 36, height: 36),
+          errorBuilder: (_, _, _) => const SizedBox(width: 36, height: 36),
         ),
       ),
     );

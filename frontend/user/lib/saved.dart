@@ -317,7 +317,7 @@ class _SavedPageState extends State<SavedPage> {
               'assets/images/home.png',
               height: 24,
               color: _currentIndex == 0 ? const Color(0xFF3A7D6B) : Colors.grey,
-              errorBuilder: (_, __, ___) => Image.asset(
+              errorBuilder: (_, _, _) => Image.asset(
                 'assets/images/warning.png',
                 height: 24,
                 color: _currentIndex == 0 ? const Color(0xFF3A7D6B) : Colors.grey,
@@ -330,7 +330,7 @@ class _SavedPageState extends State<SavedPage> {
               'assets/images/search.png',
               height: 24,
               color: _currentIndex == 1 ? const Color(0xFF3A7D6B) : Colors.grey,
-              errorBuilder: (_, __, ___) => Image.asset(
+              errorBuilder: (_, _, _) => Image.asset(
                 'assets/images/warning.png',
                 height: 24,
                 color: _currentIndex == 1 ? const Color(0xFF3A7D6B) : Colors.grey,
@@ -343,7 +343,7 @@ class _SavedPageState extends State<SavedPage> {
               'assets/images/social.png',
               height: 24,
               color: _currentIndex == 2 ? const Color(0xFF3A7D6B) : Colors.grey,
-              errorBuilder: (_, __, ___) => Image.asset(
+              errorBuilder: (_, _, _) => Image.asset(
                 'assets/images/warning.png',
                 height: 24,
                 color: _currentIndex == 2 ? const Color(0xFF3A7D6B) : Colors.grey,
@@ -356,7 +356,7 @@ class _SavedPageState extends State<SavedPage> {
               'assets/images/bookmark.png',
               height: 24,
               color: _currentIndex == 3 ? const Color(0xFF3A7D6B) : Colors.grey,
-              errorBuilder: (_, __, ___) => Image.asset(
+              errorBuilder: (_, _, _) => Image.asset(
                 'assets/images/warning.png',
                 height: 24,
                 color: _currentIndex == 3 ? const Color(0xFF3A7D6B) : Colors.grey,
@@ -369,7 +369,7 @@ class _SavedPageState extends State<SavedPage> {
               'assets/images/profile.png',
               height: 24,
               color: _currentIndex == 4 ? const Color(0xFF3A7D6B) : Colors.grey,
-              errorBuilder: (_, __, ___) => Image.asset(
+              errorBuilder: (_, _, _) => Image.asset(
                 'assets/images/warning.png',
                 height: 24,
                 color: _currentIndex == 4 ? const Color(0xFF3A7D6B) : Colors.grey,
@@ -448,14 +448,14 @@ class _SavedAccommodationCard extends StatelessWidget {
                       width: 80,
                       height: 80,
                       fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => _placeholder(),
+                      errorBuilder: (_, _, _) => _placeholder(),
                     )
                   : Image.asset(
                       item.image,
                       width: 80,
                       height: 80,
                       fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => _placeholder(),
+                      errorBuilder: (_, _, _) => _placeholder(),
                     ),
             ),
             const SizedBox(width: 12),
@@ -492,10 +492,9 @@ class _SavedAccommodationCard extends StatelessWidget {
                   const SizedBox(height: 5),
                   Row(
                     children: [
-                      Image.asset(
-                        'assets/images/location.png',
-                        width: 13,
-                        height: 13,
+                      const Icon(
+                        Icons.location_on,
+                        size: 13,
                         color: Colors.grey,
                       ),
                       const SizedBox(width: 4),
@@ -553,7 +552,7 @@ class _SavedAccommodationCard extends StatelessWidget {
             width: 36,
             height: 36,
             color: const Color(0xFF4F7F67),
-            errorBuilder: (_, __, ___) => const SizedBox(width: 36, height: 36),
+            errorBuilder: (_, _, _) => const SizedBox(width: 36, height: 36),
           ),
         ),
       );
@@ -603,7 +602,7 @@ class _SavedThumbnail extends StatelessWidget {
         width: width,
         height: height,
         fit: BoxFit.cover,
-        errorBuilder: (_, __, ___) => Image.asset(
+        errorBuilder: (_, _, _) => Image.asset(
           fallbackAsset,
           width: width,
           height: height,
@@ -616,7 +615,7 @@ class _SavedThumbnail extends StatelessWidget {
         width: width,
         height: height,
         fit: BoxFit.cover,
-        errorBuilder: (_, __, ___) => Image.asset(
+        errorBuilder: (_, _, _) => Image.asset(
           fallbackAsset,
           width: width,
           height: height,
@@ -710,10 +709,9 @@ class _SavedFoodCard extends StatelessWidget {
                   const SizedBox(height: 5),
                   Row(
                     children: [
-                      Image.asset(
-                        'assets/images/location.png',
-                        width: 13,
-                        height: 13,
+                      const Icon(
+                        Icons.location_on,
+                        size: 13,
                         color: Colors.grey,
                       ),
                       const SizedBox(width: 4),
@@ -829,10 +827,9 @@ class _SavedJobCard extends StatelessWidget {
                   const SizedBox(height: 5),
                   Row(
                     children: [
-                      Image.asset(
-                        'assets/images/location.png',
-                        width: 13,
-                        height: 13,
+                      const Icon(
+                        Icons.location_on,
+                        size: 13,
                         color: Colors.grey,
                       ),
                       const SizedBox(width: 4),
@@ -932,10 +929,9 @@ class _SavedServiceCard extends StatelessWidget {
                   const SizedBox(height: 5),
                   Row(
                     children: [
-                      Image.asset(
-                        'assets/images/location.png',
-                        width: 13,
-                        height: 13,
+                      const Icon(
+                        Icons.location_on,
+                        size: 13,
                         color: Colors.grey,
                       ),
                       const SizedBox(width: 4),
@@ -1036,10 +1032,9 @@ class SavedCard extends StatelessWidget {
                 const SizedBox(height: 6),
                 Row(
                   children: [
-                    Image.asset(
-                      'assets/images/location.png',
-                      width: 14,
-                      height: 14,
+                    const Icon(
+                      Icons.location_on,
+                      size: 14,
                       color: Colors.grey,
                     ),
                     const SizedBox(width: 4),

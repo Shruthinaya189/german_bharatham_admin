@@ -27,8 +27,16 @@ const foodGrocerySchema = new mongoose.Schema(
     image: { type: String },
     latitude:  { type: Number },
     longitude: { type: Number },
-    averageRating: { type: Number, default: 0 }, // Calculated from all ratings
-    totalRatings: { type: Number, default: 0 }, // Count of ratings
+    averageRating: { type: Number, default: 0, min: 0, max: 5 }, // Calculated from all ratings
+    totalRatings: { type: Number, default: 0, min: 0 }, // Count of ratings
+    ratingDistribution: {
+      1: { type: Number, default: 0 },
+      2: { type: Number, default: 0 },
+      3: { type: Number, default: 0 },
+      4: { type: Number, default: 0 },
+      5: { type: Number, default: 0 }
+    },
+    lastRatedAt: { type: Date },
     status: { type: String, enum: ['Active', 'Pending', 'Inactive'], default: 'Pending' },
     featured: { type: Boolean, default: false },
     verified: { type: Boolean, default: false },

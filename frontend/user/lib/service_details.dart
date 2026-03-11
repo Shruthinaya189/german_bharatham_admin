@@ -119,7 +119,7 @@ ${widget.item.priceRange != null ? 'ðŸ’° ${widget.item.priceRange}' : ''}
                                     child: Image.network(
                                       widget.item.image!,
                                       fit: BoxFit.cover,
-                                      errorBuilder: (_, __, ___) => Image.asset(
+                                      errorBuilder: (_, _, _) => Image.asset(
                                         'assets/images/service.jpg',
                                         fit: BoxFit.cover,
                                       ),
@@ -144,10 +144,9 @@ ${widget.item.priceRange != null ? 'ðŸ’° ${widget.item.priceRange}' : ''}
                                 const SizedBox(height: 8),
                                 Row(
                                   children: [
-                                    Image.asset(
-                                      'assets/images/location.png',
-                                      height: 16,
-                                      width: 16,
+                                    const Icon(
+                                      Icons.location_on,
+                                      size: 16,
                                       color: Colors.grey,
                                     ),
                                     const SizedBox(width: 4),

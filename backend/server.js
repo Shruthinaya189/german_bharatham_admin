@@ -45,7 +45,8 @@ app.use("/api/jobs/user", require("./jobsModule/user"));
 // ── Services Module ────────────────────────────────────────
 app.use("/api/services/admin", protect, require("./servicesModule/admin"));
 app.use("/api/services/user", require("./servicesModule/user"));
-
+// ── Universal Rating Module ──────────────────────────────────────────
+app.use("/api/ratings", require("./routes/ratingRoutes"));
 // ── Community Module ─────────────────────────────────────────────────────────
 app.use("/api/community", require("./communityModule/user/routes/communityRoutes"));
 app.use("/api/admin/community", require("./communityModule/admin/Routes/communityRoutes"));

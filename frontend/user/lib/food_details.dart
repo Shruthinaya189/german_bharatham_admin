@@ -9,6 +9,10 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:share_plus/share_plus.dart';
 import 'models/food_grocery_model.dart';
 import 'saved_food_manager.dart';
+import 'widgets/star_rating_widget.dart';
+import 'widgets/rating_dialog.dart';
+import 'services/rating_service.dart';
+import 'models/rating_model.dart';
 
 class FoodDetailPage extends StatefulWidget {
   final FoodGrocery item;
@@ -26,11 +30,40 @@ class FoodDetailPage extends StatefulWidget {
 
 class _FoodDetailPageState extends State<FoodDetailPage> {
   late bool isSaved;
+  RatingStats? _ratingStats;
 
   @override
   void initState() {
     super.initState();
     isSaved = SavedFoodManager.instance.isSaved(widget.item.id);
+    _loadRatingStats();
+  }
+
+  Future<void> _loadRatingStats() async {
+    final stats = await RatingService.getEntityRatingStats(
+      entityId: widget.item.id,
+      entityType: 'foodgrocery',
+    );
+    setState(() {
+      _ratingStats = stats;
+    });
+  }
+
+  void _showRatingDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => RatingDialog(
+        entityId: widget.item.id,
+        entityType: 'foodgrocery',
+        entityName: widget.item.title,
+        onRatingSubmitted: () {
+          _loadRatingStats();
+          if (widget.onRefresh != null) {
+            widget.onRefresh!();
+          }
+        },
+      ),
+    );
   }
 
   Future<void> _toggleSave() async {
@@ -153,9 +186,10 @@ ${widget.item.phone != null && widget.item.phone!.isNotEmpty ? 'Phone: ${widget.
                   children: [
                     /// TITLE + RATING
                     Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Expanded(
+                          flex: 2,
                           child: Text(
                             widget.item.title,
                             style: GoogleFonts.roboto(
@@ -164,28 +198,36 @@ ${widget.item.phone != null && widget.item.phone!.isNotEmpty ? 'Phone: ${widget.
                               height: 1.18,
                               color: Colors.black,
                             ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
                         const SizedBox(width: 8),
-                        Row(
-                          children: [
-                            Image.asset(
-                              'assets/images/star.png',
-                              height: 18,
-                              width: 18,
-                              color: const Color(0xFFFBBF24),
-                            ),
-                            const SizedBox(width: 4),
-                            Text(
-                              widget.item.averageRating > 0
-                                  ? widget.item.averageRating.toStringAsFixed(1)
-                                  : '4.5',
-                              style: const TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w600,
+                        Flexible(
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              StarRatingWidget(
+                                rating: _ratingStats?.averageRating ?? widget.item.averageRating,
+                                size: 16,
                               ),
-                            ),
-                          ],
+                              const SizedBox(width: 4),
+                              Flexible(
+                                child: Text(
+                                  _ratingStats != null
+                                      ? '${_ratingStats!.averageRating.toStringAsFixed(1)} (${_ratingStats!.totalRatings})'
+                                      : widget.item.averageRating > 0
+                                          ? widget.item.averageRating.toStringAsFixed(1)
+                                          : '4.5',
+                                  style: const TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                  maxLines: 1,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ],
                     ),
@@ -208,7 +250,9 @@ ${widget.item.phone != null && widget.item.phone!.isNotEmpty ? 'Phone: ${widget.
                       ),
                     ],
 
-                    if (widget.item.priceRange != null && widget.item.priceRange!.isNotEmpty) ...[
+                    if (widget.item.priceRange != null && 
+                        widget.item.priceRange!.isNotEmpty && 
+                        widget.item.priceRange!.trim().isNotEmpty) ...[
                       const SizedBox(height: 14),
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -217,7 +261,7 @@ ${widget.item.phone != null && widget.item.phone!.isNotEmpty ? 'Phone: ${widget.
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Text(
-                          widget.item.priceRange!.replaceAll('\$', ''),
+                          widget.item.priceRange!.replaceAll('\$', '').trim(),
                           style: const TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w600,
@@ -301,6 +345,46 @@ ${widget.item.phone != null && widget.item.phone!.isNotEmpty ? 'Phone: ${widget.
                 ),
               ),
             ),
+
+            /// RATE BUTTON
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+              child: SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: _showRatingDialog,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Text(
+                        '★',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 20,
+                          height: 1.0,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      const Text(
+                        "Rate This Restaurant",
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 16,
+                        ),
+                      ),
+                    ],
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF4E7F6D),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                ),
+              ),
+            ),
           ],
         ),
       ),
@@ -368,16 +452,24 @@ ${widget.item.phone != null && widget.item.phone!.isNotEmpty ? 'Phone: ${widget.
     required String label,
     required String value,
   }) {
+    IconData fallbackIcon = Icons.info_outline;
+    if (iconAsset.contains('location')) {
+      fallbackIcon = Icons.location_on;
+    } else if (iconAsset.contains('time') || iconAsset.contains('clock')) {
+      fallbackIcon = Icons.access_time;
+    } else if (iconAsset.contains('phone') || iconAsset.contains('call')) {
+      fallbackIcon = Icons.phone;
+    }
+    
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Image.asset(
-          iconAsset,
-          height: 18,
-          width: 18,
+        Icon(
+          fallbackIcon,
+          size: 20,
           color: const Color(0xFF4E7F6D),
         ),
-        const SizedBox(width: 8),
+        const SizedBox(width: 10),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,

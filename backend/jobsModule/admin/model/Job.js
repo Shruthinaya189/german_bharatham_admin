@@ -21,6 +21,16 @@ const jobSchema = new mongoose.Schema(
     experience: { type: String }, // e.g., "2-5 years"
     education: { type: String },
     applyUrl: { type: String },
+    averageRating: { type: Number, default: 0, min: 0, max: 5 },
+    totalRatings: { type: Number, default: 0, min: 0 },
+    ratingDistribution: {
+      1: { type: Number, default: 0 },
+      2: { type: Number, default: 0 },
+      3: { type: Number, default: 0 },
+      4: { type: Number, default: 0 },
+      5: { type: Number, default: 0 }
+    },
+    lastRatedAt: { type: Date },
     status: { type: String, enum: ['Active', 'Pending', 'Inactive'], default: 'Pending' },
     featured: { type: Boolean, default: false },
     expiresAt: { type: Date },

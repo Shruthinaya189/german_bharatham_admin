@@ -2,6 +2,10 @@
 import 'package:url_launcher/url_launcher.dart';
 import 'package:share_plus/share_plus.dart';
 import 'models/job_model.dart';
+import 'widgets/star_rating_widget.dart';
+import 'widgets/rating_dialog.dart';
+import 'services/rating_service.dart';
+import 'models/rating_model.dart';
 
 class JobDetailsPage extends StatefulWidget {
   final Job item;
@@ -18,6 +22,40 @@ class JobDetailsPage extends StatefulWidget {
 }
 
 class _JobDetailsPageState extends State<JobDetailsPage> {
+  RatingStats? _ratingStats;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadRatingStats();
+  }
+
+  Future<void> _loadRatingStats() async {
+    final stats = await RatingService.getEntityRatingStats(
+      entityId: widget.item.id,
+      entityType: 'job',
+    );
+    setState(() {
+      _ratingStats = stats;
+    });
+  }
+
+  void _showRatingDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => RatingDialog(
+        entityId: widget.item.id,
+        entityType: 'job',
+        entityName: widget.item.title,
+        onRatingSubmitted: () {
+          _loadRatingStats();
+          if (widget.onRefresh != null) {
+            widget.onRefresh!();
+          }
+        },
+      ),
+    );
+  }
   void _shareItem() {
     final String shareText = [
       widget.item.title,
@@ -128,8 +166,11 @@ class _JobDetailsPageState extends State<JobDetailsPage> {
                       child: Text(
                         widget.item.company,
                         style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
+                    const SizedBox(width: 8),
                     Text(
                       _postedAgo(widget.item.createdAt),
                       style: const TextStyle(fontSize: 12, color: Colors.grey),
@@ -140,13 +181,35 @@ class _JobDetailsPageState extends State<JobDetailsPage> {
 
               const SizedBox(height: 10),
 
+              // Rating display
+              if (_ratingStats != null && _ratingStats!.totalRatings > 0)
+                Padding(
+                  padding: const EdgeInsets.only(left: 58, bottom: 10),
+                  child: Row(
+                    children: [
+                      StarRatingWidget(
+                        rating: _ratingStats!.averageRating,
+                        size: 16,
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        '${_ratingStats!.averageRating.toStringAsFixed(1)} (${_ratingStats!.totalRatings} ratings)',
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF666666),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
               // Row 3: Location (left), Salary (right)
               Row(
                 children: [
-                  Image.asset(
-                    'assets/images/location.png',
-                    height: 18,
-                    width: 18,
+                  const Icon(
+                    Icons.location_on,
+                    size: 18,
                     color: Colors.grey,
                   ),
                   const SizedBox(width: 4),
@@ -203,6 +266,33 @@ class _JobDetailsPageState extends State<JobDetailsPage> {
                   child: const Text(
                     'Apply Now',
                     style: TextStyle(fontSize: 16, color: Colors.white, fontWeight: FontWeight.w700),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
+                height: 54,
+                child: ElevatedButton(
+                  onPressed: _showRatingDialog,
+                  style: ElevatedButton.styleFrom(
+                    elevation: 0,
+                    backgroundColor: const Color(0xFF4E7F6D),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: const [
+                      Text(
+                        '★',
+                        style: TextStyle(fontSize: 20, color: Colors.white, height: 1.0),
+                      ),
+                      SizedBox(width: 8),
+                      Text(
+                        'Rate This Job',
+                        style: TextStyle(fontSize: 16, color: Colors.white, fontWeight: FontWeight.w700),
+                      ),
+                    ],
                   ),
                 ),
               ),

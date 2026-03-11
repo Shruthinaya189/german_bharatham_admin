@@ -196,17 +196,17 @@ class _ServiceCardState extends State<ServiceCard> {
                       child: Image.network(
                         widget.item.image!,
                         fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) => Image.asset(
+                        errorBuilder: (_, _, _) => Image.asset(
                           'assets/images/service.jpg',
                           fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+                          errorBuilder: (_, _, _) => const SizedBox.shrink(),
                         ),
                       ),
                     )
                   : Image.asset(
                       'assets/images/service.jpg',
                       fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+                      errorBuilder: (_, _, _) => const SizedBox.shrink(),
                     ),
             ),
             const SizedBox(width: 12),
@@ -221,12 +221,10 @@ class _ServiceCardState extends State<ServiceCard> {
                   const SizedBox(height: 6),
                   Row(
                     children: [
-                      Image.asset(
-                        'assets/images/location.png',
-                        width: 16,
-                        height: 16,
+                      const Icon(
+                        Icons.location_on,
+                        size: 16,
                         color: Colors.grey,
-                        errorBuilder: (_, __, ___) => const SizedBox(width: 16, height: 16),
                       ),
                       const SizedBox(width: 4),
                       Expanded(child: Text(widget.item.city, style: const TextStyle(color: Colors.grey, fontSize: 12))),
