@@ -16,16 +16,21 @@ function buildTransport({ host, port, secure, user, pass }) {
     secure,
     auth: user && pass ? { user, pass } : undefined,
 
-    connectionTimeout: 10000,
-    greetingTimeout: 10000,
-    socketTimeout: 20000,
+    // Fail fast on hosts that block outbound SMTP.
+    connectionTimeout: Number(process.env.SMTP_CONNECTION_TIMEOUT_MS || 10_000),
+    greetingTimeout: Number(process.env.SMTP_GREETING_TIMEOUT_MS || 10_000),
+    socketTimeout: Number(process.env.SMTP_SOCKET_TIMEOUT_MS || 20_000),
 
+    // STARTTLS is expected on ports like 587/2525.
     requireTLS: !secure,
 
     tls: {
       minVersion: "TLSv1.2",
-      rejectUnauthorized: false
-    }
+      rejectUnauthorized:
+        String(process.env.SMTP_TLS_REJECT_UNAUTHORIZED || "true")
+          .trim()
+          .toLowerCase() !== "false",
+    },
   });
 }
 
@@ -138,23 +143,37 @@ async function sendEmail({ to, subject, text, html }) {
 
   try {
     return await transporter.sendMail(mail);
-  } catch (err) {
-    // Common on some hosts: port 465 blocked/timeouts. If configured with 465, retry on 587.
-    const code = err && (err.code || err.errno);
-    const shouldRetry =
-      cfg.port === 465 &&
-      (transientNetworkErrorCodes.has(String(code)) ||
-        /timeout/i.test(String(err.message || "")));
+  } catch (originalErr) {
+    const code = originalErr && (originalErr.code || originalErr.errno);
+    const msg = String(originalErr && originalErr.message ? originalErr.message : "");
+    const isTransient =
+      transientNetworkErrorCodes.has(String(code)) || /timeout/i.test(msg);
 
-    if (!shouldRetry) throw err;
+    if (!isTransient) throw originalErr;
 
-    const fallbackCfg = {
-      ...cfg,
-      port: 587,
-      secure: false,
-    };
-    const fallbackTransporter = buildTransport(fallbackCfg);
-    return fallbackTransporter.sendMail({ ...mail, from: fallbackCfg.from });
+    // Brevo supports 587 (STARTTLS), 2525 (STARTTLS), and 465 (SSL).
+    // Some hosts block certain SMTP ports; try a sensible fallback sequence.
+    const portsToTry = [];
+    if (cfg.port === 465) portsToTry.push(587, 2525);
+    else if (cfg.port === 587) portsToTry.push(2525);
+    else if (cfg.port === 2525) portsToTry.push(587);
+
+    let lastErr = originalErr;
+    for (const nextPort of portsToTry) {
+      try {
+        const nextCfg = {
+          ...cfg,
+          port: nextPort,
+          secure: nextPort === 465,
+        };
+        const nextTransporter = buildTransport(nextCfg);
+        return await nextTransporter.sendMail({ ...mail, from: nextCfg.from });
+      } catch (e) {
+        lastErr = e;
+      }
+    }
+
+    throw lastErr;
   }
 }
 
