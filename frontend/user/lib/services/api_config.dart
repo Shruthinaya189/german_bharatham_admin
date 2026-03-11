@@ -3,13 +3,11 @@ class ApiConfig {
   //   flutter run --dart-define=API_BASE_URL=http://<YOUR_PC_IPV4>:5000
   //
   // Defaults:
-  // - Uses the deployed backend (recommended for phones)
-  // - For local dev: Android emulator can reach your PC via 10.0.2.2
-  // - For local dev on a physical phone: use your PC's LAN IP (same Wi‑Fi)
-  //   OR use `adb reverse`.
+  // - Android emulator can reach your PC via 10.0.2.2
+  // - Physical phone must use your PC's LAN IP (same Wi‑Fi) OR use `adb reverse`.
   static const String baseUrl = String.fromEnvironment(
     'API_BASE_URL',
-    defaultValue: 'https://german-bharatham-backend.onrender.com',
+    defaultValue: 'http://10.166.137.12:5000',
   );
   
   // API endpoints
