@@ -6,6 +6,7 @@ import 'services/api_config.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'dart:typed_data';
+import 'widgets/star_rating_widget.dart';
 
 /// =======================
 /// DATA MODEL
@@ -42,6 +43,7 @@ class Accommodation {
   final bool? nearPublicTransport;
   final String? contactPhone;
   final double? averageRating;
+  final int? totalRatings;
 
   Accommodation({
     required this.id,
@@ -73,6 +75,7 @@ class Accommodation {
     this.nearPublicTransport,
     this.contactPhone,
     this.averageRating,
+    this.totalRatings,
   });
 
   factory Accommodation.fromJson(Map<String, dynamic> json) {
@@ -166,6 +169,7 @@ class Accommodation {
       nearPublicTransport: json['locationHighlights']?['nearPublicTransport'],
       contactPhone: json['contactPhone']?.toString(),
       averageRating: (json['averageRating'] as num?)?.toDouble() ?? 0.0,
+      totalRatings: json['totalRatings'] as int? ?? 0,
     );
   }
 
@@ -200,6 +204,7 @@ class Accommodation {
       'nearPublicTransport': nearPublicTransport,
       'contactPhone': contactPhone,
       'averageRating': averageRating,
+      'totalRatings': totalRatings,
     };
   }
 
@@ -236,6 +241,7 @@ class Accommodation {
       nearPublicTransport: json['nearPublicTransport'] as bool?,
       contactPhone: json['contactPhone']?.toString(),
       averageRating: (json['averageRating'] as num?)?.toDouble(),
+      totalRatings: json['totalRatings'] as int?,
     );
   }
 }
@@ -451,14 +457,18 @@ class _AccommodationPageState extends State<AccommodationPage> {
                       SavedManager.instance.toggle(item);
                     });
                   },
-                  onTap: () {
-                    Navigator.push(
+                  onTap: () async {
+                    await Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (_) =>
-                            AccommodationDetailPage(item: item),
+                        builder: (_) => AccommodationDetailPage(
+                          item: item,
+                          onRefresh: fetchAccommodations,
+                        ),
                       ),
                     );
+                    // Refresh after returning from details
+                    fetchAccommodations();
                   },
                 );
               },

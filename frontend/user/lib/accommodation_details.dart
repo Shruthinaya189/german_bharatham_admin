@@ -9,11 +9,62 @@ import 'package:http/http.dart' as http;
 import 'package:latlong2/latlong.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:share_plus/share_plus.dart';
+import 'widgets/star_rating_widget.dart';
+import 'widgets/rating_dialog.dart';
+import 'services/rating_service.dart';
+import 'models/rating_model.dart';
 
-class AccommodationDetailPage extends StatelessWidget {
+class AccommodationDetailPage extends StatefulWidget {
   final dynamic item;
+  final VoidCallback? onRefresh;
 
-  const AccommodationDetailPage({super.key, this.item});
+  const AccommodationDetailPage({
+    super.key,
+    required this.item,
+    this.onRefresh,
+  });
+
+  @override
+  State<AccommodationDetailPage> createState() => _AccommodationDetailPageState();
+}
+
+class _AccommodationDetailPageState extends State<AccommodationDetailPage> {
+  RatingStats? _ratingStats;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadRatingStats();
+  }
+
+  Future<void> _loadRatingStats() async {
+    final stats = await RatingService.getEntityRatingStats(
+      entityId: widget.item.id,
+      entityType: 'accommodation',
+    );
+    if (mounted) {
+      setState(() {
+        _ratingStats = stats;
+      });
+    }
+  }
+
+  void _showRatingDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => RatingDialog(
+        entityId: widget.item.id,
+        entityType: 'accommodation',
+        entityName: widget.item.title,
+        onRatingSubmitted: () {
+          _loadRatingStats();
+          if (widget.onRefresh != null) {
+            widget.onRefresh!();
+          }
+        },
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -25,7 +76,7 @@ class AccommodationDetailPage extends StatelessWidget {
             /// IMAGE HEADER
             Stack(
               children: [
-                _buildImage(item.image, 300),
+                _buildImage(widget.item.image, 300),
                 Positioned(
                   top: 12,
                   left: 12,
@@ -54,12 +105,53 @@ class AccommodationDetailPage extends StatelessWidget {
                   children: [
                     /// TITLE
                     Text(
-                      item.title,
+                      widget.item.title,
                       style: GoogleFonts.roboto(
                         fontSize: 22,
                         fontWeight: FontWeight.w600,
                         height: 1.18,
                         color: Colors.black,
+                      ),
+                    ),
+
+                    const SizedBox(height: 10),
+
+                    /// RATING SECTION
+                    Row(
+                      children: [
+                        StarRatingWidget(
+                          rating: widget.item.averageRating ?? 0.0,
+                          size: 18,
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          '${(widget.item.averageRating ?? 0.0).toStringAsFixed(1)} (${widget.item.totalRatings ?? 0} ratings)',
+                          style: GoogleFonts.roboto(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.black87,
+                          ),
+                        ),
+                      ],
+                    ),
+
+                    const SizedBox(height: 12),
+
+                    /// RATING BUTTON
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        onPressed: _showRatingDialog,
+                        icon: const Icon(Icons.star_border, size: 20),
+                        label: const Text('Rate this Accommodation'),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: const Color(0xFF4E7F6D),
+                          side: const BorderSide(color: Color(0xFF4E7F6D)),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                        ),
                       ),
                     ),
 
@@ -80,7 +172,7 @@ class AccommodationDetailPage extends StatelessWidget {
                               const SizedBox(width: 4),
                               Expanded(
                                 child: Text(
-                                  item.location,
+                                  widget.item.location,
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                   style: GoogleFonts.roboto(
@@ -94,7 +186,7 @@ class AccommodationDetailPage extends StatelessWidget {
                         ),
                         const SizedBox(width: 10),
                         Text(
-                          "€${item.price} / per month",
+                          "€${widget.item.price} / per month",
                           style: GoogleFonts.roboto(
                             fontSize: 16,
                             fontWeight: FontWeight.w600,
@@ -180,7 +272,7 @@ class AccommodationDetailPage extends StatelessWidget {
                       icon: 'assets/images/call.png',
                       label: "Call",
                       color: const Color(0xFF4E7F6D),
-                      onPressed: () => _makePhoneCall(context, item.contactPhone),
+                      onPressed: () => _makePhoneCall(context, widget.item.contactPhone),
                     ),
                   ),
                   const SizedBox(width: 10),
@@ -189,7 +281,7 @@ class AccommodationDetailPage extends StatelessWidget {
                       icon: 'assets/images/whatsapp.png',
                       label: "Whatsapp",
                       color: const Color(0xFF4E7F6D),
-                      onPressed: () => _openWhatsApp(context, item.contactPhone),
+                      onPressed: () => _openWhatsApp(context, widget.item.contactPhone),
                       iconOverride: const FaIcon(
                         FontAwesomeIcons.whatsapp,
                         color: Colors.white,
@@ -206,31 +298,9 @@ class AccommodationDetailPage extends StatelessWidget {
     );
   }
 
-  Future<Map<String, double>?> _geocodeAddress(String address) async {
-    if (address.isEmpty) return null;
-    try {
-      final encoded = Uri.encodeComponent(address);
-      final response = await http.get(
-        Uri.parse(
-            'https://nominatim.openstreetmap.org/search?q=$encoded&format=json&limit=1'),
-        headers: {'User-Agent': 'GermanBharatham/1.0'},
-      );
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body) as List;
-        if (data.isNotEmpty) {
-          return {
-            'lat': double.parse(data[0]['lat'] as String),
-            'lon': double.parse(data[0]['lon'] as String),
-          };
-        }
-      }
-    } catch (_) {}
-    return null;
-  }
-
   Widget _buildMapSection(BuildContext context) {
-    final double? lat = item.latitude;
-    final double? lon = item.longitude;
+    final double? lat = widget.item.latitude;
+    final double? lon = widget.item.longitude;
 
     Future<void> openGoogleMaps(double? latitude, double? longitude) async {
       final Uri url;
@@ -238,7 +308,7 @@ class AccommodationDetailPage extends StatelessWidget {
         url = Uri.parse(
             'https://www.google.com/maps/dir/?api=1&destination=$latitude,$longitude');
       } else {
-        final query = Uri.encodeComponent(item.location ?? '');
+        final query = Uri.encodeComponent(widget.item.location ?? '');
         url = Uri.parse(
             'https://www.google.com/maps/search/?api=1&query=$query');
       }
@@ -252,13 +322,13 @@ class AccommodationDetailPage extends StatelessWidget {
       return _AccommodationMapWidget(
         lat: lat,
         lon: lon,
-        address: item.location ?? '',
+        address: widget.item.location ?? '',
       );
     }
 
     // Otherwise geocode the address text via Nominatim (free, no API key)
     return FutureBuilder<Map<String, double>?>(
-      future: _geocodeAddress(item.location ?? ''),
+      future: _geocodeAddress(widget.item.location ?? ''),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return ClipRRect(
@@ -274,7 +344,7 @@ class AccommodationDetailPage extends StatelessWidget {
           return _AccommodationMapWidget(
             lat: snapshot.data!['lat']!,
             lon: snapshot.data!['lon']!,
-            address: item.location ?? '',
+            address: widget.item.location ?? '',
           );
         }
         // Geocoding failed — fallback tap button
@@ -312,6 +382,28 @@ class AccommodationDetailPage extends StatelessWidget {
         );
       },
     );
+  }
+
+  Future<Map<String, double>?> _geocodeAddress(String address) async {
+    if (address.isEmpty) return null;
+    try {
+      final encoded = Uri.encodeComponent(address);
+      final response = await http.get(
+        Uri.parse(
+            'https://nominatim.openstreetmap.org/search?q=$encoded&format=json&limit=1'),
+        headers: {'User-Agent': 'GermanBharatham/1.0'},
+      );
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body) as List;
+        if (data.isNotEmpty) {
+          return {
+            'lat': double.parse(data[0]['lat'] as String),
+            'lon': double.parse(data[0]['lon'] as String),
+          };
+        }
+      }
+    } catch (_) {}
+    return null;
   }
 
   Widget _circleIcon({required String icon, VoidCallback? onTap}) {
@@ -477,12 +569,12 @@ class AccommodationDetailPage extends StatelessWidget {
 
   Future<void> _shareAccommodation() async {
     final String shareText = '''
-${item.title}
-${item.location}
-Price: €${item.price} per month
-${item.contactPhone != null && item.contactPhone!.isNotEmpty ? 'Contact: ${item.contactPhone}' : ''}
+${widget.item.title}
+${widget.item.location}
+Price: €${widget.item.price} per month
+${widget.item.contactPhone != null && widget.item.contactPhone!.isNotEmpty ? 'Contact: ${widget.item.contactPhone}' : ''}
 ''';
-    await Share.share(shareText, subject: item.title);
+    await Share.share(shareText, subject: widget.item.title);
   }
 }
 
