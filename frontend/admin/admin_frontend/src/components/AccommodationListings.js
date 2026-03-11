@@ -24,6 +24,7 @@ const AccommodationListings = () => {
   const [stats, setStats] = useState({ count: 0, activeCount: 0 });
   const [selectedAccommodation, setSelectedAccommodation] = useState(null);
   const [statusFilter, setStatusFilter] = useState('all');
+  const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => { fetchAccommodations(); }, []);
 
@@ -92,9 +93,14 @@ const AccommodationListings = () => {
     return s || 'inactive';
   };
 
-  const filtered = statusFilter === 'all'
+  const filtered = (statusFilter === 'all'
     ? accommodations
-    : accommodations.filter(a => normalizeStatus(a.status || (a.adminControls?.isActive ? 'active' : 'inactive')) === statusFilter);
+    : accommodations.filter(a => normalizeStatus(a.status || (a.adminControls?.isActive ? 'active' : 'inactive')) === statusFilter)
+  ).filter(a => {
+    if (!searchQuery) return true;
+    const q = searchQuery.toLowerCase();
+    return [a.title, a.propertyType, a.city, a.area, a.status].some(v => v && v.toLowerCase().includes(q));
+  });
 
   return (
     <div className="listings">
@@ -126,6 +132,13 @@ const AccommodationListings = () => {
           <p>Total: {stats.count} | Active: {stats.activeCount}</p>
         </div>
         <div className="header-actions" style={{ display:'flex', gap:10, alignItems:'center' }}>
+          <input
+            type="text"
+            placeholder="Search accommodations..."
+            value={searchQuery}
+            onChange={e => setSearchQuery(e.target.value)}
+            style={{ padding:'8px 12px', borderRadius:8, border:'1px solid #e5e7eb', fontSize:14, minWidth:200 }}
+          />
           <select
             value={statusFilter}
             onChange={e => setStatusFilter(e.target.value)}

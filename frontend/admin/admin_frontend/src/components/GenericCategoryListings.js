@@ -198,6 +198,7 @@ const GenericCategoryListings = ({ category, apiBase, icon, viewFields }) => {
   const [viewItem, setViewItem] = useState(null);
   const [editItem, setEditItem] = useState(null);
   const [statusFilter, setStatusFilter] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
 
   const fetchItems = useCallback(async () => {
     setLoading(true);
@@ -235,7 +236,17 @@ const GenericCategoryListings = ({ category, apiBase, icon, viewFields }) => {
 
   const getTitle = item => item[viewFields.title] || item[viewFields.titleKey] || 'Untitled';
   const getSub = item => item[viewFields.subKey] || '';
-  const getLoc = item => [item.city, item.area].filter(Boolean).join(', ') || 'N/A';
+  const getLoc = item => item.location || [item.city, item.area].filter(Boolean).join(', ') || 'N/A';
+
+  const displayItems = searchQuery
+    ? items.filter(item => {
+        const q = searchQuery.toLowerCase();
+        return [
+          getTitle(item), getSub(item), getLoc(item),
+          item.status, item.contact, item.phone, item.email
+        ].some(v => v && String(v).toLowerCase().includes(q));
+      })
+    : items;
 
   return (
     <div className="listings">
@@ -265,6 +276,13 @@ const GenericCategoryListings = ({ category, apiBase, icon, viewFields }) => {
           <p>Total: {items.length}</p>
         </div>
         <div className="header-actions">
+          <input
+            type="text"
+            placeholder={`Search ${category.toLowerCase()}...`}
+            value={searchQuery}
+            onChange={e => setSearchQuery(e.target.value)}
+            style={{ padding:'8px 12px', borderRadius:8, border:'1px solid #e5e7eb', fontSize:14, minWidth:200 }}
+          />
           <select className="filter-select" value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
             <option value="">All Status</option>
             <option value="active">Active</option>
@@ -279,7 +297,7 @@ const GenericCategoryListings = ({ category, apiBase, icon, viewFields }) => {
 
       {loading ? (
         <div style={{ textAlign: 'center', padding: 40 }}>Loading…</div>
-      ) : items.length === 0 ? (
+      ) : displayItems.length === 0 ? (
         <div style={{ textAlign: 'center', padding: 40 }}>No {category.toLowerCase()} listings found.</div>
       ) : (
         <div className="listings-table">
@@ -297,19 +315,22 @@ const GenericCategoryListings = ({ category, apiBase, icon, viewFields }) => {
               </tr>
             </thead>
             <tbody>
-              {items.map(item => (
+              {displayItems.map(item => (
                 <tr key={item._id}>
                   <td>
-                    {(item.media?.images?.[0] || item.images?.[0] || item.image)
-                      ? <img src={item.media?.images?.[0] || item.images?.[0] || item.image} alt=""
-                          style={{ width: 56, height: 44, objectFit: 'cover', borderRadius: 6, border: '1px solid #e5e7eb' }} />
-                      : <div style={{ width: 56, height: 44, background: '#f3f4f6', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18 }}>📷</div>
-                    }
+                    {(() => {
+                      const imgSrc = item.companyLogo
+                        ? (item.companyLogo.startsWith('data:') || item.companyLogo.startsWith('http') ? item.companyLogo : `http://localhost:5000${item.companyLogo}`)
+                        : (item.media?.images?.[0] || item.images?.[0] || item.image || null);
+                      return imgSrc
+                        ? <img src={imgSrc} alt="" style={{ width: 56, height: 44, objectFit: 'cover', borderRadius: 6, border: '1px solid #e5e7eb' }} />
+                        : <div style={{ width: 56, height: 44, background: '#f3f4f6', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18 }}>📷</div>;
+                    })()}
                   </td>
                   <td className="listing-title">{getTitle(item)}</td>
                   <td>{getSub(item) || '—'}</td>
                   <td>{getLoc(item)}</td>
-                  <td>{item.phone || item.contactPhone || '—'}</td>
+                  <td>{item.contact || item.phone || item.contactPhone || '—'}</td>
                   <td>
                     <select
                       value={item.status || 'active'}

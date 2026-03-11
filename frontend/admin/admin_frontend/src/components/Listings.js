@@ -6,7 +6,7 @@ import API_URL from '../config';
 const APIS = {
   Accommodation: { get: `${API_URL}/api/accommodation/admin`, patch: (id) => `${API_URL}/api/accommodation/admin/${id}/status`, del: (id) => `${API_URL}/api/accommodation/admin/${id}`, titleKey: 'title' },
   Food:          { get: `${API_URL}/api/admin/foodgrocery`,          patch: (id) => `${API_URL}/api/admin/foodgrocery/${id}/status`,          del: (id) => `${API_URL}/api/admin/foodgrocery/${id}`,          titleKey: 'title' },
-  Jobs:          { get: `${API_URL}/api/jobs/admin`,          patch: (id) => `${API_URL}/api/jobs/admin/${id}/status`,          del: (id) => `${API_URL}/api/jobs/admin/${id}`,          titleKey: 'jobTitle' },
+  Jobs:          { get: `${API_URL}/api/jobs/admin`,          patch: (id) => `${API_URL}/api/jobs/admin/${id}/status`,          del: (id) => `${API_URL}/api/jobs/admin/${id}`,          titleKey: 'title' },
   Services:      { get: `${API_URL}/api/services/admin`,      patch: (id) => `${API_URL}/api/services/admin/${id}/status`,      del: (id) => `${API_URL}/api/services/admin/${id}`,      titleKey: 'serviceName' },
 };
 
@@ -21,6 +21,7 @@ const Listings = () => {
   const [loading, setLoading] = useState(true);
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => { fetchAllListings(); }, []);
 
@@ -37,7 +38,7 @@ const Listings = () => {
               _id: item._id,
               title: item[conf.titleKey] || 'Untitled',
               category: cat,
-              location: [item.city, item.area].filter(Boolean).join(', ') || 'N/A',
+              location: item.location || [item.city, item.area].filter(Boolean).join(', ') || 'N/A',
               status: (s => s === 'disabled' || s === 'pending' ? 'inactive' : s || 'inactive')(item.status),
               created: item.createdAt ? new Date(item.createdAt).toLocaleDateString('en-GB') : 'N/A',
             })))
@@ -88,6 +89,11 @@ const Listings = () => {
   const filtered = listings.filter(l => {
     if (categoryFilter !== 'all' && l.category !== categoryFilter) return false;
     if (statusFilter !== 'all' && l.status !== statusFilter) return false;
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase();
+      const matches = [l.title, l.category, l.location, l.status].some(v => v && v.toLowerCase().includes(q));
+      if (!matches) return false;
+    }
     return true;
   });
 
@@ -99,6 +105,13 @@ const Listings = () => {
           <p>Manage all listings across every category.</p>
         </div>
         <div className="header-actions">
+          <input
+            type="text"
+            placeholder="Search listings..."
+            value={searchQuery}
+            onChange={e => setSearchQuery(e.target.value)}
+            style={{ padding:'8px 12px', borderRadius:8, border:'1px solid #e5e7eb', fontSize:14, minWidth:200 }}
+          />
           <select className="filter-select" value={categoryFilter} onChange={e => setCategoryFilter(e.target.value)}>
             <option value="all">All Categories</option>
             <option value="Accommodation">Accommodation</option>

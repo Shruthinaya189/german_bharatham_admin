@@ -400,7 +400,7 @@ const JobsForm = ({ data, set }) => {
         <div className="form-row">
           <div className="form-group">
             <label>Title {REQ}</label>
-            <input value={data.title} onChange={e => set(p => ({...p, title: e.target.value}))} placeholder="Room" />
+            <input value={data.title} onChange={e => set(p => ({...p, title: e.target.value}))} placeholder="Job Title" />
           </div>
           <div className="form-group">
             <label>Location {REQ}</label>
@@ -431,14 +431,6 @@ const JobsForm = ({ data, set }) => {
           <div className="form-group">
             <label>Salary</label>
             <input value={data.salary} onChange={e => set(p => ({...p, salary: e.target.value}))} placeholder="€3,000/month" />
-          </div>
-          <div className="form-group">
-            <label>Status {REQ}</label>
-            <select value={data.status} onChange={e => set(p => ({...p, status: e.target.value}))}>
-              <option>Active</option>
-              <option>Pending</option>
-              <option>Disabled</option>
-            </select>
           </div>
         </div>
         <div className="form-row">
@@ -565,7 +557,7 @@ const ServicesForm = ({ data, set }) => {
 const DEFAULTS = {
   Accommodation: { title:'', propertyType:'apartment', city:'', area:'', postalCode:'', address:'', contactPhone:'', description:'', coldRent:'', warmRent:'', deposit:'', sizeSqm:'', bedrooms:'', bathrooms:'', amenities:[], images:[], status:'active' },
   Food: { title:'', subCategory:'Restaurant', type:'', city:'', state:'', zipCode:'', address:'', phone:'', email:'', website:'', description:'', priceRange:'$$', openingHours:'', cuisine:[], specialties:[], deliveryAvailable:false, takeoutAvailable:false, dineInAvailable:false, cateringAvailable:false, image:'', status:'active', featured:false, verified:true },
-  Jobs: { title:'', location:'', contact:'', description:'', salary:'', status:'Active', companyName:'', companyLogo:'', type:'Full Time', requirements:'', benefits:'', applyUrl:'' },
+  Jobs: { title:'', location:'', contact:'', description:'', salary:'', status:'active', companyName:'', companyLogo:'', type:'Full Time', requirements:'', benefits:'', applyUrl:'' },
   Services: { serviceName:'', providerName:'', serviceType:'', city:'', area:'', postalCode:'', address:'', contactPhone:'', description:'', priceRange:'', images:[], status:'active' },
 };
 
@@ -670,7 +662,7 @@ const buildPayload = (category, data) => {
       contact: data.contact?.trim() || null,
       description: data.description?.trim() || null,
       salary: data.salary?.trim() || null,
-      status: data.status || 'Active',
+      status: data.status ? (data.status.charAt(0).toUpperCase() + data.status.slice(1).toLowerCase()) : 'Active',
       companyName: data.companyName?.trim() || null,
       companyLogo: data.companyLogo || null,
       type: data.type || 'Full Time',

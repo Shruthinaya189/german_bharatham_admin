@@ -10,7 +10,7 @@ const app = express();
 // Middleware
 app.use(cors({
   origin: "*",
-  methods: ["GET", "POST", "PUT", "DELETE"],
+  methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
   credentials: false,
 }));
 app.use(express.json({ limit: '50mb' }));
@@ -52,6 +52,9 @@ app.use("/api/admin/community", require("./communityModule/admin/Routes/communit
 
 // ── Custom Category Module ───────────────────────────────────────────────────
 app.use("/api/custom-categories", protect, require("./categoryModule/admin"));
+
+// ── Settings Module ──────────────────────────────────────────────────────────
+app.use("/api/admin/settings", require("./userModule/admin/settingsRoutes"));
 
 // ── Utility routes ───────────────────────────────────────────────────────────
 app.get("/", (req, res) => {

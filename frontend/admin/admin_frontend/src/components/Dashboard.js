@@ -40,7 +40,7 @@ const Dashboard = () => {
       data.forEach(item => allItems.push({
         title:     item.title || item.name || item.jobTitle || item.serviceName || 'Untitled',
         category:  cat,
-        status:    (item.status === 'active' || item.adminControls?.isActive) ? 'Active' : 'Inactive',
+        status:    (item.status === 'active' || item.status === 'Active' || item.adminControls?.isActive) ? 'Active' : 'Inactive',
         createdAt: item.createdAt,
       }));
     });

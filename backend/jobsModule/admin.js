@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const Job = require('./Job');
+const Job = require('./models/jobModel');
 
 const adminCheck = (req, res, next) => {
   if (!req.user || req.user.role !== 'admin') return res.status(403).json({ message: 'Admin access required' });
@@ -29,8 +29,8 @@ router.get('/:id', adminCheck, async (req, res) => {
 // CREATE
 router.post('/', adminCheck, async (req, res) => {
   try {
-    const { jobTitle, company, city, contactPhone } = req.body;
-    if (!jobTitle || !company || !city || !contactPhone) return res.status(400).json({ message: 'Job Title, Company, City and Contact Phone are required' });
+    const { title } = req.body;
+    if (!title || !title.trim()) return res.status(400).json({ message: 'Job Title is required' });
     const doc = new Job(req.body);
     await doc.save();
     res.status(201).json(doc);

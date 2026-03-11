@@ -3,19 +3,19 @@ import GenericCategoryListings from './GenericCategoryListings';
 import API_URL from '../config';
 
 const JOBS_FIELDS = {
-  title: 'jobTitle',
-  subKey: 'company',
+  title: 'title',
+  subKey: 'companyName',
   subLabel: 'COMPANY',
   rows: [
-    ['Job Title', 'jobTitle'],
-    ['Company', 'company'],
+    ['Job Title', 'title'],
+    ['Company', 'companyName'],
     ['Job Type', 'jobType'],
-    ['City', 'city'],
-    ['Area', 'area'],
-    ['Address', 'address'],
-    ['Contact Phone', 'contactPhone'],
+    ['Location', 'location'],
+    ['Contact', 'contact'],
     ['Salary', 'salary'],
-    ['Skills', 'skills'],
+    ['Requirements', 'requirements'],
+    ['Benefits', 'benefits'],
+    ['Apply URL', 'applyUrl'],
     ['Description', 'description'],
     ['Status', 'status'],
   ],
