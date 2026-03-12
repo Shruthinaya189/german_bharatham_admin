@@ -16,6 +16,10 @@ class _JobsFilterPageState extends State<JobsFilterPage> {
   // Job Type: 0=All,1=Full-time,2=Part-time,3=Contract,4=Internship
   int selectedJobType = 0;
 
+  // Salary range (in €/month)
+  static const double _maxSalary = 10000;
+  RangeValues _salaryRange = const RangeValues(0, _maxSalary);
+
   static const List<String> jobTypeLabels = [
     'All',
     'Full-time',
@@ -60,6 +64,17 @@ class _JobsFilterPageState extends State<JobsFilterPage> {
       }).toList();
     }
 
+    // 3) Salary range filter (extract first number from salary string)
+    if (_salaryRange.start > 0 || _salaryRange.end < _maxSalary) {
+      result = result.where((job) {
+        if (job.salary == null || job.salary!.isEmpty) return true;
+        final match = RegExp(r'\d+').firstMatch(job.salary!.replaceAll(',', '').replaceAll('.', ''));
+        if (match == null) return true;
+        final amount = double.tryParse(match.group(0) ?? '0') ?? 0;
+        return amount >= _salaryRange.start && amount <= _salaryRange.end;
+      }).toList();
+    }
+
     Navigator.pop(context, result);
   }
 
@@ -67,6 +82,7 @@ class _JobsFilterPageState extends State<JobsFilterPage> {
     setState(() {
       _locationController.clear();
       selectedJobType = 0;
+      _salaryRange = const RangeValues(0, _maxSalary);
     });
   }
 
@@ -193,6 +209,49 @@ class _JobsFilterPageState extends State<JobsFilterPage> {
                   ),
                 );
               }),
+            ),
+            const SizedBox(height: 28),
+            Row(
+              children: [
+                const Icon(Icons.euro, size: 16, color: Color(0xFF4E7F6D)),
+                const SizedBox(width: 6),
+                const Text(
+                  'Salary Range (€/month)',
+                  style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
+                ),
+              ],
+            ),
+            const SizedBox(height: 4),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  '€${_salaryRange.start.toInt()}',
+                  style: const TextStyle(fontSize: 13, color: Color(0xFF4E7F6D), fontWeight: FontWeight.w600),
+                ),
+                Text(
+                  _salaryRange.end >= _maxSalary
+                      ? '€${_salaryRange.end.toInt()}+'
+                      : '€${_salaryRange.end.toInt()}',
+                  style: const TextStyle(fontSize: 13, color: Color(0xFF4E7F6D), fontWeight: FontWeight.w600),
+                ),
+              ],
+            ),
+            SliderTheme(
+              data: SliderThemeData(
+                activeTrackColor: const Color(0xFF4E7F6D),
+                inactiveTrackColor: const Color(0xFFD1E8DF),
+                thumbColor: const Color(0xFF4E7F6D),
+                overlayColor: const Color(0xFF4E7F6D).withOpacity(0.15),
+                rangeThumbShape: const RoundRangeSliderThumbShape(enabledThumbRadius: 10),
+              ),
+              child: RangeSlider(
+                values: _salaryRange,
+                min: 0,
+                max: _maxSalary,
+                divisions: 20,
+                onChanged: (v) => setState(() => _salaryRange = v),
+              ),
             ),
             const SizedBox(height: 40),
             Row(

@@ -48,15 +48,21 @@ class _JobsPageState extends State<JobsPage> {
           itemsList = [];
         }
 
+        final parsed = <Job>[];
+        for (final json in itemsList) {
+          try {
+            if (json is Map<String, dynamic>) parsed.add(Job.fromJson(json));
+          } catch (_) {}
+        }
+
         setState(() {
-          allItems = itemsList
-              .map((json) => Job.fromJson(json))
-              .where((item) => item.status == 'Active')
-              .toList();
+          allItems = parsed;
           filterItems = allItems;
           _applySearch();
           isLoading = false;
         });
+      } else {
+        setState(() => isLoading = false);
       }
     } catch (e) {
       setState(() => isLoading = false);
@@ -280,18 +286,41 @@ class _JobCardState extends State<JobCard> {
           children: [
             /// Company Logo
             Container(
-              height: 44,
-              width: 44,
+              height: 64,
+              width: 64,
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: BorderRadius.circular(12),
                 color: Colors.grey.shade200,
               ),
               child: ClipRRect(
-                borderRadius: BorderRadius.circular(10),
-                child: Image.asset(
-                  'assets/images/google.png',
-                  fit: BoxFit.cover,
-                ),
+                borderRadius: BorderRadius.circular(12),
+                child: () {
+                  final logo = widget.item.companyLogo;
+                  if (logo != null && logo.isNotEmpty) {
+                    if (logo.startsWith('data:')) {
+                      try {
+                        final bytes = base64Decode(logo.split(',').last);
+                        return Image.memory(bytes, fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) => Image.asset('assets/images/google.png', fit: BoxFit.cover));
+                      } catch (_) {
+                        return Image.asset('assets/images/google.png', fit: BoxFit.cover);
+                      }
+                    }
+                    final url = ApiConfig.getImageUrl(logo);
+                    return Image.network(
+                      url,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => Image.asset(
+                        'assets/images/google.png',
+                        fit: BoxFit.cover,
+                      ),
+                    );
+                  }
+                  return Image.asset(
+                    'assets/images/google.png',
+                    fit: BoxFit.cover,
+                  );
+                }(),
               ),
             ),
             const SizedBox(width: 12),
@@ -306,14 +335,16 @@ class _JobCardState extends State<JobCard> {
                     style: const TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.w600,
+                      color: Colors.black87,
                     ),
                   ),
                   const SizedBox(height: 4),
                   Text(
                     widget.item.company,
                     style: const TextStyle(
-                      color: Colors.grey,
+                      color: Color(0xFF444444),
                       fontSize: 13,
+                      fontWeight: FontWeight.w500,
                     ),
                   ),
                   const SizedBox(height: 6),
@@ -323,14 +354,16 @@ class _JobCardState extends State<JobCard> {
                         'assets/images/location.png',
                         width: 16,
                         height: 16,
-                        color: Colors.grey,
+                        color: const Color(0xFF3A7D6B),
                         errorBuilder: (_, __, ___) => const SizedBox(width: 16, height: 16),
                       ),
                       const SizedBox(width: 4),
                       Expanded(
                         child: Text(
-                          widget.item.city,
-                          style: const TextStyle(color: Colors.grey, fontSize: 12),
+                          widget.item.location.isNotEmpty
+                              ? widget.item.location
+                              : widget.item.city,
+                          style: const TextStyle(color: Color(0xFF555555), fontSize: 12),
                         ),
                       ),
                     ],

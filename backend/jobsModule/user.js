@@ -1,19 +1,43 @@
 const express = require("express");
 const router = express.Router();
-const Job = require("./admin/model/Job");
+// Use the same model as the admin so schema stays consistent
+const Job = require("./models/jobModel");
 
-// GET ALL ACTIVE JOBS (No auth required for users)
+// GET ALL VISIBLE JOBS (No auth required for users)
+// Returns all jobs that are not explicitly Inactive
 router.get("/", async (req, res) => {
   try {
-    const { city, jobType, company } = req.query;
-    const filter = { status: 'Active' };
-    
-    if (city) filter.city = { $regex: city, $options: 'i' };
+    const { city, jobType, company, companyName } = req.query;
+
+    // Only show jobs with active status (case-insensitive)
+    const filter = { status: { $regex: /^active$/i } };
+
+    if (city) filter.location = { $regex: city, $options: 'i' };
     if (jobType) filter.jobType = { $regex: jobType, $options: 'i' };
-    if (company) filter.company = { $regex: company, $options: 'i' };
-    
+    if (company || companyName) {
+      const q = company || companyName;
+      filter['$or'] = [
+        { company: { $regex: q, $options: 'i' } },
+        { companyName: { $regex: q, $options: 'i' } },
+      ];
+    }
+
     const data = await Job.find(filter).sort({ createdAt: -1 }).lean();
-    res.json({ data, count: data.length });
+
+    // Normalize field names so Flutter always gets `company` and `companyLogo`
+    const normalized = data.map(j => ({
+      ...j,
+      company: j.company || j.companyName || '',
+      city: j.city || j.location || '',
+      requirements: Array.isArray(j.requirements)
+        ? j.requirements
+        : (j.requirements ? j.requirements.split(/[,;\n]/).map(s => s.trim()).filter(Boolean) : []),
+      benefits: Array.isArray(j.benefits)
+        ? j.benefits
+        : (j.benefits ? j.benefits.split(/[,;\n]/).map(s => s.trim()).filter(Boolean) : []),
+    }));
+
+    res.json({ data: normalized, count: normalized.length });
   } catch (e) {
     res.status(500).json({ message: e.message });
   }

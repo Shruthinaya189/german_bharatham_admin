@@ -4,15 +4,15 @@ class ApiConfig {
   // Production backend (Render)
   static const String _prodBaseUrl = 'https://german-bharatham-backend.onrender.com';
 
-  // Default backend in debug.
-  // If you want local/LAN testing, override with:
-  //   flutter run --dart-define=API_BASE_URL=http://<YOUR_PC_LAN_IP>:5000
-  // (Android emulator local: http://10.0.2.2:5000)
-  static const String _devDefaultBaseUrl = _prodBaseUrl;
+  // Local backend for debug (physical device LAN IP)
+  // To use local backend in debug: just run `flutter run` (no flag needed)
+  // To override: flutter run --dart-define=API_BASE_URL=http://<IP>:5000
+  static const String _devDefaultBaseUrl = 'http://10.142.60.147:5000';
 
   /// Base URL selection:
-  /// - If provided: `--dart-define=API_BASE_URL=...` wins
-  /// - Else: uses default (Render)
+  /// - If --dart-define=API_BASE_URL=... is provided, that wins
+  /// - Debug builds use local LAN backend
+  /// - Release builds use Render production backend
   static String get baseUrl {
     const override = String.fromEnvironment('API_BASE_URL', defaultValue: '');
     if (override.trim().isNotEmpty) return override.trim();
@@ -25,6 +25,8 @@ class ApiConfig {
   static String get jobsEndpoint => '$baseUrl/api/jobs/user';
   static String get accommodationEndpoint => '$baseUrl/api/accommodation/user';
   static String get foodEndpoint => '$baseUrl/api/user/foodgrocery';
+  static String get settingsPublicEndpoint => '$baseUrl/api/admin/settings/public';
+  static String get profileEndpoint => '$baseUrl/api/user/profile';
   
   /// Get full image URL from relative path
   static String getImageUrl(String? relativePath) {

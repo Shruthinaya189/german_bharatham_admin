@@ -73,11 +73,23 @@ exports.getProfile = async (req, res) => {
 // UPDATE PROFILE
 exports.updateProfile = async (req, res) => {
   try {
-    const { name, phone, photo } = req.body;
+    const {
+      name, phone, photo,
+      dob, gender, location, preferredCity,
+      education, profession, germanLevel, passport,
+    } = req.body;
     const update = {};
-    if (name !== undefined) update.name = name.trim();
-    if (phone !== undefined) update.phone = phone.trim();
-    if (photo !== undefined) update.photo = photo;
+    if (name          !== undefined) update.name          = name.trim();
+    if (phone         !== undefined) update.phone         = phone.trim();
+    if (photo         !== undefined) update.photo         = photo;
+    if (dob           !== undefined) update.dob           = dob;
+    if (gender        !== undefined) update.gender        = gender;
+    if (location      !== undefined) update.location      = location;
+    if (preferredCity !== undefined) update.preferredCity = preferredCity;
+    if (education     !== undefined) update.education     = education;
+    if (profession    !== undefined) update.profession    = profession;
+    if (germanLevel   !== undefined) update.germanLevel   = germanLevel;
+    if (passport      !== undefined) update.passport      = passport;
     const user = await User.findByIdAndUpdate(req.user.id, update, { new: true }).select('-password');
     if (!user) return res.status(404).json({ message: 'User not found' });
     res.json(user);
@@ -200,9 +212,10 @@ exports.forgotPassword = async (req, res) => {
     const baseUrl = getAppBaseUrl(req);
     const resetUrl = `${baseUrl}/reset-password?token=${resetToken}`;
 
+    // DEV_RETURN_RESET_LINK=true returns the reset URL in the API response
+    // (useful for testing before SMTP is configured; also works in production if explicitly set)
     const devReturnLink =
-      String(process.env.DEV_RETURN_RESET_LINK || "").toLowerCase() === "true" &&
-      String(process.env.NODE_ENV || "").toLowerCase() !== "production";
+      String(process.env.DEV_RETURN_RESET_LINK || "").toLowerCase() === "true";
 
     const subject = "Reset your password";
     const text = `You requested a password reset. Open this link to set a new password: ${resetUrl}`;

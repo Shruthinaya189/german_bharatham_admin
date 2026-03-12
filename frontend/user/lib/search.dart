@@ -126,7 +126,7 @@ class _SearchPageState extends State<SearchPage> {
     _allJobs = list
         .whereType<Map<String, dynamic>>()
         .map(Job.fromJson)
-        .where((j) => j.status == 'Active')
+        .where((j) => j.status.toLowerCase() == 'active')
         .toList();
   }
 

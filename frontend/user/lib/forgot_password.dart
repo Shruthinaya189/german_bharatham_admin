@@ -54,9 +54,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
       try {
         final decoded = jsonDecode(response.body);
         if (decoded is Map<String, dynamic>) data = decoded;
-      } catch (_) {
-        // non-JSON response
-      }
+      } catch (_) {}
 
       final messageFromServer = data?['message']?.toString();
       final ok = response.statusCode >= 200 && response.statusCode < 300;

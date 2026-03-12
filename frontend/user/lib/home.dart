@@ -333,12 +333,12 @@ Widget _header() {
                       fontSize: 16,
                       fontWeight: FontWeight.bold),
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: 2),
                 const Text(
                   "Guides & resources for Indians in Germany",
                   style: TextStyle(color: Colors.white70, fontSize: 11),
                 ),
-                const SizedBox(height: 6),
+                const SizedBox(height: 4),
                 ElevatedButton(
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.white,

@@ -17,6 +17,16 @@ const userSchema = new mongoose.Schema(
     },
     photo: { type: String, default: null },
 
+    // Extended profile fields
+    dob:           { type: String, default: '' },
+    gender:        { type: String, default: '' },
+    location:      { type: String, default: '' },
+    preferredCity: { type: String, default: '' },
+    education:     { type: String, default: '' },
+    profession:    { type: String, default: '' },
+    germanLevel:   { type: String, default: '' },
+    passport:      { type: String, default: '' },
+
     resetPasswordToken: { type: String, default: null },
     resetPasswordExpires: { type: Date, default: null },
   },

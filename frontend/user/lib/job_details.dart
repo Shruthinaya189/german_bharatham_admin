@@ -1,7 +1,9 @@
-﻿import 'package:flutter/material.dart';
+﻿import 'dart:convert';
+import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:share_plus/share_plus.dart';
 import 'models/job_model.dart';
+import 'services/api_config.dart';
 import 'widgets/star_rating_widget.dart';
 import 'widgets/rating_dialog.dart';
 import 'services/rating_service.dart';
@@ -126,57 +128,52 @@ class _JobDetailsPageState extends State<JobDetailsPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Row 1: Logo + Title (left), Share (right)
+              // Header: Logo | (Title + Company) | (Share + Posted)
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   _CompanyLogo(logoPathOrUrl: widget.item.companyLogo),
                   const SizedBox(width: 12),
                   Expanded(
-                    child: Padding(
-                      padding: const EdgeInsets.only(top: 2),
-                      child: Text(
-                        widget.item.title,
-                        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
-                      ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          widget.item.title,
+                          maxLines: 2,
+                          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: Colors.black),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          widget.item.company,
+                          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.black87),
+                        ),
+                      ],
                     ),
                   ),
-                  IconButton(
-                    onPressed: _shareItem,
-                    icon: Image.asset(
-                      'assets/images/share.png',
-                      height: 22,
-                      width: 22,
-                      color: Colors.black,
-                    ),
-                    iconSize: 22,
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
-                    tooltip: 'Share',
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      IconButton(
+                        onPressed: _shareItem,
+                        icon: Image.asset(
+                          'assets/images/share.png',
+                          height: 22,
+                          width: 22,
+                          color: Colors.black,
+                        ),
+                        iconSize: 22,
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
+                        tooltip: 'Share',
+                      ),
+                      Text(
+                        _postedAgo(widget.item.createdAt),
+                        style: const TextStyle(fontSize: 11, color: Colors.grey),
+                      ),
+                    ],
                   ),
                 ],
-              ),
-
-              // Row 2: Company (left), Posted (right)
-              Padding(
-                padding: const EdgeInsets.only(left: 58),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        widget.item.company,
-                        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      _postedAgo(widget.item.createdAt),
-                      style: const TextStyle(fontSize: 12, color: Colors.grey),
-                    ),
-                  ],
-                ),
               ),
 
               const SizedBox(height: 10),
@@ -237,7 +234,7 @@ class _JobDetailsPageState extends State<JobDetailsPage> {
                 const SizedBox(height: 8),
                 Text(
                   widget.item.description!,
-                  style: const TextStyle(fontSize: 14, color: Colors.grey, height: 1.5),
+                  style: const TextStyle(fontSize: 14, color: Color(0xFF444444), height: 1.5),
                 ),
                 const SizedBox(height: 16),
               ],
@@ -269,33 +266,7 @@ class _JobDetailsPageState extends State<JobDetailsPage> {
                   ),
                 ),
               ),
-              const SizedBox(height: 12),
-              SizedBox(
-                width: double.infinity,
-                height: 54,
-                child: ElevatedButton(
-                  onPressed: _showRatingDialog,
-                  style: ElevatedButton.styleFrom(
-                    elevation: 0,
-                    backgroundColor: const Color(0xFF4E7F6D),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: const [
-                      Text(
-                        '★',
-                        style: TextStyle(fontSize: 20, color: Colors.white, height: 1.0),
-                      ),
-                      SizedBox(width: 8),
-                      Text(
-                        'Rate This Job',
-                        style: TextStyle(fontSize: 16, color: Colors.white, fontWeight: FontWeight.w700),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
+
             ],
           ),
         ),
@@ -361,13 +332,30 @@ class _CompanyLogo extends StatelessWidget {
     return ClipRRect(
       borderRadius: BorderRadius.circular(12),
       child: Container(
-        height: 46,
-        width: 46,
+        height: 60,
+        width: 60,
         color: Colors.grey.shade200,
-        child: Image.asset(
-          'assets/images/google.png',
-          fit: BoxFit.cover,
-        ),
+        child: () {
+          final logo = logoPathOrUrl;
+          if (logo != null && logo.isNotEmpty) {
+            if (logo.startsWith('data:')) {
+              try {
+                final bytes = base64Decode(logo.split(',').last);
+                return Image.memory(bytes, fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => Image.asset('assets/images/google.png', fit: BoxFit.cover));
+              } catch (_) {
+                return Image.asset('assets/images/google.png', fit: BoxFit.cover);
+              }
+            }
+            final url = ApiConfig.getImageUrl(logo);
+            return Image.network(
+              url,
+              fit: BoxFit.cover,
+              errorBuilder: (_, __, ___) => Image.asset('assets/images/google.png', fit: BoxFit.cover),
+            );
+          }
+          return Image.asset('assets/images/google.png', fit: BoxFit.cover);
+        }(),
       ),
     );
   }

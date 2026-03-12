@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'home.dart';
 import 'profile.dart';
@@ -18,6 +19,7 @@ import 'saved_manager.dart';
 import 'saved_guides_manager.dart';
 import 'saved_service_manager.dart';
 import 'service_details.dart';
+import 'services/api_config.dart';
 
 class SavedPage extends StatefulWidget {
   const SavedPage({super.key});
@@ -592,22 +594,32 @@ class _SavedThumbnail extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final img = (image ?? '').trim();
+    final fallback = Image.asset(fallbackAsset, width: width, height: height, fit: BoxFit.cover);
 
     Widget child;
     if (img.isEmpty) {
-      child = Image.asset(fallbackAsset, width: width, height: height, fit: BoxFit.cover);
-    } else if (img.startsWith('http')) {
+      child = fallback;
+    } else if (img.startsWith('data:')) {
+      // Base64 encoded image
+      try {
+        final bytes = base64Decode(img.split(',').last);
+        child = Image.memory(
+          bytes,
+          width: width,
+          height: height,
+          fit: BoxFit.cover,
+          errorBuilder: (_, __, ___) => fallback,
+        );
+      } catch (_) {
+        child = fallback;
+      }
+    } else if (img.startsWith('http://') || img.startsWith('https://')) {
       child = Image.network(
         img,
         width: width,
         height: height,
         fit: BoxFit.cover,
-        errorBuilder: (_, _, _) => Image.asset(
-          fallbackAsset,
-          width: width,
-          height: height,
-          fit: BoxFit.cover,
-        ),
+        errorBuilder: (_, __, ___) => fallback,
       );
     } else if (img.startsWith('assets/')) {
       child = Image.asset(
@@ -615,20 +627,17 @@ class _SavedThumbnail extends StatelessWidget {
         width: width,
         height: height,
         fit: BoxFit.cover,
-        errorBuilder: (_, _, _) => Image.asset(
-          fallbackAsset,
-          width: width,
-          height: height,
-          fit: BoxFit.cover,
-        ),
+        errorBuilder: (_, __, ___) => fallback,
       );
     } else {
-      // Treat unknown strings as local asset path fallback.
-      child = Image.asset(
-        fallbackAsset,
+      // Relative server path (e.g. /uploads/... or uploads/...)
+      final url = ApiConfig.getImageUrl(img);
+      child = Image.network(
+        url,
         width: width,
         height: height,
         fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) => fallback,
       );
     }
 

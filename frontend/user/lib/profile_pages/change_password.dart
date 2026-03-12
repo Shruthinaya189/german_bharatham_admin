@@ -20,6 +20,9 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
   final _newController = TextEditingController();
   final _confirmController = TextEditingController();
   bool _saving = false;
+  bool _obscureCurrent = true;
+  bool _obscureNew = true;
+  bool _obscureConfirm = true;
 
   @override
   void dispose() {
@@ -134,9 +137,18 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _field("Current Password", controller: _currentController),
-            _field("New Password", controller: _newController),
-            _field("Confirm Password", controller: _confirmController),
+            _field("Current Password",
+                controller: _currentController,
+                obscure: _obscureCurrent,
+                onToggle: () => setState(() => _obscureCurrent = !_obscureCurrent)),
+            _field("New Password",
+                controller: _newController,
+                obscure: _obscureNew,
+                onToggle: () => setState(() => _obscureNew = !_obscureNew)),
+            _field("Confirm Password",
+                controller: _confirmController,
+                obscure: _obscureConfirm,
+                onToggle: () => setState(() => _obscureConfirm = !_obscureConfirm)),
             const SizedBox(height: 24),
 
             /// UPDATE BUTTON
@@ -174,7 +186,10 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
   }
 
   /// INPUT FIELD WITH LABEL ABOVE
-  Widget _field(String label, {required TextEditingController controller}) {
+  Widget _field(String label,
+      {required TextEditingController controller,
+      required bool obscure,
+      required VoidCallback onToggle}) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
       child: Column(
@@ -203,9 +218,17 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
             ),
             child: TextField(
               controller: controller,
-              obscureText: true,
-              decoration: const InputDecoration(
+              obscureText: obscure,
+              decoration: InputDecoration(
                 border: InputBorder.none,
+                suffixIcon: IconButton(
+                  icon: Icon(
+                    obscure ? Icons.visibility_off : Icons.visibility,
+                    color: Colors.grey,
+                    size: 20,
+                  ),
+                  onPressed: onToggle,
+                ),
               ),
             ),
           ),

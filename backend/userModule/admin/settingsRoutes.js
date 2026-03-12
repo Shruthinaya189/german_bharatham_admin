@@ -28,6 +28,18 @@ const pwLogSchema = new mongoose.Schema(
 );
 const PwLog = mongoose.models['PwLog'] || mongoose.model('PwLog', pwLogSchema);
 
+// ── GET public content (no auth – for user app) ───────────────────────────────
+router.get('/public', async (req, res) => {
+  try {
+    const docs = await Content.find({});
+    const result = {};
+    docs.forEach(d => { result[d.key] = d.value; });
+    res.json(result);
+  } catch (e) {
+    res.status(500).json({ message: e.message });
+  }
+});
+
 // ── GET all content ────────────────────────────────────────────────────────────
 router.get('/content', protect, adminOnly, async (req, res) => {
   try {

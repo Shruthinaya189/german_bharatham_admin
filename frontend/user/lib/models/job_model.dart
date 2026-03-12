@@ -1,4 +1,44 @@
 class Job {
+  // Safe helpers to avoid type errors during JSON parsing
+  static String? _safeStr(dynamic val) {
+    if (val == null) return null;
+    final s = val.toString().trim();
+    return s.isEmpty ? null : s;
+  }
+
+  static bool _safeBool(dynamic val, [bool def = false]) {
+    if (val == null) return def;
+    if (val is bool) return val;
+    if (val is int) return val != 0;
+    if (val is String) return val.toLowerCase() == 'true';
+    return def;
+  }
+
+  static DateTime? _safeDate(dynamic val) {
+    if (val == null) return null;
+    if (val is String) {
+      try { return DateTime.parse(val); } catch (_) { return null; }
+    }
+    if (val is int) return DateTime.fromMillisecondsSinceEpoch(val);
+    return null;
+  }
+
+  static double _safeDouble(dynamic val, [double def = 0.0]) {
+    if (val == null) return def;
+    if (val is double) return val;
+    if (val is int) return val.toDouble();
+    if (val is String) return double.tryParse(val) ?? def;
+    return def;
+  }
+
+  static int _safeInt(dynamic val, [int def = 0]) {
+    if (val == null) return def;
+    if (val is int) return val;
+    if (val is double) return val.toInt();
+    if (val is String) return int.tryParse(val) ?? def;
+    return def;
+  }
+
   static List<String> _toStringList(dynamic value) {
     if (value == null) return [];
     if (value is List) {
@@ -46,6 +86,8 @@ class Job {
   final DateTime? expiresAt;
   final DateTime? createdAt;
   final DateTime? updatedAt;
+  final double averageRating;
+  final int totalRatings;
 
   Job({
     required this.id,
@@ -74,43 +116,40 @@ class Job {
     this.expiresAt,
     this.createdAt,
     this.updatedAt,
+    this.averageRating = 0.0,
+    this.totalRatings = 0,
   });
 
   factory Job.fromJson(Map<String, dynamic> json) {
     return Job(
-      id: json['_id'] ?? json['id'] ?? '',
-      title: json['title'] ?? '',
-      category: json['category'] ?? 'Job',
-      // Support both newer schema (company) and older/admin schema (companyName)
-      company: json['company'] ?? json['companyName'] ?? '',
-      companyLogo: json['companyLogo'],
-      jobType: json['jobType'] ?? '',
-      location: json['location'] ?? '',
-      city: json['city'] ?? '',
-      state: json['state'],
-      remote: json['remote'] ?? false,
-      salary: json['salary'],
-      email: json['email'],
-      website: json['website'],
-      phone: json['phone'],
-      description: json['description'],
+      id: json['_id']?.toString() ?? json['id']?.toString() ?? '',
+      title: _safeStr(json['title']) ?? '',
+      category: _safeStr(json['category']) ?? 'Job',
+      company: _safeStr(json['company']) ?? _safeStr(json['companyName']) ?? '',
+      companyLogo: _safeStr(json['companyLogo']),
+      jobType: _safeStr(json['jobType']) ?? '',
+      location: _safeStr(json['location']) ?? '',
+      city: _safeStr(json['city']) ?? _safeStr(json['location']) ?? '',
+      state: _safeStr(json['state']),
+      remote: _safeBool(json['remote']),
+      salary: _safeStr(json['salary']),
+      email: _safeStr(json['email']),
+      website: _safeStr(json['website']),
+      phone: _safeStr(json['phone']) ?? _safeStr(json['contact']),
+      description: _safeStr(json['description']),
       requirements: _toStringList(json['requirements']),
       responsibilities: _toStringList(json['responsibilities']),
       benefits: _toStringList(json['benefits']),
-      experience: json['experience'],
-      education: json['education'],
-      applyUrl: json['applyUrl'],
-      status: json['status'] ?? 'Pending',
-      featured: json['featured'] ?? false,
-      expiresAt: json['expiresAt'] != null
-          ? DateTime.parse(json['expiresAt'])
-          : null,
-      createdAt: json['createdAt'] != null
-          ? DateTime.parse(json['createdAt'])
-          : null,
-      updatedAt: json['updatedAt'] != null
-          ? DateTime.parse(json['updatedAt'])
-          : null,
+      experience: _safeStr(json['experience']),
+      education: _safeStr(json['education']),
+      applyUrl: _safeStr(json['applyUrl']),
+      status: _safeStr(json['status']) ?? 'Active',
+      featured: _safeBool(json['featured']),
+      expiresAt: _safeDate(json['expiresAt']),
+      createdAt: _safeDate(json['createdAt']),
+      updatedAt: _safeDate(json['updatedAt']),
+      averageRating: _safeDouble(json['averageRating']),
+      totalRatings: _safeInt(json['totalRatings']),
     );
   }
 
