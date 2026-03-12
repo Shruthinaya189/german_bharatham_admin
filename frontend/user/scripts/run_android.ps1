@@ -1,12 +1,12 @@
 param(
   [string]$DeviceId = "",
   [int]$Port = 5000,
-  [string]$ApiBaseUrl = "http://127.0.0.1:5000"
+  [string]$ApiBaseUrl = "https://german-bharatham-backend.onrender.com"
 )
 
 $ErrorActionPreference = "Stop"
 
-function Resolve-AdbPath {
+function Get-AdbPath {
   $cmd = Get-Command adb -ErrorAction SilentlyContinue
   if ($cmd -and $cmd.Source) { return $cmd.Source }
 
@@ -29,7 +29,7 @@ function Resolve-AdbPath {
   return $null
 }
 
-function Pick-FirstDeviceId([string]$adb) {
+function Get-FirstDeviceId([string]$adb) {
   $lines = & $adb devices
   foreach ($line in $lines) {
     if ($line -match "^(?<id>\S+)\s+device$") { return $Matches['id'] }
@@ -55,7 +55,7 @@ if (-not (Test-Path (Join-Path $projectRoot "pubspec.yaml"))) {
   throw "pubspec.yaml not found at $projectRoot (script expects to live in frontend/user/scripts)."
 }
 
-$adb = Resolve-AdbPath
+$adb = Get-AdbPath
 if (-not $adb) {
   throw "adb.exe not found. Install Android platform-tools or set ANDROID_SDK_ROOT, or add platform-tools to PATH."
 }
@@ -65,13 +65,13 @@ Write-Host "Using adb: $adb"
 $deviceProvided = ($PSBoundParameters.ContainsKey('DeviceId') -and $DeviceId -and $DeviceId.Trim().Length -gt 0)
 
 if (-not $deviceProvided) {
-  $DeviceId = Pick-FirstDeviceId $adb
+  $DeviceId = Get-FirstDeviceId $adb
 }
 
 if (-not (Test-DeviceOnline $adb $DeviceId)) {
   if ($deviceProvided) {
     Write-Host "Device '$DeviceId' not found/online. Falling back to first connected device..."
-    $DeviceId = Pick-FirstDeviceId $adb
+    $DeviceId = Get-FirstDeviceId $adb
   }
 }
 

@@ -5,7 +5,17 @@ const userSchema = new mongoose.Schema(
     name: { type: String, required: true },
     email: { type: String, required: true, unique: true },
     phone: { type: String },
-    password: { type: String, required: true },
+    // Password is optional for social-login users.
+    password: { type: String, required: false, default: null },
+
+    authProvider: {
+      type: String,
+      enum: ["local", "google", "facebook", "apple"],
+      default: "local",
+    },
+    googleId: { type: String, default: null, index: true, sparse: true },
+    facebookId: { type: String, default: null, index: true, sparse: true },
+    appleSub: { type: String, default: null, index: true, sparse: true },
     role: {
       type: String,
       enum: ["user", "admin"],  // Only 'user' or 'admin' allowed

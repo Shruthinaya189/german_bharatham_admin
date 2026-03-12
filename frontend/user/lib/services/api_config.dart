@@ -4,14 +4,27 @@ class ApiConfig {
   // Production backend (Render)
   static const String _prodBaseUrl = 'https://german-bharatham-backend.onrender.com';
 
-  // Local backend for debug (physical device LAN IP)
-  // To use local backend in debug: just run `flutter run` (no flag needed)
-  // To override: flutter run --dart-define=API_BASE_URL=http://<IP>:5000
-  static const String _devDefaultBaseUrl = 'http://10.142.60.147:5000';
+  // Google Sign-In
+  // Used to obtain an ID token on Android when google-services.json is not present.
+  // You can override at build/run time with:
+  //   flutter run --dart-define=GOOGLE_SERVER_CLIENT_ID=...
+  static const String _defaultGoogleServerClientId =
+      '467810842460-999flt9jimvtuq61nhd99c4fhdbnvnqs.apps.googleusercontent.com';
+
+  static String get googleServerClientId {
+    const override = String.fromEnvironment('GOOGLE_SERVER_CLIENT_ID', defaultValue: '');
+    if (override.trim().isNotEmpty) return override.trim();
+    return _defaultGoogleServerClientId;
+  }
+
+  // Default backend in debug.
+  // You can override at build/run time with:
+  //   flutter run --dart-define=API_BASE_URL=<YOUR_BACKEND_BASE_URL>
+  static const String _devDefaultBaseUrl = _prodBaseUrl;
 
   /// Base URL selection:
   /// - If --dart-define=API_BASE_URL=... is provided, that wins
-  /// - Debug builds use local LAN backend
+  /// - Debug builds use _devDefaultBaseUrl
   /// - Release builds use Render production backend
   static String get baseUrl {
     const override = String.fromEnvironment('API_BASE_URL', defaultValue: '');
@@ -21,6 +34,7 @@ class ApiConfig {
   
   // API endpoints
   static String get loginEndpoint => '$baseUrl/api/user/login';
+  static String get socialLoginEndpoint => '$baseUrl/api/user/social-login';
   static String get registerEndpoint => '$baseUrl/api/user/register';
   static String get jobsEndpoint => '$baseUrl/api/jobs/user';
   static String get accommodationEndpoint => '$baseUrl/api/accommodation/user';

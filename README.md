@@ -60,14 +60,12 @@ node server.js
 ```
 
 Backend URLs:
- - Local dev: `http://localhost:5000`
  - Render (production): `https://german-bharatham-backend.onrender.com`
 
 ### 2. Admin Frontend Setup
 
  - Flutter app default API base URL is the Render backend: `https://german-bharatham-backend.onrender.com`
- - For local/LAN testing, override using:
-	 - `flutter run --dart-define=API_BASE_URL=http://<YOUR_PC_LAN_IP>:5000`
+
 ```bash
 # Navigate to admin frontend directory
 cd frontend/admin/admin_frontend
@@ -105,7 +103,7 @@ flutter run
 ```
 
 **Important Configuration:**
-- Update API base URL in Flutter app if needed (currently set to `http://10.96.191.169:5000`)
+- Update API base URL in Flutter app if needed (currently set to `https://german-bharatham-backend.onrender.com`)
 - The app requires Material Icons - already configured in `pubspec.yaml`
 
 ## Features
@@ -168,11 +166,9 @@ PORT=5000
 
 ### Backend
 - Use `node server.js` to start the server
-- API base URL: `http://localhost:5000`
- - Use `node server.js` to start the server
- - API base URL (Render): `https://german-bharatham-backend.onrender.com`
+- API base URL (Render): `https://german-bharatham-backend.onrender.com`
 - All admin routes require Bearer token authentication
-- CORS is enabled for `http://localhost:3000`
+- CORS should include your deployed admin domain (Render): `https://german-bharatham-admin-2rhc.onrender.com`
 
 ### Admin Frontend
 - Built with React and Lucide icons

@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -310,6 +311,7 @@ class _AuthPageState extends State<AuthPage> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   String? _loginError;
+  bool _socialBusy = false;
 
   @override
   void dispose() {
@@ -383,6 +385,97 @@ class _AuthPageState extends State<AuthPage> {
     });
   }
 }
+
+  Future<void> _handleSocialResponse(http.Response response) async {
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      final user = data['user'];
+      await UserSession.instance.save(
+        userId: user['_id'].toString(),
+        token: data['token'].toString(),
+        name: user['name'].toString(),
+        email: user['email'].toString(),
+        phone: user['phone']?.toString(),
+        photoBase64: user['photo']?.toString(),
+      );
+      SavedManager.instance.switchUser(user['_id'].toString());
+      if (mounted) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const LocationPermissionPage()),
+        );
+      }
+      return;
+    }
+
+    String message;
+    try {
+      final decoded = jsonDecode(response.body);
+      if (decoded is Map<String, dynamic> && decoded['message'] != null) {
+        message = decoded['message'].toString();
+      } else {
+        message = 'Login failed (HTTP ${response.statusCode})';
+      }
+    } catch (_) {
+      message = 'Login failed (HTTP ${response.statusCode})';
+    }
+    setState(() {
+      _loginError = message;
+    });
+  }
+
+  Future<void> _loginWithGoogle() async {
+    if (_socialBusy) return;
+
+    setState(() {
+      _loginError = null;
+      _socialBusy = true;
+    });
+
+    try {
+      final googleSignIn = GoogleSignIn(
+        scopes: const ['email', 'profile'],
+        serverClientId: ApiConfig.googleServerClientId,
+      );
+
+      final account = await googleSignIn.signIn();
+      if (account == null) {
+        return; // cancelled
+      }
+
+      final auth = await account.authentication;
+      final idToken = auth.idToken;
+      if (idToken == null || idToken.isEmpty) {
+        throw Exception('Google idToken not available. Check Google OAuth setup.');
+      }
+
+      final response = await http.post(
+        Uri.parse(ApiConfig.socialLoginEndpoint),
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode({
+          "provider": "google",
+          "idToken": idToken,
+        }),
+      );
+
+      await _handleSocialResponse(response);
+    } catch (e) {
+      debugPrint('Google login error: $e');
+      setState(() {
+        final msg = e.toString();
+        _loginError = msg.contains('idToken not available')
+            ? 'Google login setup missing. Please contact support.'
+            : 'Google login failed. Please try again.';
+      });
+    } finally {
+      if (mounted) {
+        setState(() {
+          _socialBusy = false;
+        });
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     const Color primaryGreen = Color(0xFF4E7F6D);
@@ -551,7 +644,8 @@ class _AuthPageState extends State<AuthPage> {
               Row(
                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                children: [
-                _socialCircle('assets/images/google.png'),
+                _socialCircle('assets/images/google.png', onTap: _loginWithGoogle),
+                // Visible but disabled (not enabled / no auth flow).
                 _socialCircle('assets/images/communication.png'),
                 _socialCircle('assets/images/social.png'),
               ],
@@ -564,19 +658,27 @@ class _AuthPageState extends State<AuthPage> {
     );
   }
 
-  Widget _socialCircle(String imagePath) {
-  return CircleAvatar(
-    radius: 22,
-    backgroundColor: Colors.grey.shade200,
-    child: Padding(
-      padding: const EdgeInsets.all(6),
-      child: Image.asset(
-        imagePath,
-        fit: BoxFit.contain,
+  Widget _socialCircle(String imagePath, {VoidCallback? onTap}) {
+    final child = CircleAvatar(
+      radius: 22,
+      backgroundColor: Colors.grey.shade200,
+      child: Padding(
+        padding: const EdgeInsets.all(6),
+        child: Image.asset(
+          imagePath,
+          fit: BoxFit.contain,
+        ),
       ),
-    ),
-  );
-}
+    );
+
+    return GestureDetector(
+      onTap: _socialBusy ? null : onTap,
+      child: Opacity(
+        opacity: _socialBusy ? 0.6 : 1.0,
+        child: child,
+      ),
+    );
+  }
 }
 
 // ===== ADD SIGNUP PAGE HERE =====

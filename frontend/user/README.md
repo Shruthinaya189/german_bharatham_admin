@@ -20,7 +20,9 @@ Or let it auto-pick the first connected device:
 
     scripts\run_android.ps1
 
-This script finds `adb.exe` even if it isn't on PATH, runs `adb reverse tcp:5000 tcp:5000`, then runs `flutter run` with `--dart-define=API_BASE_URL=http://127.0.0.1:5000`.
+This script finds `adb.exe` even if it isn't on PATH, runs `adb reverse tcp:5000 tcp:5000`, then runs `flutter run`.
+
+This app's default API base URL is the Render backend: `https://german-bharatham-backend.onrender.com`.
 
 A new Flutter project.
 

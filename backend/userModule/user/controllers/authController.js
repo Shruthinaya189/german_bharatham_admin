@@ -3,6 +3,21 @@ const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
 const { sendEmail } = require("../../../services/mailer");
+const axios = require("axios");
+
+let googleAuthLib;
+try {
+  googleAuthLib = require("google-auth-library");
+} catch (_) {
+  googleAuthLib = null;
+}
+
+let jose;
+try {
+  jose = require("jose");
+} catch (_) {
+  jose = null;
+}
 
 const sanitizeUser = (userDoc) => {
   if (!userDoc) return null;
@@ -17,6 +32,166 @@ const generateToken = (user) => {
     process.env.JWT_SECRET,
     { expiresIn: "7d" }
   );
+};
+
+const parseCsv = (value) =>
+  String(value || "")
+    .split(",")
+    .map((v) => v.trim())
+    .filter(Boolean);
+
+const getOrCreateSocialUser = async ({
+  provider,
+  providerUserId,
+  email,
+  name,
+  photo,
+}) => {
+  const providerField =
+    provider === "google"
+      ? "googleId"
+      : provider === "facebook"
+        ? "facebookId"
+        : provider === "apple"
+          ? "appleSub"
+          : null;
+
+  if (!providerField) {
+    throw new Error("Unsupported provider");
+  }
+
+  let user = await User.findOne({ [providerField]: providerUserId });
+
+  if (!user && email) {
+    user = await User.findOne({ email: String(email).toLowerCase().trim() });
+    if (user && !user[providerField]) {
+      user[providerField] = providerUserId;
+      user.authProvider = provider;
+      if (photo && !user.photo) user.photo = photo;
+      if (name && !user.name) user.name = name;
+      await user.save();
+    }
+  }
+
+  if (!user) {
+    if (!email) {
+      // We require email to create an account because the schema enforces it.
+      throw new Error("Email permission is required for this login");
+    }
+    user = await User.create({
+      name: String(name || "User").trim() || "User",
+      email: String(email).toLowerCase().trim(),
+      password: null,
+      role: "user",
+      authProvider: provider,
+      [providerField]: providerUserId,
+      photo: photo || null,
+    });
+  }
+
+  if (user.isActive === false) {
+    const err = new Error("Account is deactivated");
+    err.statusCode = 403;
+    throw err;
+  }
+
+  return user;
+};
+
+const verifyGoogle = async ({ idToken }) => {
+  if (!googleAuthLib) {
+    throw new Error(
+      "Google auth library not installed. Run: npm install google-auth-library"
+    );
+  }
+
+  const allowedClientIds = parseCsv(process.env.GOOGLE_CLIENT_IDS);
+  if (allowedClientIds.length === 0) {
+    throw new Error("Missing GOOGLE_CLIENT_IDS in .env");
+  }
+
+  const { OAuth2Client } = googleAuthLib;
+  const client = new OAuth2Client();
+  const ticket = await client.verifyIdToken({
+    idToken: String(idToken || "").trim(),
+    audience: allowedClientIds,
+  });
+  const payload = ticket.getPayload() || {};
+
+  return {
+    providerUserId: payload.sub,
+    email: payload.email,
+    name: payload.name,
+    photo: payload.picture,
+    emailVerified: payload.email_verified,
+  };
+};
+
+const verifyFacebook = async ({ accessToken }) => {
+  const token = String(accessToken || "").trim();
+  if (!token) throw new Error("Missing Facebook accessToken");
+
+  const meRes = await axios.get("https://graph.facebook.com/me", {
+    params: {
+      fields: "id,name,email,picture.type(large)",
+      access_token: token,
+    },
+    timeout: 10000,
+  });
+  const me = meRes.data || {};
+
+  // Optional: validate token belongs to your app (recommended)
+  const appId = String(process.env.FACEBOOK_APP_ID || "").trim();
+  const appSecret = String(process.env.FACEBOOK_APP_SECRET || "").trim();
+  if (appId && appSecret) {
+    const appAccessToken = `${appId}|${appSecret}`;
+    const dbgRes = await axios.get("https://graph.facebook.com/debug_token", {
+      params: { input_token: token, access_token: appAccessToken },
+      timeout: 10000,
+    });
+    const dbg = (dbgRes.data && dbgRes.data.data) || {};
+    if (dbg.app_id && String(dbg.app_id) !== appId) {
+      throw new Error("Facebook token app_id mismatch");
+    }
+    if (dbg.is_valid === false) {
+      throw new Error("Facebook token is not valid");
+    }
+  }
+
+  return {
+    providerUserId: me.id,
+    email: me.email,
+    name: me.name,
+    photo:
+      me.picture && me.picture.data && me.picture.data.url ? me.picture.data.url : null,
+  };
+};
+
+const verifyApple = async ({ identityToken }) => {
+  if (!jose) {
+    throw new Error("Apple token verification requires 'jose'. Run: npm install jose");
+  }
+
+  const token = String(identityToken || "").trim();
+  if (!token) throw new Error("Missing Apple identityToken");
+
+  const audience = String(process.env.APPLE_CLIENT_ID || "").trim();
+  if (!audience) throw new Error("Missing APPLE_CLIENT_ID in .env");
+
+  const jwks = jose.createRemoteJWKSet(new URL("https://appleid.apple.com/auth/keys"));
+  const { payload } = await jose.jwtVerify(token, jwks, {
+    issuer: "https://appleid.apple.com",
+    audience,
+  });
+
+  return {
+    providerUserId: payload.sub,
+    email: payload.email,
+    name: null,
+    photo: null,
+    emailVerified:
+      payload.email_verified === "true" || payload.email_verified === true,
+  };
 };
 
 const sha256 = (value) =>
@@ -140,6 +315,12 @@ exports.login = async (req, res) => {
       return res.status(403).json({ message: "Account is deactivated" });
     }
 
+    if (!user.password) {
+      return res.status(400).json({
+        message: "This account uses social login. Please login with Google/Facebook/Apple.",
+      });
+    }
+
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch)
       return res.status(400).json({ message: "Invalid credentials" });
@@ -150,6 +331,45 @@ exports.login = async (req, res) => {
     });
   } catch (error) {
     res.status(500).json({ message: error.message });
+  }
+};
+
+// SOCIAL LOGIN (Google/Facebook/Apple) - token exchange
+// Body examples:
+// { provider: 'google', idToken: '...' }
+// { provider: 'facebook', accessToken: '...' }
+// { provider: 'apple', identityToken: '...' }
+exports.socialLogin = async (req, res) => {
+  try {
+    const provider = String(req.body.provider || "").trim().toLowerCase();
+    if (!provider) return res.status(400).json({ message: "provider is required" });
+
+    let verified;
+    if (provider === "google") {
+      verified = await verifyGoogle({ idToken: req.body.idToken });
+    } else if (provider === "facebook") {
+      verified = await verifyFacebook({ accessToken: req.body.accessToken });
+    } else if (provider === "apple") {
+      verified = await verifyApple({ identityToken: req.body.identityToken });
+    } else {
+      return res.status(400).json({ message: "Unsupported provider" });
+    }
+
+    const user = await getOrCreateSocialUser({
+      provider,
+      providerUserId: verified.providerUserId,
+      email: verified.email,
+      name: verified.name,
+      photo: verified.photo,
+    });
+
+    return res.status(200).json({
+      token: generateToken(user),
+      user: sanitizeUser(user),
+    });
+  } catch (error) {
+    const status = error && error.statusCode ? Number(error.statusCode) : 500;
+    return res.status(status).json({ message: error.message || "Social login failed" });
   }
 };
 
@@ -174,6 +394,12 @@ exports.changePassword = async (req, res) => {
     // protect middleware attaches user without password; fetch full user
     const user = await User.findById(req.user.id);
     if (!user) return res.status(404).json({ message: "User not found" });
+
+    if (!user.password) {
+      return res.status(400).json({
+        message: "This account does not have a password set (social login account).",
+      });
+    }
 
     const isMatch = await bcrypt.compare(currentPassword, user.password);
     if (!isMatch) {

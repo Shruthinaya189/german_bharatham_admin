@@ -137,26 +137,6 @@ class _AccommodationDetailPageState extends State<AccommodationDetailPage> {
 
                     const SizedBox(height: 12),
 
-                    /// RATING BUTTON
-                    SizedBox(
-                      width: double.infinity,
-                      child: OutlinedButton.icon(
-                        onPressed: _showRatingDialog,
-                        icon: const Icon(Icons.star_border, size: 20),
-                        label: const Text('Rate this Accommodation'),
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: const Color(0xFF4E7F6D),
-                          side: const BorderSide(color: Color(0xFF4E7F6D)),
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                        ),
-                      ),
-                    ),
-
-                    const SizedBox(height: 10),
-
                     /// LOCATION + PRICE
                     Row(
                       children: [
@@ -265,27 +245,67 @@ class _AccommodationDetailPageState extends State<AccommodationDetailPage> {
             /// BOTTOM BUTTONS
             Padding(
               padding: const EdgeInsets.all(12),
-              child: Row(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  Expanded(
-                    child: _bottomButton(
-                      icon: 'assets/images/call.png',
-                      label: "Call",
-                      color: const Color(0xFF4E7F6D),
-                      onPressed: () => _makePhoneCall(context, widget.item.contactPhone),
-                    ),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _bottomButton(
+                          icon: 'assets/images/call.png',
+                          label: "Call",
+                          color: const Color(0xFF4E7F6D),
+                          onPressed: () =>
+                              _makePhoneCall(context, widget.item.contactPhone),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: _bottomButton(
+                          icon: 'assets/images/whatsapp.png',
+                          label: "Whatsapp",
+                          color: const Color(0xFF4E7F6D),
+                          onPressed: () =>
+                              _openWhatsApp(context, widget.item.contactPhone),
+                          iconOverride: const FaIcon(
+                            FontAwesomeIcons.whatsapp,
+                            color: Colors.white,
+                            size: 18,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: _bottomButton(
-                      icon: 'assets/images/whatsapp.png',
-                      label: "Whatsapp",
-                      color: const Color(0xFF4E7F6D),
-                      onPressed: () => _openWhatsApp(context, widget.item.contactPhone),
-                      iconOverride: const FaIcon(
-                        FontAwesomeIcons.whatsapp,
-                        color: Colors.white,
-                        size: 18,
+                  const SizedBox(height: 10),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: _showRatingDialog,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF4E7F6D),
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Image.asset(
+                            'assets/images/star.png',
+                            width: 18,
+                            height: 18,
+                            color: Colors.white,
+                          ),
+                          const SizedBox(width: 10),
+                          const Text(
+                            'Rate This Accommodation',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ),

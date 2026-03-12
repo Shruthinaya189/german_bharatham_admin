@@ -1,8 +1,8 @@
-require("dotenv").config();
+const path = require("path");
+require("dotenv").config({ path: path.join(__dirname, ".env") });
 const express = require("express");
 const cors = require("cors");
 const connectDB = require("./config/db");
-const path = require("path");
 const { protect, adminOnly } = require("./middleware/auth");
 
 const app = express();
