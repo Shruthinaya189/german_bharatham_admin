@@ -9,7 +9,7 @@ class ApiConfig {
   // You can override at build/run time with:
   //   flutter run --dart-define=GOOGLE_SERVER_CLIENT_ID=...
   static const String _defaultGoogleServerClientId =
-      '467810842460-999flt9jimvtuq61nhd99c4fhdbnvnqs.apps.googleusercontent.com';
+      '467810842460-vt23mujm2fp1v3gev96jq03p03hbgf6k.apps.googleusercontent.com';
 
   static String get googleServerClientId {
     const override = String.fromEnvironment('GOOGLE_SERVER_CLIENT_ID', defaultValue: '');

@@ -105,9 +105,16 @@ const verifyGoogle = async ({ idToken }) => {
     );
   }
 
-  const allowedClientIds = parseCsv(process.env.GOOGLE_CLIENT_IDS);
+  const allowedClientIds = parseCsv(
+    process.env.GOOGLE_CLIENT_IDS ||
+      process.env.GOOGLE_CLIENT_ID ||
+      process.env.GOOGLE_SERVER_CLIENT_ID ||
+      process.env.GOOGLE_WEB_CLIENT_ID
+  );
   if (allowedClientIds.length === 0) {
-    throw new Error("Missing GOOGLE_CLIENT_IDS in .env");
+    throw new Error(
+      "Missing Google OAuth client id(s). Set GOOGLE_CLIENT_IDS (comma-separated) or GOOGLE_CLIENT_ID in .env"
+    );
   }
 
   const { OAuth2Client } = googleAuthLib;

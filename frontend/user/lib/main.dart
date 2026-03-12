@@ -1,5 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:google_fonts/google_fonts.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:http/http.dart' as http;
@@ -305,16 +307,246 @@ class AuthPage extends StatefulWidget {
 }
 
 class _AuthPageState extends State<AuthPage> {
+  static const String _rememberMeKey = 'auth_remember_me';
+  static const String _rememberedIdentifierKey = 'auth_identifier';
+  static const String _rememberedPasswordKey = 'auth_password';
+  static const String _savedCredentialsKey = 'auth_saved_credentials_v1';
+
   bool _isLogin = true;
   bool _obscure = true;
   bool _remember = false;
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  final FocusNode _identifierFocusNode = FocusNode();
+  final FocusNode _passwordFocusNode = FocusNode();
+  final LayerLink _identifierLink = LayerLink();
+  final GlobalKey _identifierFieldKey = GlobalKey();
+  OverlayEntry? _identifierOverlay;
+  List<Map<String, String>> _savedCredentials = const [];
   String? _loginError;
   bool _socialBusy = false;
 
   @override
+  void initState() {
+    super.initState();
+    _loadRememberedCredentials();
+
+    _identifierFocusNode.addListener(() {
+      if (_identifierFocusNode.hasFocus) {
+        _showIdentifierSuggestions();
+      } else {
+        _hideIdentifierSuggestions();
+      }
+    });
+
+    _emailController.addListener(() {
+      if (_identifierOverlay != null) {
+        _identifierOverlay!.markNeedsBuild();
+      }
+    });
+  }
+
+  Future<void> _loadRememberedCredentials() async {
+    final prefs = await SharedPreferences.getInstance();
+    final remember = prefs.getBool(_rememberMeKey) ?? false;
+    if (!mounted) return;
+
+    setState(() {
+      _remember = remember;
+    });
+
+    // Load saved credentials list (do not auto-fill into the inputs).
+    final raw = prefs.getString(_savedCredentialsKey);
+    List<Map<String, String>> creds = [];
+    if (raw != null && raw.trim().isNotEmpty) {
+      try {
+        final decoded = jsonDecode(raw);
+        if (decoded is List) {
+          creds = decoded
+              .whereType<Map>()
+              .map((m) => {
+                    'identifier': (m['identifier'] ?? '').toString(),
+                    'password': (m['password'] ?? '').toString(),
+                  })
+              .where((m) => (m['identifier'] ?? '').toString().trim().isNotEmpty)
+              .toList();
+        }
+      } catch (_) {
+        creds = [];
+      }
+    }
+
+    // Migration from previous single-value storage.
+    final oldIdentifier = (prefs.getString(_rememberedIdentifierKey) ?? '').trim();
+    final oldPassword = prefs.getString(_rememberedPasswordKey) ?? '';
+    if (remember && oldIdentifier.isNotEmpty) {
+      final exists = creds.any(
+        (c) => (c['identifier'] ?? '').toString().trim().toLowerCase() == oldIdentifier.toLowerCase(),
+      );
+      if (!exists) {
+        creds.insert(0, {'identifier': oldIdentifier, 'password': oldPassword});
+        await prefs.setString(_savedCredentialsKey, jsonEncode(creds));
+      }
+    }
+
+    if (!mounted) return;
+    setState(() {
+      _savedCredentials = creds;
+    });
+  }
+
+  Future<void> _setRememberMe(bool value) async {
+    setState(() {
+      _remember = value;
+    });
+
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_rememberMeKey, value);
+
+    if (!value) {
+      await prefs.remove(_rememberedIdentifierKey);
+      await prefs.remove(_rememberedPasswordKey);
+      await prefs.remove(_savedCredentialsKey);
+      if (mounted) {
+        setState(() {
+          _savedCredentials = const [];
+        });
+      }
+      _hideIdentifierSuggestions();
+    }
+  }
+
+  Future<void> _persistCredentialsAfterLoginSuccess() async {
+    final prefs = await SharedPreferences.getInstance();
+
+    if (_remember) {
+      await prefs.setBool(_rememberMeKey, true);
+
+      final identifier = _emailController.text.trim();
+      final password = _passwordController.text;
+      if (identifier.isNotEmpty) {
+        var current = List<Map<String, String>>.from(_savedCredentials);
+        current.removeWhere(
+          (c) => (c['identifier'] ?? '').toString().trim().toLowerCase() == identifier.toLowerCase(),
+        );
+        current.insert(0, {'identifier': identifier, 'password': password});
+        if (current.length > 5) {
+          current = current.sublist(0, 5);
+        }
+
+        await prefs.setString(_savedCredentialsKey, jsonEncode(current));
+        await prefs.setString(_rememberedIdentifierKey, identifier);
+        await prefs.setString(_rememberedPasswordKey, password);
+
+        if (mounted) {
+          setState(() {
+            _savedCredentials = current;
+          });
+        }
+      }
+    } else {
+      await prefs.setBool(_rememberMeKey, false);
+      await prefs.remove(_rememberedIdentifierKey);
+      await prefs.remove(_rememberedPasswordKey);
+      await prefs.remove(_savedCredentialsKey);
+    }
+  }
+
+  void _hideIdentifierSuggestions() {
+    _identifierOverlay?.remove();
+    _identifierOverlay = null;
+  }
+
+  void _showIdentifierSuggestions() {
+    if (!_remember || _savedCredentials.isEmpty) return;
+    if (_identifierOverlay != null) return;
+
+    double? fieldWidth;
+    final box = _identifierFieldKey.currentContext?.findRenderObject();
+    if (box is RenderBox) {
+      fieldWidth = box.size.width;
+    }
+
+    _identifierOverlay = OverlayEntry(
+      builder: (context) {
+        final query = _emailController.text.trim().toLowerCase();
+        final options = _savedCredentials.where((c) {
+          final id = (c['identifier'] ?? '').toString();
+          if (query.isEmpty) return id.trim().isNotEmpty;
+          return id.toLowerCase().contains(query);
+        }).toList();
+
+        if (options.isEmpty) {
+          return const SizedBox.shrink();
+        }
+
+        return Positioned.fill(
+          child: GestureDetector(
+            behavior: HitTestBehavior.translucent,
+            onTap: _hideIdentifierSuggestions,
+            child: Stack(
+              children: [
+                CompositedTransformFollower(
+                  link: _identifierLink,
+                  showWhenUnlinked: false,
+                  offset: const Offset(0, 56),
+                  child: Material(
+                    color: Colors.transparent,
+                    child: SizedBox(
+                      width: fieldWidth,
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(maxHeight: 220, maxWidth: 600),
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(6),
+                            border: Border.all(color: Colors.black12),
+                          ),
+                          child: ListView.separated(
+                            padding: EdgeInsets.zero,
+                            shrinkWrap: true,
+                            itemCount: options.length,
+                            separatorBuilder: (_, __) => const Divider(height: 1),
+                            itemBuilder: (context, index) {
+                              final item = options[index];
+                              final identifier = (item['identifier'] ?? '').toString();
+                              return InkWell(
+                                onTap: () {
+                                  _emailController.text = identifier;
+                                  _passwordController.text = (item['password'] ?? '').toString();
+                                  _hideIdentifierSuggestions();
+                                  FocusScope.of(context).requestFocus(_passwordFocusNode);
+                                },
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                                  child: Text(
+                                    identifier,
+                                    style: const TextStyle(fontSize: 14),
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+
+    Overlay.of(context, rootOverlay: true).insert(_identifierOverlay!);
+  }
+
+  @override
   void dispose() {
+    _hideIdentifierSuggestions();
+    _identifierFocusNode.dispose();
+    _passwordFocusNode.dispose();
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
@@ -353,6 +585,8 @@ class _AuthPageState extends State<AuthPage> {
         phone: user['phone']?.toString(),
         photoBase64: user['photo']?.toString(),
       );
+      await _persistCredentialsAfterLoginSuccess();
+      TextInput.finishAutofillContext(shouldSave: true);
       SavedManager.instance.switchUser(user['_id'].toString());
       if (mounted) {
         Navigator.pushReplacement(
@@ -438,6 +672,11 @@ class _AuthPageState extends State<AuthPage> {
         serverClientId: ApiConfig.googleServerClientId,
       );
 
+      // Avoid stale sessions causing odd failures.
+      try {
+        await googleSignIn.signOut();
+      } catch (_) {}
+
       final account = await googleSignIn.signIn();
       if (account == null) {
         return; // cancelled
@@ -456,16 +695,42 @@ class _AuthPageState extends State<AuthPage> {
           "provider": "google",
           "idToken": idToken,
         }),
-      );
+      ).timeout(const Duration(seconds: 20));
 
       await _handleSocialResponse(response);
+    } on TimeoutException {
+      setState(() {
+        _loginError = 'Google login timed out. Please try again.';
+      });
+    } on PlatformException catch (e) {
+      debugPrint('Google login PlatformException: code=${e.code} message=${e.message} details=${e.details}');
+
+      // Common Android misconfig shows up as DEVELOPER_ERROR / ApiException: 10.
+      final raw = '${e.code}: ${e.message ?? ''} ${e.details ?? ''}'.trim();
+      final isDeveloperError = raw.contains('ApiException: 10') || raw.toLowerCase().contains('developer_error');
+
+      setState(() {
+        if (isDeveloperError) {
+          _loginError = kDebugMode
+              ? 'Google config error (DEVELOPER_ERROR).\nCheck: Android package name + SHA-1 in Google Console, and correct OAuth client IDs.\nDetails: $raw'
+              : 'Google login setup error. Please contact support.';
+        } else {
+          _loginError = kDebugMode
+              ? 'Google login failed.\nDetails: $raw'
+              : 'Google login failed. Please try again.';
+        }
+      });
     } catch (e) {
       debugPrint('Google login error: $e');
+      final msg = e.toString();
       setState(() {
-        final msg = e.toString();
-        _loginError = msg.contains('idToken not available')
-            ? 'Google login setup missing. Please contact support.'
-            : 'Google login failed. Please try again.';
+        if (msg.contains('idToken not available')) {
+          _loginError = 'Google login setup missing. Please contact support.';
+        } else if (kDebugMode) {
+          _loginError = 'Google login failed.\nDetails: $msg';
+        } else {
+          _loginError = 'Google login failed. Please try again.';
+        }
       });
     } finally {
       if (mounted) {
@@ -546,37 +811,55 @@ class _AuthPageState extends State<AuthPage> {
               const SizedBox(height: 18),
               const Text('Email or Phone number',style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),),
               const SizedBox(height: 6),
-              TextFormField(
-                controller: _emailController,
-                decoration: InputDecoration(
-                  filled: true,
-                  fillColor: Colors.white,
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(5)),
-                ),
-              ),
-
-              const SizedBox(height: 12),
-              const Text('Password', style: TextStyle(fontSize: 14)),
-              const SizedBox(height: 6),
-              TextFormField(
-                controller: _passwordController,
-                obscureText: _obscure,
-                decoration: InputDecoration(
-                  filled: true,
-                  fillColor: Colors.white,
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(5)),
-                  suffixIcon: IconButton(
-                    // Use an asset image (assets/images/eye.png). If the image is missing or
-                    // cannot be decoded, fall back to the original visibility icon.
-                    icon: Image.asset(
-                      'assets/images/eye.png',
-                      width: 24,
-                      height: 24,
-                      fit: BoxFit.contain,
-                      errorBuilder: (context, error, stack) => Icon(_obscure ? Icons.visibility_off : Icons.visibility),
+              AutofillGroup(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    CompositedTransformTarget(
+                      link: _identifierLink,
+                      child: TextFormField(
+                        key: _identifierFieldKey,
+                        controller: _emailController,
+                        focusNode: _identifierFocusNode,
+                        onTap: _showIdentifierSuggestions,
+                        autofillHints: const [AutofillHints.username],
+                        textInputAction: TextInputAction.next,
+                        decoration: InputDecoration(
+                          filled: true,
+                          fillColor: Colors.white,
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(5)),
+                        ),
+                      ),
                     ),
-                    onPressed: () => setState(() => _obscure = !_obscure),
-                  ),
+
+                    const SizedBox(height: 12),
+                    const Text('Password', style: TextStyle(fontSize: 14)),
+                    const SizedBox(height: 6),
+                    TextFormField(
+                      controller: _passwordController,
+                      focusNode: _passwordFocusNode,
+                      obscureText: _obscure,
+                      autofillHints: const [AutofillHints.password],
+                      textInputAction: TextInputAction.done,
+                      decoration: InputDecoration(
+                        filled: true,
+                        fillColor: Colors.white,
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(5)),
+                        suffixIcon: IconButton(
+                          // Use an asset image (assets/images/eye.png). If the image is missing or
+                          // cannot be decoded, fall back to the original visibility icon.
+                          icon: Image.asset(
+                            'assets/images/eye.png',
+                            width: 24,
+                            height: 24,
+                            fit: BoxFit.contain,
+                            errorBuilder: (context, error, stack) => Icon(_obscure ? Icons.visibility_off : Icons.visibility),
+                          ),
+                          onPressed: () => setState(() => _obscure = !_obscure),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
 
@@ -586,7 +869,10 @@ class _AuthPageState extends State<AuthPage> {
                 children: [
                   Row(
                     children: [
-                      Checkbox(value: _remember, onChanged: (v) => setState(() => _remember = v ?? false)),
+                      Checkbox(
+                        value: _remember,
+                        onChanged: (v) => _setRememberMe(v ?? false),
+                      ),
                       const Text('Remember me',style: TextStyle(fontSize: 14),),
                     ],
                   ),
