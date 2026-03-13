@@ -63,7 +63,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
         _isError = !ok;
         _message = messageFromServer ??
           (ok
-            ? 'If the email exists, a reset link was sent.'
+            ? 'Reset link was sent to your email.'
             : 'Failed to send reset link (HTTP ${response.statusCode})');
       });
     } catch (e) {

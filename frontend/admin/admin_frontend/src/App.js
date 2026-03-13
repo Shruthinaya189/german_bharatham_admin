@@ -20,10 +20,16 @@ function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   const handleLogin = () => {
+    // Ensure the admin always lands on the dashboard after login,
+    // even if the browser URL was previously on another protected route.
+    window.history.replaceState({}, '', '/dashboard');
     setIsAuthenticated(true);
   };
 
   const handleLogout = () => {
+    // Clear auth and reset URL so next login starts clean.
+    localStorage.removeItem('adminToken');
+    window.history.replaceState({}, '', '/');
     setIsAuthenticated(false);
   };
 

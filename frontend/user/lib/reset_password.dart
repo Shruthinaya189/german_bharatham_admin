@@ -26,6 +26,34 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
   bool _isError = false;
   bool _success = false;
 
+  Widget _eyeToggleIcon({required bool obscured}) {
+    return SizedBox(
+      width: 24,
+      height: 24,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          Image.asset(
+            'assets/images/eye.png',
+            width: 22,
+            height: 22,
+            fit: BoxFit.contain,
+            color: obscured ? Colors.black45 : primaryGreen,
+            colorBlendMode: BlendMode.srcIn,
+            errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+          ),
+          if (obscured)
+            IgnorePointer(
+              child: CustomPaint(
+                size: const Size.square(24),
+                painter: _EyeSlashPainter(color: Colors.black54),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
   @override
   void dispose() {
     _newPasswordController.dispose();
@@ -124,8 +152,8 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
                 labelText: 'New Password',
                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
                 suffixIcon: IconButton(
-                  icon: Icon(_obscureNew ? Icons.visibility_off : Icons.visibility),
                   onPressed: () => setState(() => _obscureNew = !_obscureNew),
+                  icon: _eyeToggleIcon(obscured: _obscureNew),
                 ),
               ),
             ),
@@ -137,8 +165,8 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
                 labelText: 'Confirm Password',
                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
                 suffixIcon: IconButton(
-                  icon: Icon(_obscureConfirm ? Icons.visibility_off : Icons.visibility),
                   onPressed: () => setState(() => _obscureConfirm = !_obscureConfirm),
+                  icon: _eyeToggleIcon(obscured: _obscureConfirm),
                 ),
               ),
             ),
@@ -184,4 +212,28 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
       ),
     );
   }
+}
+
+class _EyeSlashPainter extends CustomPainter {
+  final Color color;
+  const _EyeSlashPainter({required this.color});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..strokeWidth = 2
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round;
+
+    const inset = 4.0;
+    canvas.drawLine(
+      Offset(inset, size.height - inset),
+      Offset(size.width - inset, inset),
+      paint,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant _EyeSlashPainter oldDelegate) => oldDelegate.color != color;
 }

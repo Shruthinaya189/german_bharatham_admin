@@ -89,6 +89,14 @@ app.get("/reset-password", (req, res) => {
         h1{font-size:20px;margin:0 0 12px;}
         label{display:block;margin:12px 0 6px;font-size:14px;}
         input{width:100%;padding:10px;border:1px solid #ccc;border-radius:8px;}
+        .pw-wrap{position:relative;}
+        .pw-wrap input{padding-right:44px;}
+        .pw-toggle{position:absolute;right:8px;top:50%;transform:translateY(-50%);width:32px;height:32px;border:0;background:transparent;border-radius:8px;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#4E7F6D;z-index:2;}
+        .pw-toggle:active{background:rgba(78,127,109,0.10);}
+        .pw-toggle svg{width:20px;height:20px;display:block;}
+        .pw-toggle .icon{display:none;}
+        .pw-toggle[data-state="hidden"] .icon-eyeoff{display:block;}
+        .pw-toggle[data-state="shown"] .icon-eye{display:block;}
         button{margin-top:14px;width:100%;padding:10px;border:0;border-radius:8px;background:#4E7F6D;color:#fff;font-size:14px;cursor:pointer;}
         .msg{margin-top:12px;font-size:13px;white-space:pre-wrap;}
         .err{color:#b00020;}
@@ -101,10 +109,38 @@ app.get("/reset-password", (req, res) => {
 
       <form id="f">
         <label for="pw">New password</label>
-        <input id="pw" type="password" minlength="6" required />
+        <div class="pw-wrap">
+          <input id="pw" type="password" minlength="6" required />
+          <button id="pwToggle" class="pw-toggle" data-state="hidden" type="button" aria-label="Show password" title="Show password">
+            <svg class="icon icon-eye" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+              <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            <svg class="icon icon-eyeoff" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+              <path d="M10.6 5.2A10.7 10.7 0 0 1 12 5c6.5 0 10 7 10 7a18.3 18.3 0 0 1-4.1 5.1" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M6.2 6.2C3.4 8.3 2 12 2 12s3.5 7 10 7c1.3 0 2.6-.3 3.7-.7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M14.1 14.1a3 3 0 0 1-4.2-4.2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M1 1l22 22" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+        </div>
 
         <label for="pw2">Confirm password</label>
-        <input id="pw2" type="password" minlength="6" required />
+        <div class="pw-wrap">
+          <input id="pw2" type="password" minlength="6" required />
+          <button id="pw2Toggle" class="pw-toggle" data-state="hidden" type="button" aria-label="Show password" title="Show password">
+            <svg class="icon icon-eye" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+              <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            <svg class="icon icon-eyeoff" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+              <path d="M10.6 5.2A10.7 10.7 0 0 1 12 5c6.5 0 10 7 10 7a18.3 18.3 0 0 1-4.1 5.1" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M6.2 6.2C3.4 8.3 2 12 2 12s3.5 7 10 7c1.3 0 2.6-.3 3.7-.7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M14.1 14.1a3 3 0 0 1-4.2-4.2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M1 1l22 22" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+        </div>
 
         <button type="submit">Update Password</button>
       </form>
@@ -115,6 +151,29 @@ app.get("/reset-password", (req, res) => {
         const token = ${JSON.stringify(token)};
         const msg = document.getElementById('msg');
         const form = document.getElementById('f');
+
+        function attachPasswordToggle(inputId, buttonId) {
+          const input = document.getElementById(inputId);
+          const btn = document.getElementById(buttonId);
+          if (!input || !btn) return;
+
+          function render() {
+            const isHidden = input.type === 'password';
+            btn.dataset.state = isHidden ? 'hidden' : 'shown';
+            btn.setAttribute('aria-label', isHidden ? 'Show password' : 'Hide password');
+            btn.setAttribute('title', isHidden ? 'Show password' : 'Hide password');
+          }
+
+          btn.addEventListener('click', () => {
+            input.type = input.type === 'password' ? 'text' : 'password';
+            render();
+          });
+
+          render();
+        }
+
+        attachPasswordToggle('pw', 'pwToggle');
+        attachPasswordToggle('pw2', 'pw2Toggle');
 
         if (!token) {
           msg.textContent = 'Missing reset token.';
