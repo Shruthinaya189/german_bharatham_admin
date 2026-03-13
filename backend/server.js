@@ -85,29 +85,37 @@ app.get("/reset-password", (req, res) => {
       <meta name="viewport" content="width=device-width, initial-scale=1" />
       <title>Reset Password</title>
       <style>
-        body{font-family:Arial,sans-serif;max-width:420px;margin:40px auto;padding:0 16px;}
-        h1{font-size:20px;margin:0 0 12px;}
-        label{display:block;margin:12px 0 6px;font-size:14px;}
-        input{width:100%;padding:10px;border:1px solid #ccc;border-radius:8px;}
+        :root{--green:#4E7F6D;}
+        *{box-sizing:border-box;}
+        body{font-family:Arial,sans-serif;margin:0;padding:24px 16px;background:#fff;}
+        .main{max-width:420px;margin:0 auto;}
+        h1{font-size:24px;margin:8px 0 10px;}
+        .desc{margin:0 0 18px;color:#555;font-size:13px;line-height:1.35;}
+        form{margin-top:10px;}
+        label{display:block;margin:14px 0 6px;font-size:14px;}
+        input{width:100%;padding:12px 12px;border:1px solid #ccc;border-radius:10px;outline:none;}
+        input:focus{border-color:rgba(78,127,109,0.65);box-shadow:0 0 0 3px rgba(78,127,109,0.12);}
         .pw-wrap{position:relative;}
         .pw-wrap input{padding-right:44px;}
-        .pw-toggle{position:absolute;right:8px;top:50%;transform:translateY(-50%);width:32px;height:32px;border:0;background:transparent;border-radius:8px;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#4E7F6D;z-index:2;}
+        .pw-toggle{position:absolute;right:8px;top:50%;transform:translateY(-50%);width:32px;height:32px;border:0;background:transparent;border-radius:8px;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--green);z-index:2;}
         .pw-toggle:active{background:rgba(78,127,109,0.10);}
         .pw-toggle svg{width:20px;height:20px;display:block;}
         .pw-toggle .icon{display:none;}
         .pw-toggle[data-state="hidden"] .icon-eyeoff{display:block;}
         .pw-toggle[data-state="shown"] .icon-eye{display:block;}
-        button{margin-top:14px;width:100%;padding:10px;border:0;border-radius:8px;background:#4E7F6D;color:#fff;font-size:14px;cursor:pointer;}
-        .msg{margin-top:12px;font-size:13px;white-space:pre-wrap;}
+        form > button[type="submit"]{margin-top:18px;width:100%;padding:14px 12px;border:0;border-radius:12px;background:var(--green);color:#fff;font-size:16px;font-weight:600;cursor:pointer;}
+        form > button[type="submit"]:disabled{opacity:0.65;cursor:not-allowed;}
+        .msg{margin-top:12px;font-size:13px;white-space:pre-wrap;line-height:1.35;}
         .err{color:#b00020;}
         .ok{color:#1b5e20;}
       </style>
     </head>
     <body>
-      <h1>Reset Password</h1>
-      <p style="margin:0;color:#555;font-size:13px">Enter a new password to complete the reset.</p>
+      <div class="main">
+        <h1>Reset Password</h1>
+        <p class="desc">Enter a new password to complete the reset.</p>
 
-      <form id="f">
+        <form id="f">
         <label for="pw">New password</label>
         <div class="pw-wrap">
           <input id="pw" type="password" minlength="6" required />
@@ -143,9 +151,10 @@ app.get("/reset-password", (req, res) => {
         </div>
 
         <button type="submit">Update Password</button>
-      </form>
+        </form>
 
-      <div id="msg" class="msg"></div>
+        <div id="msg" class="msg"></div>
+      </div>
 
       <script>
         const token = ${JSON.stringify(token)};
