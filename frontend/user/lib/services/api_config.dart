@@ -5,16 +5,26 @@ class ApiConfig {
   static const String _prodBaseUrl = 'https://german-bharatham-backend.onrender.com';
 
   // Google Sign-In
-  // Used to obtain an ID token on Android when google-services.json is not present.
+  // Web OAuth client ID (also used as server client ID to obtain ID token on Android
+  // when google-services.json is not present).
+  // You can override at build/run time with:
+  //   flutter run --dart-define=GOOGLE_WEB_CLIENT_ID=...
+  static const String _defaultGoogleWebClientId =
+      '467810842460-hr5umjblvsfc5et6pb7s2nkmanr3ekv5.apps.googleusercontent.com';
+
+  static String get googleWebClientId {
+    const override = String.fromEnvironment('GOOGLE_WEB_CLIENT_ID', defaultValue: '');
+    if (override.trim().isNotEmpty) return override.trim();
+    return _defaultGoogleWebClientId;
+  }
+
+  // Used to obtain an ID token on Android.
   // You can override at build/run time with:
   //   flutter run --dart-define=GOOGLE_SERVER_CLIENT_ID=...
-  static const String _defaultGoogleServerClientId =
-      '467810842460-vt23mujm2fp1v3gev96jq03p03hbgf6k.apps.googleusercontent.com';
-
   static String get googleServerClientId {
     const override = String.fromEnvironment('GOOGLE_SERVER_CLIENT_ID', defaultValue: '');
     if (override.trim().isNotEmpty) return override.trim();
-    return _defaultGoogleServerClientId;
+    return googleWebClientId;
   }
 
   // Default backend in debug.

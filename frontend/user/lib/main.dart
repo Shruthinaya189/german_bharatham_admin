@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter/foundation.dart' show kDebugMode;
+import 'package:flutter/foundation.dart' show kDebugMode, kIsWeb;
 import 'package:google_fonts/google_fonts.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:http/http.dart' as http;
@@ -667,25 +667,53 @@ class _AuthPageState extends State<AuthPage> {
     });
 
     try {
-      final googleSignIn = GoogleSignIn(
-        scopes: const ['email', 'profile'],
-        serverClientId: ApiConfig.googleServerClientId,
-      );
+      GoogleSignIn buildGoogleSignIn({required bool includeServerClientId}) {
+        final serverClientId = ApiConfig.googleServerClientId.trim();
+        final webClientId = ApiConfig.googleWebClientId.trim();
+        return GoogleSignIn(
+          scopes: const ['email', 'profile'],
+          clientId: kIsWeb && webClientId.isNotEmpty ? webClientId : null,
+          serverClientId:
+              !kIsWeb && includeServerClientId && serverClientId.isNotEmpty
+                  ? serverClientId
+                  : null,
+        );
+      }
+
+      GoogleSignIn googleSignIn = buildGoogleSignIn(includeServerClientId: true);
 
       // Avoid stale sessions causing odd failures.
       try {
         await googleSignIn.signOut();
       } catch (_) {}
 
-      final account = await googleSignIn.signIn();
+      GoogleSignInAccount? account;
+      try {
+        account = await googleSignIn.signIn();
+      } on PlatformException catch (e) {
+        final raw = '${e.code}: ${e.message ?? ''} ${e.details ?? ''}'.trim();
+        final isDeveloperError = raw.contains('ApiException: 10') ||
+            raw.toLowerCase().contains('developer_error') ||
+            e.code.toLowerCase().contains('sign_in_failed');
+        if (isDeveloperError) {
+          // Retry without serverClientId (Android-only sign-in). This avoids
+          // DEVELOPER_ERROR caused by mismatched Web client configuration.
+          googleSignIn = buildGoogleSignIn(includeServerClientId: false);
+          account = await googleSignIn.signIn();
+        } else {
+          rethrow;
+        }
+      }
       if (account == null) {
         return; // cancelled
       }
 
       final auth = await account.authentication;
       final idToken = auth.idToken;
-      if (idToken == null || idToken.isEmpty) {
-        throw Exception('Google idToken not available. Check Google OAuth setup.');
+      final accessToken = auth.accessToken;
+      if ((idToken == null || idToken.isEmpty) &&
+          (accessToken == null || accessToken.isEmpty)) {
+        throw Exception('Google token not available. Check Google OAuth setup.');
       }
 
       final response = await http.post(
@@ -693,7 +721,9 @@ class _AuthPageState extends State<AuthPage> {
         headers: {"Content-Type": "application/json"},
         body: jsonEncode({
           "provider": "google",
-          "idToken": idToken,
+          if (idToken != null && idToken.isNotEmpty) "idToken": idToken,
+          if (accessToken != null && accessToken.isNotEmpty)
+            "accessToken": accessToken,
         }),
       ).timeout(const Duration(seconds: 20));
 
@@ -846,14 +876,8 @@ class _AuthPageState extends State<AuthPage> {
                         fillColor: Colors.white,
                         border: OutlineInputBorder(borderRadius: BorderRadius.circular(5)),
                         suffixIcon: IconButton(
-                          // Use an asset image (assets/images/eye.png). If the image is missing or
-                          // cannot be decoded, fall back to the original visibility icon.
-                          icon: Image.asset(
-                            'assets/images/eye.png',
-                            width: 24,
-                            height: 24,
-                            fit: BoxFit.contain,
-                            errorBuilder: (context, error, stack) => Icon(_obscure ? Icons.visibility_off : Icons.visibility),
+                          icon: Icon(
+                            _obscure ? Icons.visibility_off : Icons.visibility,
                           ),
                           onPressed: () => setState(() => _obscure = !_obscure),
                         ),
@@ -1195,14 +1219,8 @@ class _SignupPageState extends State<SignupPage> {
                 decoration: InputDecoration(
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
                   suffixIcon: IconButton(
-                    // Use an asset image (assets/images/eye.png). If the image is missing or
-                    // cannot be decoded, fall back to the original visibility icon.
-                    icon: Image.asset(
-                      'assets/images/eye.png',
-                      width: 22,
-                      height: 22,
-                      fit: BoxFit.contain,
-                      errorBuilder: (context, error, stack) => Icon(_obscure ? Icons.visibility_off : Icons.visibility),
+                    icon: Icon(
+                      _obscure ? Icons.visibility_off : Icons.visibility,
                     ),
                     onPressed: () => setState(() => _obscure = !_obscure),
                   ),

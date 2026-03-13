@@ -98,39 +98,82 @@ const getOrCreateSocialUser = async ({
   return user;
 };
 
-const verifyGoogle = async ({ idToken }) => {
+const verifyGoogle = async ({ idToken, accessToken }) => {
   if (!googleAuthLib) {
     throw new Error(
       "Google auth library not installed. Run: npm install google-auth-library"
     );
   }
 
-  const allowedClientIds = parseCsv(
-    process.env.GOOGLE_CLIENT_IDS ||
-      process.env.GOOGLE_CLIENT_ID ||
-      process.env.GOOGLE_SERVER_CLIENT_ID ||
-      process.env.GOOGLE_WEB_CLIENT_ID
+  const allowedClientIds = Array.from(
+    new Set([
+      ...parseCsv(process.env.GOOGLE_CLIENT_IDS),
+      ...parseCsv(process.env.GOOGLE_CLIENT_ID),
+      ...parseCsv(process.env.GOOGLE_SERVER_CLIENT_ID),
+      ...parseCsv(process.env.GOOGLE_WEB_CLIENT_ID),
+      ...parseCsv(process.env.GOOGLE_ANDROID_CLIENT_ID),
+      ...parseCsv(process.env.GOOGLE_IOS_CLIENT_ID),
+    ])
   );
   if (allowedClientIds.length === 0) {
     throw new Error(
-      "Missing Google OAuth client id(s). Set GOOGLE_CLIENT_IDS (comma-separated) or GOOGLE_CLIENT_ID in .env"
+      "Missing Google OAuth client id(s). Set GOOGLE_CLIENT_IDS (comma-separated) or GOOGLE_WEB_CLIENT_ID / GOOGLE_ANDROID_CLIENT_ID in .env"
     );
   }
 
-  const { OAuth2Client } = googleAuthLib;
-  const client = new OAuth2Client();
-  const ticket = await client.verifyIdToken({
-    idToken: String(idToken || "").trim(),
-    audience: allowedClientIds,
+  const trimmedIdToken = String(idToken || "").trim();
+  const trimmedAccessToken = String(accessToken || "").trim();
+
+  // Preferred: verify ID token (strong audience guarantee).
+  if (trimmedIdToken) {
+    const { OAuth2Client } = googleAuthLib;
+    const client = new OAuth2Client();
+    const ticket = await client.verifyIdToken({
+      idToken: trimmedIdToken,
+      audience: allowedClientIds,
+    });
+    const payload = ticket.getPayload() || {};
+
+    return {
+      providerUserId: payload.sub,
+      email: payload.email,
+      name: payload.name,
+      photo: payload.picture,
+      emailVerified: payload.email_verified,
+    };
+  }
+
+  // Fallback: verify access token then fetch userinfo.
+  // This helps Android sign-in succeed even when serverClientId is not set.
+  if (!trimmedAccessToken) {
+    throw new Error("Missing idToken or accessToken for Google login");
+  }
+
+  // Validate token and ensure it's intended for our app.
+  const tokenInfoRes = await axios.get("https://oauth2.googleapis.com/tokeninfo", {
+    params: { access_token: trimmedAccessToken },
+    timeout: 10000,
   });
-  const payload = ticket.getPayload() || {};
+  const tokenInfo = tokenInfoRes.data || {};
+  const aud = String(tokenInfo.aud || tokenInfo.audience || tokenInfo.issued_to || "").trim();
+  if (aud && allowedClientIds.length > 0 && !allowedClientIds.includes(aud)) {
+    const err = new Error("Wrong recipient, payload audience != requiredAudience");
+    err.statusCode = 401;
+    throw err;
+  }
+
+  const userInfoRes = await axios.get("https://www.googleapis.com/oauth2/v3/userinfo", {
+    headers: { Authorization: `Bearer ${trimmedAccessToken}` },
+    timeout: 10000,
+  });
+  const profile = userInfoRes.data || {};
 
   return {
-    providerUserId: payload.sub,
-    email: payload.email,
-    name: payload.name,
-    photo: payload.picture,
-    emailVerified: payload.email_verified,
+    providerUserId: profile.sub || profile.id,
+    email: profile.email,
+    name: profile.name,
+    photo: profile.picture,
+    emailVerified: profile.email_verified,
   };
 };
 
@@ -353,7 +396,10 @@ exports.socialLogin = async (req, res) => {
 
     let verified;
     if (provider === "google") {
-      verified = await verifyGoogle({ idToken: req.body.idToken });
+      verified = await verifyGoogle({
+        idToken: req.body.idToken,
+        accessToken: req.body.accessToken,
+      });
     } else if (provider === "facebook") {
       verified = await verifyFacebook({ accessToken: req.body.accessToken });
     } else if (provider === "apple") {
