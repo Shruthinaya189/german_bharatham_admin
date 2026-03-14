@@ -2,6 +2,12 @@ import React from 'react';
 import { X, Check } from 'lucide-react';
 
 const ReviewListingModal = ({ listing, onClose, onApprove, onReject }) => {
+  const images = Array.isArray(listing.images) && listing.images.length > 0
+    ? listing.images
+    : (listing.image ? [listing.image] : []);
+
+  const mainImage = images[0] || (listing.category === 'Services' ? '/service-default.jpg' : null);
+
   return (
     <div className="modal-overlay">
       <div className="modal-content review-modal">
@@ -14,8 +20,18 @@ const ReviewListingModal = ({ listing, onClose, onApprove, onReject }) => {
 
         <div className="review-content">
           <div className="review-images">
-            <img src={listing.image} alt={listing.title} className="main-image" />
-            <img src={listing.image} alt={listing.title} className="thumbnail" />
+            {mainImage ? (
+              <>
+                <img src={mainImage} alt={listing.title} className="main-image" />
+                {images.slice(0, 2).map((img, idx) => (
+                  <img key={idx} src={img} alt={listing.title} className="thumbnail" />
+                ))}
+              </>
+            ) : (
+              <div style={{ width: '100%', height: 180, background: '#f3f4f6', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 28 }}>
+                📷
+              </div>
+            )}
           </div>
 
           <div className="review-details">
@@ -77,9 +93,11 @@ const ReviewListingModal = ({ listing, onClose, onApprove, onReject }) => {
           </button>
         </div>
 
-        <div className="submission-info">
-          <span>Submitted by <strong>{listing.submittedBy}</strong> • {listing.submittedTime}</span>
-        </div>
+        {listing.submittedBy && listing.submittedTime && (
+          <div className="submission-info">
+            <span>Submitted by <strong>{listing.submittedBy}</strong> • {listing.submittedTime}</span>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -6,7 +6,9 @@ const Service = require("./admin/model/Service");
 router.get("/", async (req, res) => {
   try {
     const { city, serviceType, provider } = req.query;
-    const filter = { status: 'Active' };
+    // Support both legacy and newer status values.
+    // Admin UI can save as 'active' while older docs may store 'Active'.
+    const filter = { status: { $in: ["Active", "active"] } };
     
     if (city) filter.city = { $regex: city, $options: 'i' };
     if (serviceType) filter.serviceType = { $regex: serviceType, $options: 'i' };

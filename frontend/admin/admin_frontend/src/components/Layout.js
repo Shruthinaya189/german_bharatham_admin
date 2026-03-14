@@ -26,7 +26,12 @@ const Layout = ({ children, onLogout }) => {
     <div className="admin-layout">
       <div className="sidebar">
         <div className="sidebar-header">
-          <h1>German Bharatham</h1>
+          <div className="brand-row">
+            <div className="brand-logo-wrap brand-logo-wrap--sm" aria-hidden="true">
+              <img className="brand-logo" src="/app_logo.jpeg" alt="" />
+            </div>
+            <h1>German Bharatham</h1>
+          </div>
         </div>
         
         <nav className="sidebar-nav">

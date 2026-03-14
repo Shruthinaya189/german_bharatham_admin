@@ -493,7 +493,7 @@ const JobsForm = ({ data, set }) => {
 };
 
 const ServicesForm = ({ data, set }) => {
-  const serviceTypes = ['Immigration', 'Legal', 'Financial', 'Tax', 'Consultation', 'Home Services', 'IT Services', 'Education', 'Translation', 'Other'];
+  const serviceTypes = ['Immigration', 'Legal', 'Financial', 'Tax', 'Consultation', 'Home Services', 'Tuition & Coaching', 'IT Services', 'Education', 'Relocation', 'Translation', 'Other'];
   return (
     <>
       <div className="form-row">
@@ -536,6 +536,36 @@ const ServicesForm = ({ data, set }) => {
           <input value={data.priceRange} onChange={e => set(p => ({...p, priceRange: e.target.value}))} placeholder="€50/hour" />
         </div>
       </div>
+
+      <div className="form-row">
+        <div className="form-group">
+          <label>WhatsApp</label>
+          <input value={data.whatsapp} onChange={e => set(p => ({...p, whatsapp: e.target.value}))} placeholder="+49 170 1234567" />
+        </div>
+        <div className="form-group">
+          <label>Email</label>
+          <input value={data.email} onChange={e => set(p => ({...p, email: e.target.value}))} placeholder="name@example.com" />
+        </div>
+      </div>
+
+      <div className="form-row">
+        <div className="form-group">
+          <label>Website</label>
+          <input value={data.website} onChange={e => set(p => ({...p, website: e.target.value}))} placeholder="https://example.com" />
+        </div>
+        <div className="form-group">
+          <label>Latitude</label>
+          <input value={data.latitude} onChange={e => set(p => ({...p, latitude: e.target.value}))} placeholder="48.137154" />
+        </div>
+      </div>
+
+      <div className="form-row">
+        <div className="form-group">
+          <label>Longitude</label>
+          <input value={data.longitude} onChange={e => set(p => ({...p, longitude: e.target.value}))} placeholder="11.576124" />
+        </div>
+        <div className="form-group" />
+      </div>
       <div className="form-group">
         <label>Service Type</label>
         <select value={data.serviceType} onChange={e => set(p => ({...p, serviceType: e.target.value}))}>
@@ -547,6 +577,20 @@ const ServicesForm = ({ data, set }) => {
         <label>Description {REQ}</label>
         <textarea value={data.description} onChange={e => set(p => ({...p, description: e.target.value}))} rows={3} placeholder="What you offer…" />
       </div>
+
+      <div className="form-group">
+        <label>Services Offered {REQ}</label>
+        <textarea
+          value={data.amenitiesText}
+          onChange={e => set(p => ({ ...p, amenitiesText: e.target.value }))}
+          rows={3}
+          placeholder="Accommodation search assistance, Moving & settling support, Temporary housing arrangement"
+        />
+        <div style={{ fontSize: 12, color: '#6b7280', marginTop: 6 }}>
+          Enter as comma-separated values (or one per line).
+        </div>
+      </div>
+
       <ImageUpload images={data.images} onChange={fn => set(p => ({ ...p, images: fn(p.images) }))} />
     </>
   );
@@ -555,10 +599,10 @@ const ServicesForm = ({ data, set }) => {
 // ── Main modal ────────────────────────────────────────────────────────────────
 
 const DEFAULTS = {
-  Accommodation: { title:'', propertyType:'apartment', city:'', area:'', postalCode:'', address:'', contactPhone:'', description:'', coldRent:'', warmRent:'', deposit:'', sizeSqm:'', bedrooms:'', bathrooms:'', amenities:[], images:[], status:'active' },
-  Food: { title:'', subCategory:'Restaurant', type:'', city:'', state:'', zipCode:'', address:'', phone:'', email:'', website:'', description:'', priceRange:'$$', openingHours:'', cuisine:[], specialties:[], deliveryAvailable:false, takeoutAvailable:false, dineInAvailable:false, cateringAvailable:false, image:'', status:'active', featured:false, verified:true },
-  Jobs: { title:'', location:'', contact:'', description:'', salary:'', status:'active', companyName:'', companyLogo:'', type:'Full Time', requirements:'', benefits:'', applyUrl:'' },
-  Services: { serviceName:'', providerName:'', serviceType:'', city:'', area:'', postalCode:'', address:'', contactPhone:'', description:'', priceRange:'', images:[], status:'active' },
+  Accommodation: { title:'', propertyType:'apartment', city:'', area:'', postalCode:'', address:'', contactPhone:'', description:'', coldRent:'', warmRent:'', deposit:'', sizeSqm:'', bedrooms:'', bathrooms:'', amenities:[], images:[], status:'pending' },
+  Food: { title:'', subCategory:'Restaurant', type:'', city:'', state:'', zipCode:'', address:'', phone:'', email:'', website:'', description:'', priceRange:'$$', openingHours:'', cuisine:[], specialties:[], deliveryAvailable:false, takeoutAvailable:false, dineInAvailable:false, cateringAvailable:false, image:'', status:'pending', featured:false, verified:true },
+  Jobs: { title:'', location:'', contact:'', description:'', salary:'', status:'pending', companyName:'', companyLogo:'', type:'Full Time', requirements:'', benefits:'', applyUrl:'' },
+  Services: { serviceName:'', providerName:'', serviceType:'', city:'', area:'', postalCode:'', address:'', contactPhone:'', whatsapp:'', email:'', website:'', latitude:'', longitude:'', description:'', priceRange:'', amenitiesText:'', images:[], status:'pending' },
 };
 
 const CATEGORY_LABELS = ['Accommodation', 'Food', 'Jobs', 'Services'];
@@ -599,7 +643,12 @@ const validate = (category, data) => {
     if (!data.postalCode?.trim()) return 'Postal Code is required';
     if (!data.contactPhone?.trim()) return 'Contact Phone is required';
     if (!data.description?.trim()) return 'Description is required';
-    if (!data.images || data.images.length === 0) return 'At least one photo (JPG/JPEG/PNG) is required';
+    const amenities = (data.amenitiesText ?? '')
+      .toString()
+      .split(/[,;\n]/)
+      .map(s => s.trim())
+      .filter(Boolean);
+    if (amenities.length === 0) return 'Services Offered is required';
   }
   return null;
 };
@@ -672,18 +721,43 @@ const buildPayload = (category, data) => {
     };
   }
   if (category === 'Services') {
+    const lat = parseFloat(data.latitude);
+    const lon = parseFloat(data.longitude);
+
+    const amenities = (data.amenitiesText || '')
+      .split(/[,;\n]/)
+      .map(s => s.trim())
+      .filter(Boolean);
+
+    const serviceName = data.serviceName?.trim();
+    const providerName = data.providerName?.trim();
+    const contactPhone = data.contactPhone?.trim();
+    const images = data.images || [];
+
     return {
-      serviceName: data.serviceName?.trim(),
-      providerName: data.providerName?.trim(),
+      // Canonical fields (preferred by newer clients)
+      title: serviceName,
+      providerName,
+      phone: contactPhone,
+      whatsapp: data.whatsapp?.trim() || null,
+      email: data.email?.trim() || null,
+      website: data.website?.trim() || null,
+      latitude: Number.isFinite(lat) ? lat : null,
+      longitude: Number.isFinite(lon) ? lon : null,
+      images,
+      amenities,
+
+      // Legacy fields (still used by some routes/UI)
+      serviceName,
       serviceType: data.serviceType || null,
       city: data.city?.trim(),
       area: data.area?.trim() || null,
       postalCode: data.postalCode?.trim(),
       address: data.address?.trim() || null,
-      contactPhone: data.contactPhone?.trim(),
+      contactPhone,
       description: data.description?.trim() || null,
       priceRange: data.priceRange?.trim() || null,
-      media: { images: data.images || [] },
+      media: { images },
       status: data.status,
     };
   }
@@ -713,13 +787,20 @@ const AddListingModal = ({ onClose, onSuccess, defaultCategory, lockCategory }) 
     setIsSubmitting(true);
     try {
       const token = localStorage.getItem('adminToken');
+
+      // New listings always start as pending and must be approved in Content Moderation.
+      const payload = {
+        ...buildPayload(category, formData),
+        status: 'pending',
+      };
+
       const res = await fetch(API_MAP[category], {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-        body: JSON.stringify(buildPayload(category, formData)),
+        body: JSON.stringify(payload),
       });
       if (res.ok) {
-        alert(`${category} listing created successfully!`);
+        alert(`${category} listing submitted for review (Pending).`);
         onSuccess && onSuccess(category);
         onClose();
       } else {
@@ -762,11 +843,12 @@ const AddListingModal = ({ onClose, onSuccess, defaultCategory, lockCategory }) 
           {/* Status */}
           <div className="form-group" style={{ marginTop: 8 }}>
             <label>Status</label>
-            <select value={formData.status} onChange={e => setFormData(p => ({...p, status: e.target.value}))}>
-              <option value="active">Active</option>
+            <select value={'pending'} disabled>
               <option value="pending">Pending</option>
-              <option value="disabled">Disabled</option>
             </select>
+            <div style={{ fontSize: 12, color: '#6b7280', marginTop: 6 }}>
+              New listings are reviewed in Content Moderation before going live.
+            </div>
           </div>
 
           <div className="form-actions">

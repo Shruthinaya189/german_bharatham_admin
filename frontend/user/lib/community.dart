@@ -94,6 +94,7 @@ class _CommunityPageState extends State<CommunityPage> {
         filterGuides = guides;
         _applySearch();
 
+        if (!mounted) return;
         setState(() {
           isLoading = false;
         });
@@ -128,12 +129,14 @@ class _CommunityPageState extends State<CommunityPage> {
           errorMessage = "";
         });
       } else {
+        if (!mounted) return;
         setState(() {
           isLoading = false;
           errorMessage = "Failed to load guides";
         });
       }
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         isLoading = false;
 

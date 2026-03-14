@@ -120,12 +120,14 @@ class _AccommodationDetailPageState extends State<AccommodationDetailPage> {
                     Row(
                       children: [
                         StarRatingWidget(
-                          rating: widget.item.averageRating ?? 0.0,
+                          rating: _ratingStats?.averageRating ?? (widget.item.averageRating ?? 0.0),
                           size: 18,
                         ),
                         const SizedBox(width: 6),
                         Text(
-                          '${(widget.item.averageRating ?? 0.0).toStringAsFixed(1)} (${widget.item.totalRatings ?? 0} ratings)',
+                          _ratingStats != null
+                              ? '${_ratingStats!.averageRating.toStringAsFixed(1)} (${_ratingStats!.totalRatings} ratings)'
+                              : '${(widget.item.averageRating ?? 0.0).toStringAsFixed(1)} (${widget.item.totalRatings ?? 0} ratings)',
                           style: GoogleFonts.roboto(
                             fontSize: 14,
                             fontWeight: FontWeight.w600,

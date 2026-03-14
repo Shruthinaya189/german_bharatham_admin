@@ -156,7 +156,7 @@ class _SavedListingsPageState extends State<SavedListingsPage> {
                   subtitle: service.city.trim().isNotEmpty
                       ? service.city
                       : (service.address ?? ''),
-                  image: service.image,
+                  image: service.images.isNotEmpty ? service.images.first : service.image,
                   fallbackAsset: 'assets/images/service.jpg',
                   trailingLine: Text(
                     service.serviceType,

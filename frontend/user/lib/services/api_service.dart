@@ -1,11 +1,44 @@
+import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'api_config.dart';
 import '../models/food_grocery_model.dart';
+import '../models/service_model.dart';
 import '../models/rating_model.dart';
 
 class ApiService {
   static String get baseUrl => ApiConfig.baseUrl;
+
+  static const Duration _defaultTimeout = Duration(seconds: 60);
+  static const int _defaultRetries = 1;
+
+  static Future<http.Response> _getWithRetry(
+    Uri uri, {
+    Map<String, String>? headers,
+    Duration timeout = _defaultTimeout,
+    int retries = _defaultRetries,
+  }) async {
+    Object? lastError;
+
+    for (int attempt = 0; attempt <= retries; attempt++) {
+      try {
+        return await http.get(uri, headers: headers).timeout(timeout);
+      } on TimeoutException catch (e) {
+        lastError = e;
+      } on SocketException catch (e) {
+        lastError = e;
+      } catch (e) {
+        rethrow;
+      }
+
+      if (attempt < retries) {
+        await Future<void>.delayed(const Duration(seconds: 2));
+      }
+    }
+
+    throw Exception('Network request failed: $lastError');
+  }
   
   /// Fetch all Food & Grocery listings
   static Future<List<FoodGrocery>> getFoodGroceryListings({
@@ -30,41 +63,77 @@ class ApiService {
         queryParameters: queryParams.isNotEmpty ? queryParams : null,
       );
 
-      print('Fetching from: $uri');
-
-      final response = await http.get(
+      final response = await _getWithRetry(
         uri,
         headers: {
           'Content-Type': 'application/json',
         },
-      ).timeout(
-        const Duration(seconds: 10),
-        onTimeout: () {
-          throw Exception('Request timeout. Please check your connection.');
-        },
       );
 
-      print('Response status: ${response.statusCode}');
-
       if (response.statusCode == 200) {
-  final decoded = json.decode(response.body);
+        final decoded = json.decode(response.body);
 
-  if (decoded is Map && decoded.containsKey('data')) {
-    final List<dynamic> data = decoded['data'];
+        if (decoded is Map && decoded.containsKey('data')) {
+          final List<dynamic> data = decoded['data'];
 
-    print('Received ${data.length} items');
-
-    return data
-        .map((json) => FoodGrocery.fromJson(json))
-        .toList();
-  } else {
-    throw Exception('Unexpected API response format');
-  }
-} else {
+          return data.map((json) => FoodGrocery.fromJson(json)).toList();
+        } else if (decoded is List) {
+          return decoded.map((json) => FoodGrocery.fromJson(json)).toList();
+        } else {
+          throw Exception('Unexpected API response format');
+        }
+      } else {
         throw Exception('Failed to load listings: ${response.statusCode}');
       }
     } catch (e) {
-      print('Error fetching food grocery listings: $e');
+      throw Exception('Failed to load listings: $e');
+    }
+  }
+
+  /// Fetch all Services listings
+  static Future<List<Service>> getServicesListings({
+    String? search,
+    String? serviceType,
+    String? city,
+  }) async {
+    try {
+      Map<String, String> queryParams = {};
+      if (search != null && search.isNotEmpty) {
+        queryParams['search'] = search;
+      }
+      if (serviceType != null && serviceType.isNotEmpty) {
+        queryParams['serviceType'] = serviceType;
+      }
+      if (city != null && city.isNotEmpty) {
+        queryParams['city'] = city;
+      }
+
+      final uri = Uri.parse('${ApiConfig.baseUrl}/api/services/user').replace(
+        queryParameters: queryParams.isNotEmpty ? queryParams : null,
+      );
+
+      final response = await _getWithRetry(
+        uri,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final decoded = json.decode(response.body);
+
+        if (decoded is Map && decoded.containsKey('data')) {
+          final List<dynamic> data = decoded['data'];
+          return data.map((json) => Service.fromJson(json)).toList();
+        } else if (decoded is List) {
+          return decoded.map((json) => Service.fromJson(json)).toList();
+        } else {
+          throw Exception('Unexpected API response format');
+        }
+      } else {
+        throw Exception('Failed to load listings: ${response.statusCode}');
+      }
+    } catch (e) {
       throw Exception('Failed to load listings: $e');
     }
   }
@@ -88,6 +157,31 @@ class ApiService {
     } catch (e) {
       print('Error fetching food grocery details: $e');
       throw Exception('Failed to load details: $e');
+    }
+  }
+
+  /// Fetch single Service item by ID
+  static Future<Service> getServiceById(String id) async {
+    try {
+      final response = await http.get(
+        Uri.parse('${ApiConfig.baseUrl}/api/services/user/$id'),
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        // Some endpoints wrap in {data: {...}}
+        if (data is Map && data['data'] is Map) {
+          return Service.fromJson((data['data'] as Map).cast<String, dynamic>());
+        }
+        return Service.fromJson((data as Map).cast<String, dynamic>());
+      } else {
+        throw Exception('Failed to load service details');
+      }
+    } catch (e) {
+      throw Exception('Failed to load service details: $e');
     }
   }
 

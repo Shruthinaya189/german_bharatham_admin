@@ -45,6 +45,11 @@ exports.createLikeNotification = async (req, res) => {
         message: `${senderName} liked your profile`,
         senderName,
         senderPhoto: req.user.photo || null,
+        data: {
+          module: 'profiles',
+          action: 'like_received',
+          senderUserId: req.user._id,
+        },
         read: false,
       }),
       Notification.create({
@@ -55,6 +60,11 @@ exports.createLikeNotification = async (req, res) => {
         message: `You liked ${targetName}'s profile`,
         senderName: targetName,
         senderPhoto: targetUser.photo || null,
+        data: {
+          module: 'profiles',
+          action: 'like_sent',
+          targetUserId: targetUser._id,
+        },
         // Don't trigger unread red-dot for the person who performed the action
         read: true,
       }),

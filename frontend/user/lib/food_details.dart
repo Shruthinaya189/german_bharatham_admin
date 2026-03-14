@@ -353,6 +353,13 @@ ${widget.item.phone != null && widget.item.phone!.isNotEmpty ? 'Phone: ${widget.
                 width: double.infinity,
                 child: ElevatedButton(
                   onPressed: _showRatingDialog,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF4E7F6D),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
@@ -374,13 +381,6 @@ ${widget.item.phone != null && widget.item.phone!.isNotEmpty ? 'Phone: ${widget.
                         ),
                       ),
                     ],
-                  ),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF4E7F6D),
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
                   ),
                 ),
               ),

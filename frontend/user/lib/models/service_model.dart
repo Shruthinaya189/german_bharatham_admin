@@ -72,6 +72,47 @@ class Service {
     return ApiConfig.getImageUrl(trimmed);
   }
 
+  static double? _toDouble(dynamic value) {
+    if (value == null) return null;
+    if (value is num) return value.toDouble();
+    final s = value.toString().trim();
+    if (s.isEmpty || s.toLowerCase() == 'null') return null;
+    return double.tryParse(s);
+  }
+
+  static int _toInt(dynamic value) {
+    if (value == null) return 0;
+    if (value is int) return value;
+    if (value is num) return value.toInt();
+    final s = value.toString().trim();
+    return int.tryParse(s) ?? 0;
+  }
+
+  static List<String> _imagesFromJson(Map<String, dynamic> json) {
+    final direct = json['images'];
+    if (direct is List && direct.isNotEmpty) {
+      return direct
+          .where((e) => e != null)
+          .map((e) => _toAbsoluteImageUrl(e.toString()))
+          .where((e) => e.isNotEmpty)
+          .toList();
+    }
+    final media = json['media'];
+    if (media is Map) {
+      final images = media['images'];
+      if (images is List && images.isNotEmpty) {
+        return images
+            .where((e) => e != null)
+            .map((e) => _toAbsoluteImageUrl(e.toString()))
+            .where((e) => e.isNotEmpty)
+            .toList();
+      }
+    }
+    final single = (json['image'] ?? _firstImageFromMedia(json['media']))?.toString();
+    final abs = _toAbsoluteImageUrl(single);
+    return abs.isEmpty ? const [] : [abs];
+  }
+
   final String id;
   final String title;
   final String category;
@@ -88,9 +129,16 @@ class Service {
   final String? pricing; // e.g., "Hourly", "Fixed Rate"
   final String? priceRange; // e.g., "$50-$100/hour"
   final String? availability;
+  final List<String> servicesOffered;
   final List<String> certifications;
   final List<String> languages;
   final String? image;
+  final List<String> images;
+  final double? latitude;
+  final double? longitude;
+  final String? whatsapp;
+  final double averageRating;
+  final int totalRatings;
   final String status;
   final bool featured;
   final bool verified;
@@ -114,9 +162,16 @@ class Service {
     this.pricing,
     this.priceRange,
     this.availability,
+    this.servicesOffered = const [],
     this.certifications = const [],
     this.languages = const [],
     this.image,
+    this.images = const [],
+    this.latitude,
+    this.longitude,
+    this.whatsapp,
+    this.averageRating = 0.0,
+    this.totalRatings = 0,
     this.status = 'Pending',
     this.featured = false,
     this.verified = false,
@@ -132,6 +187,10 @@ class Service {
     final title = (json['title'] ?? json['serviceName'] ?? json['name'] ?? '').toString();
     final provider = (json['provider'] ?? json['providerName'])?.toString();
     final phone = (json['phone'] ?? json['contactPhone'])?.toString();
+    final images = _imagesFromJson(json);
+    final servicesOffered = _toStringList(
+      json['amenities'] ?? json['servicesOffered'] ?? json['services'] ?? json['offers'],
+    );
 
     return Service(
       id: (json['_id'] ?? json['id'] ?? '').toString(),
@@ -144,15 +203,22 @@ class Service {
       state: json['state']?.toString(),
       zipCode: (json['zipCode'] ?? json['postalCode'])?.toString(),
       phone: phone,
+      whatsapp: json['whatsapp']?.toString(),
       email: json['email']?.toString(),
       website: json['website']?.toString(),
       description: json['description']?.toString(),
       pricing: json['pricing']?.toString(),
       priceRange: json['priceRange']?.toString(),
       availability: json['availability']?.toString(),
+      servicesOffered: servicesOffered,
       certifications: _toStringList(json['certifications'] ?? json['certification']),
       languages: _toStringList(json['languages'] ?? json['language']),
       image: _toAbsoluteImageUrl(chosenImage),
+      images: images,
+      latitude: _toDouble(json['latitude']),
+      longitude: _toDouble(json['longitude']),
+      averageRating: (_toDouble(json['averageRating']) ?? _toDouble(json['rating']) ?? 0.0),
+      totalRatings: _toInt(json['totalRatings'] ?? json['ratingCount']),
       status: _normalizeStatus(json['status']),
       featured: json['featured'] ?? false,
       verified: json['verified'] ?? false,
@@ -182,6 +248,12 @@ class Service {
       'certifications': certifications,
       'languages': languages,
       'image': image,
+      'images': images,
+      'latitude': latitude,
+      'longitude': longitude,
+      'whatsapp': whatsapp,
+      'averageRating': averageRating,
+      'totalRatings': totalRatings,
       'status': status,
       'featured': featured,
       'verified': verified,

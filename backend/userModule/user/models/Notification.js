@@ -16,7 +16,7 @@ const notificationSchema = new mongoose.Schema(
     type: {
       type: String,
       required: true,
-      enum: ['like_received', 'like_sent'],
+      enum: ['like_received', 'like_sent', 'listing_activated'],
       index: true,
     },
     title: {
@@ -39,6 +39,10 @@ const notificationSchema = new mongoose.Schema(
     },
     senderPhoto: {
       type: String,
+      default: null,
+    },
+    data: {
+      type: Object,
       default: null,
     },
     read: {

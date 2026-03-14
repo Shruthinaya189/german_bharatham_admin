@@ -1,6 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const Accommodation = require("./accomodation");
+const { notifyListingActivated } = require('../userModule/user/services/notificationService');
 
 // GET ALL (with stats)
 router.get("/", async (req, res) => {
@@ -136,7 +137,8 @@ router.post("/", async (req, res) => {
       } : {},
 
       contactPhone: req.body.contactPhone ? String(req.body.contactPhone).trim() : null,
-      status: ['active', 'disabled', 'pending'].includes(req.body.status) ? req.body.status : 'active'
+      // New listings must be reviewed before going live.
+      status: 'pending'
     };
 
     const newAccommodation = new Accommodation(payload);
@@ -168,12 +170,26 @@ router.patch('/:id/status', async (req, res) => {
     const normalised = status === 'inactive' ? 'disabled' : status;
     if (!['active', 'disabled', 'pending'].includes(normalised)) return res.status(400).json({ message: 'Invalid status' });
     const isActive = normalised === 'active';
+
+    const before = await Accommodation.findById(req.params.id).lean();
+    if (!before) return res.status(404).json({ message: 'Not found' });
+
     const doc = await Accommodation.findByIdAndUpdate(
       req.params.id,
       { status: normalised, 'adminControls.isActive': isActive },
       { new: true }
     );
     if (!doc) return res.status(404).json({ message: 'Not found' });
+
+    const wasActive = String(before.status || '').toLowerCase() === 'active';
+    if (!wasActive && isActive) {
+      notifyListingActivated({
+        module: 'accommodation',
+        entityId: doc._id,
+        listingTitle: doc.title,
+      }).catch(() => {});
+    }
+
     res.json(doc);
   } catch (e) { res.status(500).json({ message: e.message }); }
 });

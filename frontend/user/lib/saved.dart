@@ -20,6 +20,7 @@ import 'saved_guides_manager.dart';
 import 'saved_service_manager.dart';
 import 'service_details.dart';
 import 'services/api_config.dart';
+import 'user_session.dart';
 
 class SavedPage extends StatefulWidget {
   const SavedPage({super.key});
@@ -33,6 +34,17 @@ class _SavedPageState extends State<SavedPage> {
   int _selectedCategory = 0;
 
   Future<_SavedLists> _loadSaved() async {
+    final uid = UserSession.instance.userId;
+    if (uid != null && uid.trim().isNotEmpty) {
+      SavedManager.instance.switchUser(uid);
+      await Future.wait([
+        SavedFoodManager.instance.switchUser(uid),
+        SavedJobManager.instance.switchUser(uid),
+        SavedServiceManager.instance.switchUser(uid),
+        SavedGuidesManager.instance.switchUser(uid),
+      ]);
+    }
+
     await SavedManager.instance.initialize();
 
     await Future.wait([
@@ -878,6 +890,10 @@ class _SavedServiceCard extends StatelessWidget {
         ? item.city
         : (item.address ?? '').trim();
 
+    final displayImage = item.images.isNotEmpty
+      ? item.images.first
+      : (item.image ?? '');
+
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -891,7 +907,7 @@ class _SavedServiceCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _SavedThumbnail(
-              image: item.image,
+              image: displayImage,
               fallbackAsset: 'assets/images/service.jpg',
               width: 80,
               height: 80,

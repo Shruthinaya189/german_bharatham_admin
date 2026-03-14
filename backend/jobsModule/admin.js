@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const Job = require('./models/jobModel');
+const { notifyListingActivated } = require('../userModule/user/services/notificationService');
 
 const adminCheck = (req, res, next) => {
   if (!req.user || req.user.role !== 'admin') return res.status(403).json({ message: 'Admin access required' });
@@ -31,6 +32,10 @@ router.post('/', adminCheck, async (req, res) => {
   try {
     const { title } = req.body;
     if (!title || !title.trim()) return res.status(400).json({ message: 'Job Title is required' });
+
+    // New listings must be reviewed before going live.
+    req.body.status = 'pending';
+
     const doc = new Job(req.body);
     await doc.save();
     res.status(201).json(doc);
@@ -55,8 +60,23 @@ router.patch('/:id/status', adminCheck, async (req, res) => {
     const { status } = req.body;
     const normalised = status === 'inactive' ? 'disabled' : status;
     if (!['active', 'disabled', 'pending'].includes(normalised)) return res.status(400).json({ message: 'Invalid status' });
+
+    const before = await Job.findById(req.params.id).lean();
+    if (!before) return res.status(404).json({ message: 'Not found' });
+
     const doc = await Job.findByIdAndUpdate(req.params.id, { status: normalised }, { new: true });
     if (!doc) return res.status(404).json({ message: 'Not found' });
+
+    const wasActive = String(before.status || '').toLowerCase() === 'active';
+    const isActive = normalised === 'active';
+    if (!wasActive && isActive) {
+      notifyListingActivated({
+        module: 'jobs',
+        entityId: doc._id,
+        listingTitle: doc.title,
+      }).catch(() => {});
+    }
+
     res.json(doc);
   } catch (e) { res.status(500).json({ message: e.message }); }
 });

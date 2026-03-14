@@ -6,24 +6,29 @@ import 'package:http/http.dart' as http;
 import '../services/api_config.dart';
 import '../user_session.dart';
 import '../notification_manager.dart';
+import '../notification_deeplink.dart';
 
 class AppNotification {
   final String id;
+  final String type;
   final String title;
   final String message;
   final bool read;
   final DateTime? createdAt;
   final String? senderName;
   final String? senderPhoto;
+  final Map<String, dynamic> data;
 
   AppNotification({
     required this.id,
+    required this.type,
     required this.title,
     required this.message,
     required this.read,
     required this.createdAt,
     required this.senderName,
     required this.senderPhoto,
+    required this.data,
   });
 
   factory AppNotification.fromJson(Map<String, dynamic> json) {
@@ -36,26 +41,36 @@ class AppNotification {
       }
     }
 
+    Map<String, dynamic> parseData(dynamic v) {
+      if (v is Map<String, dynamic>) return v;
+      if (v is Map) return v.map((k, val) => MapEntry(k.toString(), val));
+      return <String, dynamic>{};
+    }
+
     return AppNotification(
       id: (json['_id'] ?? json['id'] ?? '').toString(),
+      type: (json['type'] ?? '').toString(),
       title: (json['title'] ?? 'Notification').toString(),
       message: (json['message'] ?? '').toString(),
       read: (json['read'] ?? false) == true,
       createdAt: parseDt(json['createdAt']),
       senderName: json['senderName']?.toString(),
       senderPhoto: json['senderPhoto']?.toString(),
+      data: parseData(json['data']),
     );
   }
 
   AppNotification copyWith({bool? read}) {
     return AppNotification(
       id: id,
+      type: type,
       title: title,
       message: message,
       read: read ?? this.read,
       createdAt: createdAt,
       senderName: senderName,
       senderPhoto: senderPhoto,
+      data: data,
     );
   }
 }
@@ -81,10 +96,12 @@ class _NotificationsPageState extends State<NotificationsPage> {
   }
 
   Future<void> _load() async {
-    setState(() {
-      _loading = true;
-      _error = null;
-    });
+    if (mounted) {
+      setState(() {
+        _loading = true;
+        _error = null;
+      });
+    }
 
     try {
       final token = UserSession.instance.token;
@@ -101,6 +118,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
         final decoded = jsonDecode(response.body);
         final list = decoded is List ? decoded : (decoded['data'] ?? []) as List;
 
+        if (!mounted) return;
         setState(() {
           _items = list
               .whereType<Map<String, dynamic>>()
@@ -119,6 +137,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
           : 'Failed to load notifications';
       throw Exception(msg);
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _loading = false;
         _error = e.toString();
@@ -137,6 +156,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
         headers: {'Authorization': 'Bearer $token'},
       );
 
+      if (!mounted) return;
       setState(() {
         _items = _items
             .map((x) => x.id == n.id ? x.copyWith(read: true) : x)
@@ -146,6 +166,18 @@ class _NotificationsPageState extends State<NotificationsPage> {
       NotificationManager.instance.refresh();
     } catch (_) {
       // best-effort
+    }
+  }
+
+  Future<void> _handleTap(AppNotification n) async {
+    await _markRead(n);
+    try {
+      await NotificationDeepLink.openFromData(context, n.data);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Unable to open: $e')),
+      );
     }
   }
 
@@ -226,7 +258,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
                         itemBuilder: (context, index) {
                           final n = _items[index];
                           return GestureDetector(
-                            onTap: () => _markRead(n),
+                            onTap: () => _handleTap(n),
                             child: _NotificationTile(
                               title: n.title,
                               message: n.message,

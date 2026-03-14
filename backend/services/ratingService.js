@@ -2,7 +2,7 @@ const UniversalRating = require("../models/Rating");
 const FoodGrocery = require("../foodGroceryModule/admin/model/FoodGrocery");
 const Accommodation = require("../accommodationModule/admin/model/Accommodation");
 const Job = require("../jobsModule/admin/model/Job");
-// const Service = require("../servicesModule/admin/model/Service"); // Uncomment if Service model exists
+const Service = require("../servicesModule/admin/model/Service");
 
 class RatingService {
   
@@ -14,7 +14,7 @@ class RatingService {
       'foodgrocery': FoodGrocery,
       'accommodation': Accommodation,
       'job': Job,
-      // 'service': Service // Uncomment if Service model exists
+      'service': Service,
     };
     
     const model = models[entityType];

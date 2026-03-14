@@ -12,6 +12,7 @@ const APIS = {
 
 const STATUS_COLORS = {
   active:   { bg: '#d1fae5', color: '#065f46' },
+  pending:  { bg: '#fef3c7', color: '#92400e' },
   inactive: { bg: '#fee2e2', color: '#991b1b' },
 };
 
@@ -39,7 +40,13 @@ const Listings = () => {
               title: item[conf.titleKey] || 'Untitled',
               category: cat,
               location: item.location || [item.city, item.area].filter(Boolean).join(', ') || 'N/A',
-              status: (s => s === 'disabled' || s === 'pending' ? 'inactive' : s || 'inactive')(item.status),
+              status: ((raw) => {
+                const s = String(raw || '').toLowerCase();
+                if (s === 'active') return 'active';
+                if (s === 'pending') return 'pending';
+                if (s === 'disabled' || s === 'inactive') return 'inactive';
+                return 'inactive';
+              })(item.status),
               created: item.createdAt ? new Date(item.createdAt).toLocaleDateString('en-GB') : 'N/A',
             })))
         )
@@ -122,6 +129,7 @@ const Listings = () => {
           <select className="filter-select" value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
             <option value="all">All Status</option>
             <option value="active">Active</option>
+            <option value="pending">Pending</option>
             <option value="inactive">Inactive</option>
           </select>
           <button className="add-listing-btn" onClick={() => setShowAddModal(true)}>
@@ -163,6 +171,7 @@ const Listings = () => {
                           padding:'3px 10px', fontSize:12, fontWeight:600, cursor:'pointer' }}
                       >
                         <option value="active">Active</option>
+                        <option value="pending">Pending</option>
                         <option value="inactive">Inactive</option>
                       </select>
                     </td>

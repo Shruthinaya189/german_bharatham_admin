@@ -1,10 +1,9 @@
 ﻿import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
-import 'dart:convert';
 import 'food_details.dart';
 import 'food_filter_page.dart';
 import 'models/food_grocery_model.dart';
 import 'saved_food_manager.dart';
+import 'services/api_service.dart';
 import 'services/api_config.dart';
 import 'widgets/star_rating_widget.dart';
 
@@ -21,6 +20,7 @@ class _FoodGroceryPageState extends State<FoodGroceryPage> {
   List<FoodGrocery> filteredItems = [];
   bool isLoading = true;
   String searchQuery = '';
+  String? errorMessage;
   
   @override
   void initState() {
@@ -31,42 +31,24 @@ class _FoodGroceryPageState extends State<FoodGroceryPage> {
   
   Future<void> _loadFoodItems() async {
     try {
-      final response = await http.get(
-        Uri.parse('$baseUrl/api/user/foodgrocery'),
-      );
-      
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        List<dynamic> itemsList;
-
-        // Handle both {data: [], count: n} and plain array formats
-        if (data is Map && data.containsKey('data')) {
-          itemsList = data['data'];
-        } else if (data is List) {
-          itemsList = data;
-        } else {
-          itemsList = [];
-        }
-
-        if (!mounted) return;
-        setState(() {
-          allItems = itemsList
-              .map((json) => FoodGrocery.fromJson(json))
-              .where((item) => item.status == 'Active')
-              .toList();
-          filteredItems = allItems;
-          isLoading = false;
-        });
-      } else {
-        if (!mounted) return;
-        setState(() {
-          isLoading = false;
-        });
-      }
-    } catch (e) {
-      debugPrint('Error loading food items: $e');
       if (!mounted) return;
       setState(() {
+        isLoading = true;
+        errorMessage = null;
+      });
+
+      final items = await ApiService.getFoodGroceryListings();
+
+      if (!mounted) return;
+      setState(() {
+        allItems = items.where((item) => item.status == 'Active').toList();
+        filteredItems = allItems;
+        isLoading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        errorMessage = 'Unable to load food items. Please check your internet or try again.';
         isLoading = false;
       });
     }
@@ -180,13 +162,21 @@ class _FoodGroceryPageState extends State<FoodGroceryPage> {
                   ? const Center(child: CircularProgressIndicator(
                       color: Color(0xFF4E7F6D),
                     ))
-                  : filteredItems.isEmpty
-                      ? const Center(
+                  : (errorMessage != null)
+                      ? Center(
                           child: Text(
-                            'No food items found',
-                            style: TextStyle(fontSize: 16, color: Colors.grey),
+                            errorMessage!,
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(fontSize: 16, color: Colors.grey),
                           ),
                         )
+                      : filteredItems.isEmpty
+                          ? const Center(
+                              child: Text(
+                                'No food items found',
+                                style: TextStyle(fontSize: 16, color: Colors.grey),
+                              ),
+                            )
                       : ListView.builder(
                           itemCount: filteredItems.length,
                           itemBuilder: (context, index) {

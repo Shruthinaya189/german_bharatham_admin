@@ -3,12 +3,6 @@ import { Plus, Trash2, Edit, Eye, ArrowLeft } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import AddListingModal from './AddListingModal';
 
-const STATUS_COLORS = {
-  active: { bg: '#d1fae5', color: '#065f46' },
-  pending: { bg: '#fef3c7', color: '#92400e' },
-  disabled: { bg: '#fee2e2', color: '#991b1b' },
-};
-
 const Badge = ({ label, active }) => (
   <span style={{
     display: 'inline-block', padding: '2px 10px', borderRadius: 12, fontSize: 12, fontWeight: 600,
@@ -22,7 +16,7 @@ const Badge = ({ label, active }) => (
 const ViewModal = ({ item, category, fields, onClose }) => {
   const [imgIdx, setImgIdx] = useState(0);
   if (!item) return null;
-  const images = item.media?.images || [];
+  const images = item.media?.images || item.images || [];
   return (
     <div className="modal-overlay">
       <div className="modal-content modal-large" style={{ maxHeight: '90vh', overflowY: 'auto' }}>
@@ -103,16 +97,65 @@ const ImageEditor = ({ images, onChange }) => {
 
 // ── Edit modal ──────────────────────────────────────────────────────────────
 const EditModal = ({ item, category, apiBase, onClose, onSuccess }) => {
-  const [data, setData] = useState({ ...item, _images: item.media?.images || item.images || [] });
+  const [data, setData] = useState({
+    ...item,
+    _images: item.media?.images || item.images || [],
+    amenitiesText: Array.isArray(item.amenities)
+      ? item.amenities.join(', ')
+      : (item.amenitiesText ?? ''),
+  });
   const [saving, setSaving] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    if (category === 'Services') {
+      const amenities = (data.amenitiesText ?? '')
+        .toString()
+        .split(/[,;\n]/)
+        .map(s => s.trim())
+        .filter(Boolean);
+      if (amenities.length === 0) {
+        alert('Services Offered is required');
+        return;
+      }
+    }
+
     setSaving(true);
     try {
       const token = localStorage.getItem('adminToken');
-      const payload = { ...data, media: { ...data.media, images: data._images } };
+      const payload = { ...data };
+
+      // Normalize images for both legacy and canonical shapes
+      payload.media = { ...payload.media, images: data._images };
+      payload.images = data._images;
+
+      // Keep canonical fields in sync for Services
+      if (category === 'Services') {
+        const lat = parseFloat(payload.latitude);
+        const lon = parseFloat(payload.longitude);
+
+        payload.title = (payload.serviceName ?? payload.title ?? '').toString().trim();
+        payload.providerName = (payload.providerName ?? '').toString().trim();
+        payload.phone = (payload.contactPhone ?? payload.phone ?? '').toString().trim();
+
+        payload.whatsapp = (payload.whatsapp ?? '').toString().trim() || null;
+        payload.email = (payload.email ?? '').toString().trim() || null;
+        payload.website = (payload.website ?? '').toString().trim() || null;
+
+        payload.latitude = Number.isFinite(lat) ? lat : null;
+        payload.longitude = Number.isFinite(lon) ? lon : null;
+
+        // Normalize amenities (Services Offered)
+        const rawAmenities = (payload.amenitiesText ?? payload.amenities ?? '').toString();
+        payload.amenities = rawAmenities
+          .split(/[,;\n]/)
+          .map(s => s.trim())
+          .filter(Boolean);
+      }
+
       delete payload._images;
+      delete payload.amenitiesText;
       const res = await fetch(`${apiBase}/${item._id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
@@ -128,9 +171,9 @@ const EditModal = ({ item, category, apiBase, onClose, onSuccess }) => {
     <div className="form-group" key={key}>
       <label>{label}</label>
       {type === 'textarea' ? (
-        <textarea rows={3} value={data[key] || ''} onChange={e => setData(p => ({ ...p, [key]: e.target.value }))} />
+        <textarea rows={3} value={data[key] ?? ''} onChange={e => setData(p => ({ ...p, [key]: e.target.value }))} />
       ) : (
-        <input type={type} value={data[key] || ''} onChange={e => setData(p => ({ ...p, [key]: e.target.value }))} />
+        <input type={type} value={data[key] ?? ''} onChange={e => setData(p => ({ ...p, [key]: e.target.value }))} />
       )}
     </div>
   );
@@ -169,7 +212,22 @@ const EditModal = ({ item, category, apiBase, onClose, onSuccess }) => {
             {field('City', 'city')} {field('Postal Code', 'postalCode')}
             {field('Area', 'area')} {field('Address', 'address')}
             {field('Contact Phone', 'contactPhone')} {field('Price Range', 'priceRange')}
+            {field('WhatsApp', 'whatsapp')} {field('Email', 'email', 'email')}
+            {field('Website', 'website')} {field('Latitude', 'latitude', 'number')}
+            {field('Longitude', 'longitude', 'number')}
             {field('Description', 'description', 'textarea')}
+            <div className="form-group">
+              <label>Services Offered <span style={{ color: '#ef4444' }}>*</span></label>
+              <textarea
+                rows={3}
+                value={data.amenitiesText ?? ''}
+                onChange={e => setData(p => ({ ...p, amenitiesText: e.target.value }))}
+                placeholder="Accommodation search assistance, Moving & settling support"
+              />
+              <div style={{ fontSize: 12, color: '#6b7280', marginTop: 6 }}>
+                Enter as comma-separated values (or one per line).
+              </div>
+            </div>
             <ImageEditor images={data._images} onChange={fn => setData(p => ({ ...p, _images: typeof fn === 'function' ? fn(p._images) : fn }))} />
           </>)}
           <div className="form-group"><label>Status</label>
@@ -225,13 +283,33 @@ const GenericCategoryListings = ({ category, apiBase, icon, viewFields }) => {
   const patchStatus = async (id, status) => {
     try {
       const token = localStorage.getItem('adminToken');
-      await fetch(`${apiBase}/${id}/status`, {
+      const res = await fetch(`${apiBase}/${id}/status`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify({ status }),
       });
+
+      // Some modules (e.g., Services) don't implement /:id/status; fall back to PUT partial update.
+      if (!res.ok) {
+        await fetch(`${apiBase}/${id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+          body: JSON.stringify({ status }),
+        });
+      }
       fetchItems();
     } catch (e) { alert(e.message); }
+  };
+
+  const normaliseStatus = (s) => {
+    const raw = String(s || 'active').toLowerCase();
+    if (raw === 'inactive') return 'disabled';
+    if (raw === 'pending') return 'pending';
+    if (raw === 'disabled') return 'disabled';
+    if (raw === 'active') return 'active';
+    // Handle capitalised legacy values like "Active"/"Pending".
+    if (raw === 'inactive') return 'disabled';
+    return raw;
   };
 
   const getTitle = item => item[viewFields.title] || item[viewFields.titleKey] || 'Untitled';
@@ -287,7 +365,7 @@ const GenericCategoryListings = ({ category, apiBase, icon, viewFields }) => {
             <option value="">All Status</option>
             <option value="active">Active</option>
             <option value="pending">Pending</option>
-            <option value="disabled">Disabled</option>
+            <option value="disabled">Inactive</option>
           </select>
           <button className="add-listing-btn" onClick={() => setShowAdd(true)}>
             <Plus size={18} /> New {category}
@@ -322,9 +400,15 @@ const GenericCategoryListings = ({ category, apiBase, icon, viewFields }) => {
                       const imgSrc = item.companyLogo
                         ? (item.companyLogo.startsWith('data:') || item.companyLogo.startsWith('http') ? item.companyLogo : `https://german-bharatham-backend.onrender.com${item.companyLogo}`)
                         : (item.media?.images?.[0] || item.images?.[0] || item.image || null);
-                      return imgSrc
-                        ? <img src={imgSrc} alt="" style={{ width: 56, height: 44, objectFit: 'cover', borderRadius: 6, border: '1px solid #e5e7eb' }} />
-                        : <div style={{ width: 56, height: 44, background: '#f3f4f6', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18 }}>📷</div>;
+                      if (imgSrc) {
+                        return <img src={imgSrc} alt="" style={{ width: 56, height: 44, objectFit: 'cover', borderRadius: 6, border: '1px solid #e5e7eb' }} />;
+                      }
+
+                      if (category === 'Services') {
+                        return <img src="/service-default.jpg" alt="" style={{ width: 56, height: 44, objectFit: 'cover', borderRadius: 6, border: '1px solid #e5e7eb' }} />;
+                      }
+
+                      return <div style={{ width: 56, height: 44, background: '#f3f4f6', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18 }}>📷</div>;
                     })()}
                   </td>
                   <td className="listing-title">{getTitle(item)}</td>
@@ -333,7 +417,7 @@ const GenericCategoryListings = ({ category, apiBase, icon, viewFields }) => {
                   <td>{item.contact || item.phone || item.contactPhone || '—'}</td>
                   <td>
                     <select
-                      value={item.status || 'active'}
+                      value={normaliseStatus(item.status)}
                       onChange={e => patchStatus(item._id, e.target.value)}
                       style={{ 
                         padding: '6px 24px 6px 10px', 
@@ -341,8 +425,8 @@ const GenericCategoryListings = ({ category, apiBase, icon, viewFields }) => {
                         fontSize: 12, 
                         fontWeight: 600, 
                         border: '1px solid #e5e7eb', 
-                        backgroundColor: (item.status === 'pending' ? '#fef3c7' : item.status === 'disabled' ? '#fee2e2' : '#d1fae5'),
-                        color: (item.status === 'pending' ? '#92400e' : item.status === 'disabled' ? '#991b1b' : '#065f46'),
+                        backgroundColor: (normaliseStatus(item.status) === 'pending' ? '#fef3c7' : normaliseStatus(item.status) === 'disabled' ? '#fee2e2' : '#d1fae5'),
+                        color: (normaliseStatus(item.status) === 'pending' ? '#92400e' : normaliseStatus(item.status) === 'disabled' ? '#991b1b' : '#065f46'),
                         cursor: 'pointer',
                         outline: 'none',
                         appearance: 'auto',
@@ -350,7 +434,7 @@ const GenericCategoryListings = ({ category, apiBase, icon, viewFields }) => {
                       }}>
                       <option value="active" style={{ backgroundColor: '#d1fae5', color: '#065f46' }}>Active</option>
                       <option value="pending" style={{ backgroundColor: '#fef3c7', color: '#92400e' }}>Pending</option>
-                      <option value="disabled" style={{ backgroundColor: '#fee2e2', color: '#991b1b' }}>Disabled</option>
+                      <option value="disabled" style={{ backgroundColor: '#fee2e2', color: '#991b1b' }}>Inactive</option>
                     </select>
                   </td>
                   <td>{item.createdAt ? new Date(item.createdAt).toLocaleDateString('en-GB') : 'N/A'}</td>

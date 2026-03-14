@@ -59,6 +59,9 @@ console.log(data);
     <div className="login-container">
       <div className="login-sidebar">
         <div className="login-brand">
+          <div className="brand-logo-wrap brand-logo-wrap--lg" aria-hidden="true">
+            <img className="brand-logo" src="/app_logo.jpeg" alt="" />
+          </div>
           <h1>German Bharatham</h1>
           <p>Admin Panel</p>
         </div>

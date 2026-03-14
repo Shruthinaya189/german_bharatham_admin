@@ -2,20 +2,25 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/foundation.dart' show kDebugMode, kIsWeb;
+import 'package:geolocator/geolocator.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'notification_manager.dart';
 import 'user_session.dart';
 import 'saved_food_manager.dart';
 import 'saved_job_manager.dart';
 import 'saved_manager.dart';
 import 'saved_service_manager.dart';
+import 'saved_guides_manager.dart';
 import 'home.dart';
 import 'user_profiles_page.dart';
 import 'forgot_password.dart';
 import 'services/api_config.dart';
+
+final GlobalKey<NavigatorState> rootNavigatorKey = GlobalKey<NavigatorState>();
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -28,6 +33,9 @@ Future<void> main() async {
     SavedServiceManager.instance.initialize(),
   ]);
 
+  // Enables OS-level notification popups + tap-to-open.
+  await NotificationManager.instance.init(navigatorKey: rootNavigatorKey);
+
   runApp(const MyApp());
 }
 
@@ -37,6 +45,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      navigatorKey: rootNavigatorKey,
       debugShowCheckedModeBanner: false,
       title: 'German Bharatham',
       theme: ThemeData(
@@ -119,22 +128,17 @@ class WelcomeScreen extends StatelessWidget {
                           ),
                         ],
                       ),
-                      child:ClipOval(
-  child: Image.asset(
-    'assets/images/german_map.png',
-    width: 32,
-    height: 32,
-    fit: BoxFit.cover,
-    errorBuilder: (context, error, stackTrace) {
-                return Image.asset(
-                  'assets/images/location.png',
-                  width: 20,
-                  height: 20,
-                  color: const Color(0xFF2E7D32),
-                );
-    },
-  ),
-),
+                      child: ClipOval(
+                        child: Padding(
+                          padding: const EdgeInsets.all(6),
+                          child: Image.asset(
+                            'assets/images/app_logo.jpeg',
+                            width: 44,
+                            height: 44,
+                            fit: BoxFit.contain,
+                          ),
+                        ),
+                      ),
                     ),
 
                     const SizedBox(height: 14),
@@ -587,7 +591,14 @@ class _AuthPageState extends State<AuthPage> {
       );
       await _persistCredentialsAfterLoginSuccess();
       TextInput.finishAutofillContext(shouldSave: true);
-      SavedManager.instance.switchUser(user['_id'].toString());
+      final uid = user['_id'].toString();
+      SavedManager.instance.switchUser(uid);
+      await Future.wait([
+        SavedFoodManager.instance.switchUser(uid),
+        SavedJobManager.instance.switchUser(uid),
+        SavedServiceManager.instance.switchUser(uid),
+        SavedGuidesManager.instance.switchUser(uid),
+      ]);
       if (mounted) {
         Navigator.pushReplacement(
           context,
@@ -632,7 +643,14 @@ class _AuthPageState extends State<AuthPage> {
         phone: user['phone']?.toString(),
         photoBase64: user['photo']?.toString(),
       );
-      SavedManager.instance.switchUser(user['_id'].toString());
+      final uid = user['_id'].toString();
+      SavedManager.instance.switchUser(uid);
+      await Future.wait([
+        SavedFoodManager.instance.switchUser(uid),
+        SavedJobManager.instance.switchUser(uid),
+        SavedServiceManager.instance.switchUser(uid),
+        SavedGuidesManager.instance.switchUser(uid),
+      ]);
       if (mounted) {
         Navigator.pushReplacement(
           context,
@@ -1291,80 +1309,137 @@ class HomeScreen extends StatelessWidget {
 
 // ===== LOCATION PERMISSION PAGE =====
 
-class LocationPermissionPage extends StatelessWidget {
+class LocationPermissionPage extends StatefulWidget {
   const LocationPermissionPage({super.key});
 
   static const Color primaryGreen = Color(0xFF4E7F6D);
 
   @override
+  State<LocationPermissionPage> createState() => _LocationPermissionPageState();
+}
+
+class _LocationPermissionPageState extends State<LocationPermissionPage> {
+  bool _busy = false;
+
+  void _goNext() {
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (_) => const UserProfilesPage()),
+    );
+  }
+
+  Future<void> _enableLocation() async {
+    if (_busy) return;
+    setState(() => _busy = true);
+    try {
+      final serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        await Geolocator.openLocationSettings();
+      }
+
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+      }
+
+      if (permission == LocationPermission.denied) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Location permission denied')),
+          );
+        }
+        return;
+      }
+
+      if (permission == LocationPermission.deniedForever) {
+        await Geolocator.openAppSettings();
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Enable location permission from Settings')),
+          );
+        }
+        return;
+      }
+
+      _goNext();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Location error: $e')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final imageHeight = (MediaQuery.sizeOf(context).height * 0.32).clamp(160.0, 260.0);
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24),
-          child: Column(
-            children: [
-              const Spacer(),
+        child: Center(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: 24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const SizedBox(height: 24),
 
-              Image.asset(
-                'assets/images/loc.jpeg',
-                height: 260,
-                fit: BoxFit.contain,
-              ),
-
-              const SizedBox(height: 24),
-
-              const Text(
-                'Location',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w700,
+                Image.asset(
+                  'assets/images/loc.jpeg',
+                  height: imageHeight,
+                  fit: BoxFit.contain,
                 ),
-              ),
-              const SizedBox(height: 12),
-              const Text(
-                'Allow location access to discover nearby accommodation, services, jobs, and community resources around you.',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 15,
-                  color: Colors.black54,
-                  height: 1.5,
-                ),
-              ),
-              const SizedBox(height: 32),
 
-              SizedBox(
-  width: double.infinity,
-  height: 56,
-  child: ElevatedButton(
-    onPressed: () {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (_) => const UserProfilesPage()),
-      );
-    },
-    style: ElevatedButton.styleFrom(
-      backgroundColor: primaryGreen,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(6), // 👈 reduced radius here
-      ),
-    ),
-    child: const Text("Enable Location",style: TextStyle(color: Colors.white,),),
-  ),
-),
-              const SizedBox(height: 14),
-              TextButton(
-               onPressed: () {
-                Navigator.pushReplacement(
-                 context,
-                  MaterialPageRoute(builder: (_) => const UserProfilesPage()),
-              );
-            },
-            child: const Text("Not now",style: TextStyle(color: Colors.grey,),),
+                const SizedBox(height: 24),
+
+                const Text(
+                  'Location',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                const Text(
+                  'Allow location access to discover nearby accommodation, services, jobs, and community resources around you.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 15,
+                    color: Colors.black54,
+                    height: 1.5,
+                  ),
+                ),
+                const SizedBox(height: 32),
+
+                SizedBox(
+                  width: double.infinity,
+                  height: 56,
+                  child: ElevatedButton(
+                    onPressed: _busy ? null : _enableLocation,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: LocationPermissionPage.primaryGreen,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                    ),
+                    child: Text(
+                      _busy ? 'Enabling…' : 'Enable Location',
+                      style: const TextStyle(color: Colors.white),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 14),
+                TextButton(
+                  onPressed: _busy ? null : _goNext,
+                  child: const Text('Not now', style: TextStyle(color: Colors.grey)),
+                ),
+
+                const SizedBox(height: 24),
+              ],
             ),
-            const Spacer(),
-            ],
           ),
         ),
       ),
@@ -1391,6 +1466,12 @@ class _SplashScreenState extends State<SplashScreen> {
     await UserSession.instance.load();
     if (UserSession.instance.isLoggedIn) {
       SavedManager.instance.switchUser(UserSession.instance.userId!);
+      await Future.wait([
+        SavedFoodManager.instance.switchUser(UserSession.instance.userId!),
+        SavedJobManager.instance.switchUser(UserSession.instance.userId!),
+        SavedServiceManager.instance.switchUser(UserSession.instance.userId!),
+        SavedGuidesManager.instance.switchUser(UserSession.instance.userId!),
+      ]);
     }
     if (mounted) {
       Navigator.pushReplacement(
@@ -1412,11 +1493,24 @@ class _SplashScreenState extends State<SplashScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Image.asset(
-              'assets/images/german_map.png',
-              width: 70,
-              height: 70,
-              fit: BoxFit.contain,
+            Container(
+              width: 76,
+              height: 76,
+              decoration: const BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.white,
+              ),
+              child: ClipOval(
+                child: Padding(
+                  padding: const EdgeInsets.all(10),
+                  child: Image.asset(
+                    'assets/images/app_logo.jpeg',
+                    width: 76,
+                    height: 76,
+                    fit: BoxFit.contain,
+                  ),
+                ),
+              ),
             ),
             const SizedBox(height: 14),
             const Text(

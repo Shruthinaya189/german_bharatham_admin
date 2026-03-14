@@ -30,6 +30,13 @@ class _HomePageState extends State<HomePage> {
   void initState() {
     super.initState();
     NotificationManager.instance.refresh();
+    NotificationManager.instance.startPolling();
+  }
+
+  @override
+  void dispose() {
+    NotificationManager.instance.stopPolling();
+    super.dispose();
   }
 
   ImageProvider _avatarProvider(String? photoBase64) {
