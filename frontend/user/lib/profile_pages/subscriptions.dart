@@ -169,6 +169,17 @@ class _SubscriptionsPageState extends State<SubscriptionsPage> {
         throw Exception(hint);
       }
 
+      if (bodyJson['free'] == true) {
+        // Free plan activated, just refresh status and show a message
+        await _load();
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Free plan activated!')),
+          );
+        }
+        return;
+      }
+
       final url = bodyJson['url']?.toString() ?? '';
       if (url.isEmpty) throw Exception('Missing checkout url');
 
