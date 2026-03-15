@@ -375,6 +375,12 @@ exports.login = async (req, res) => {
     if (!isMatch)
       return res.status(400).json({ message: "Invalid credentials" });
 
+    // Track first/last login timestamps
+    const now = new Date();
+    if (!user.firstLoginAt) user.firstLoginAt = now;
+    user.lastLoginAt = now;
+    await user.save();
+
     res.json({
       token: generateToken(user),
       user: sanitizeUser(user),
@@ -415,6 +421,12 @@ exports.socialLogin = async (req, res) => {
       name: verified.name,
       photo: verified.photo,
     });
+
+    // Track first/last login timestamps
+    const now = new Date();
+    if (!user.firstLoginAt) user.firstLoginAt = now;
+    user.lastLoginAt = now;
+    await user.save();
 
     return res.status(200).json({
       token: generateToken(user),

@@ -55,6 +55,31 @@ class UserSession {
     if (photoBase64 != null) {
       await prefs.setString('sess_photo_$userId', photoBase64);
     }
+
+    // Track first/last login per user (used for subscription prompt)
+    final nowMs = DateTime.now().millisecondsSinceEpoch;
+    final firstKey = 'sess_firstLoginAt_$userId';
+    final lastKey = 'sess_lastLoginAt_$userId';
+    if (!prefs.containsKey(firstKey)) {
+      await prefs.setInt(firstKey, nowMs);
+    }
+    await prefs.setInt(lastKey, nowMs);
+  }
+
+  Future<DateTime?> getFirstLoginAt() async {
+    if (userId == null) return null;
+    final prefs = await SharedPreferences.getInstance();
+    final ms = prefs.getInt('sess_firstLoginAt_$userId');
+    if (ms == null) return null;
+    return DateTime.fromMillisecondsSinceEpoch(ms);
+  }
+
+  Future<DateTime?> getLastLoginAt() async {
+    if (userId == null) return null;
+    final prefs = await SharedPreferences.getInstance();
+    final ms = prefs.getInt('sess_lastLoginAt_$userId');
+    if (ms == null) return null;
+    return DateTime.fromMillisecondsSinceEpoch(ms);
   }
 
   /// Call when the user edits their profile.

@@ -13,6 +13,7 @@ import CustomCategoryListings from './components/CustomCategoryListings';
 import ContentModeration from './components/ContentModeration';
 import Community from './components/Community';
 import Settings from './components/Settings';
+import Subscriptions from './components/Subscriptions';
 import Layout from './components/Layout';
 import './App.css';
 
@@ -54,6 +55,7 @@ function App() {
           <Route path="/users" element={<Users />} />
           <Route path="/content-moderation" element={<ContentModeration />} />
           <Route path="/community" element={<Community />} />
+          <Route path="/subscriptions" element={<Subscriptions />} />
           <Route path="/settings" element={<Settings />} />
         </Routes>
       </Layout>

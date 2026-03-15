@@ -14,6 +14,7 @@ import 'profile_pages/report_problem.dart';
 import 'profile_pages/about_us.dart';
 import 'profile_pages/privacy_policy.dart';
 import 'profile_pages/terms_conditions.dart';
+import 'profile_pages/subscriptions.dart';
 import 'search.dart';
 import 'profile_pages/edit_profile.dart';
 import 'user_session.dart';
@@ -193,6 +194,11 @@ class _ProfilePageState extends State<ProfilePage>
                 'assets/images/profile.png',
                 "Personal Information",
                 const PersonalInformationPage(),
+              ),
+              _menuItem(
+                'assets/images/time.png',
+                "Subscriptions",
+                const SubscriptionsPage(),
               ),
               _menuItem(
                 'assets/images/bookmark.png',

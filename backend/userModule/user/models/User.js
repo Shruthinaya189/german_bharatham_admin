@@ -39,6 +39,19 @@ const userSchema = new mongoose.Schema(
 
     resetPasswordToken: { type: String, default: null },
     resetPasswordExpires: { type: Date, default: null },
+
+    // Subscription / billing
+    subscriptionStatus: {
+      type: String,
+      enum: ["none", "trial", "active", "past_due", "canceled"],
+      default: "none",
+    },
+    subscriptionPlan: { type: String, default: null },
+    subscriptionExpiresAt: { type: Date, default: null },
+
+    // Login tracking (used for 7-day subscription prompt)
+    firstLoginAt: { type: Date, default: null },
+    lastLoginAt: { type: Date, default: null },
   },
   { timestamps: true }
 );

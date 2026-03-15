@@ -51,6 +51,11 @@ class ApiConfig {
   static String get foodEndpoint => '$baseUrl/api/user/foodgrocery';
   static String get settingsPublicEndpoint => '$baseUrl/api/admin/settings/public';
   static String get profileEndpoint => '$baseUrl/api/user/profile';
+
+  // Subscriptions
+  static String get subscriptionPlansEndpoint => '$baseUrl/api/subscriptions/user/plans';
+  static String get subscriptionStatusEndpoint => '$baseUrl/api/subscriptions/user/status';
+  static String get subscriptionCheckoutSessionEndpoint => '$baseUrl/api/subscriptions/user/checkout-session';
   
   /// Get full image URL from relative path
   static String getImageUrl(String? relativePath) {

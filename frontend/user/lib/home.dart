@@ -12,7 +12,11 @@ import 'search.dart';
 import 'user_session.dart';
 import 'user_profiles_page.dart';
 import 'profile_pages/notifications.dart';
+import 'profile_pages/subscriptions.dart';
 import 'notification_manager.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:http/http.dart' as http;
+import 'services/api_config.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -31,12 +35,101 @@ class _HomePageState extends State<HomePage> {
     super.initState();
     NotificationManager.instance.refresh();
     NotificationManager.instance.startPolling();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _maybeShowSubscriptionPrompt();
+    });
   }
 
   @override
   void dispose() {
     NotificationManager.instance.stopPolling();
     super.dispose();
+  }
+
+  Future<bool> _isSubscriptionActive() async {
+    final token = UserSession.instance.token;
+    if (token == null) return false;
+    try {
+      final res = await http.get(
+        Uri.parse(ApiConfig.subscriptionStatusEndpoint),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      ).timeout(const Duration(seconds: 12));
+
+      if (res.statusCode != 200) return false;
+      final json = jsonDecode(res.body);
+      final user = (json is Map<String, dynamic>) ? json['user'] : null;
+      if (user is Map && user['subscriptionStatus'] != null) {
+        return user['subscriptionStatus'].toString() == 'active';
+      }
+      return false;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<void> _maybeShowSubscriptionPrompt() async {
+    final session = UserSession.instance;
+    if (!session.isLoggedIn) return;
+
+    final firstLoginAt = await session.getFirstLoginAt();
+    if (firstLoginAt == null) return;
+
+    final now = DateTime.now();
+    final dueAt = firstLoginAt.add(const Duration(days: 7));
+    if (now.isBefore(dueAt)) return;
+
+    final prefs = await SharedPreferences.getInstance();
+    final uid = session.userId;
+    if (uid == null) return;
+
+    // Show at most once per day per user until they subscribe.
+    final lastShownMs = prefs.getInt('sub_prompt_last_shown_$uid');
+    if (lastShownMs != null) {
+      final lastShown = DateTime.fromMillisecondsSinceEpoch(lastShownMs);
+      if (now.difference(lastShown) < const Duration(hours: 24)) return;
+    }
+
+    final active = await _isSubscriptionActive();
+    if (active) return;
+
+    await prefs.setInt('sub_prompt_last_shown_$uid', now.millisecondsSinceEpoch);
+    if (!mounted) return;
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Subscription'),
+          content: const Text(
+            'Your 7-day access period is over. Subscribe to continue using all features.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Later'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const SubscriptionsPage()),
+                );
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: HomePage.primaryGreen,
+                elevation: 0,
+              ),
+              child: const Text('View Plans'),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   ImageProvider _avatarProvider(String? photoBase64) {

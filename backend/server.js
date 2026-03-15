@@ -15,7 +15,16 @@ app.use(
     credentials: false,
   })
 );
-app.use(express.json({ limit: "50mb" }));
+app.use(
+  express.json({
+    limit: "50mb",
+    verify: (req, _res, buf) => {
+      // Preserve raw body for webhook signature verification (e.g. Razorpay).
+      // This is safe for other JSON routes too.
+      req.rawBody = buf;
+    },
+  })
+);
 app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 
 // Serve static files (uploaded images)
@@ -50,6 +59,30 @@ app.use("/api/jobs/user", require("./jobsModule/user"));
 // ── Services Module ─────────────────────────────────────────────────────────
 app.use("/api/services/admin", protect, require("./servicesModule/admin"));
 app.use("/api/services/user", require("./servicesModule/user"));
+
+// ── Subscriptions / Payments Module ─────────────────────────────────────────
+// Razorpay webhook must NOT be protected; it uses signature verification.
+app.post(
+  "/api/subscriptions/razorpay/webhook",
+  require("./subscriptionModule/razorpayWebhook")
+);
+
+// Razorpay callback/redirect landing page (unprotected)
+app.get(
+  "/api/subscriptions/razorpay/callback",
+  require("./subscriptionModule/razorpayCallback")
+);
+app.use(
+  "/api/subscriptions/admin",
+  protect,
+  adminOnly,
+  require("./subscriptionModule/admin")
+);
+app.use(
+  "/api/subscriptions/user",
+  protect,
+  require("./subscriptionModule/user")
+);
 // ── Universal Rating Module ─────────────────────────────────────────────────
 app.use("/api/ratings", require("./routes/ratingRoutes"));
 
