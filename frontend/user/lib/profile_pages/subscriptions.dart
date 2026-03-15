@@ -269,7 +269,7 @@ class _SubscriptionsPageState extends State<SubscriptionsPage> {
               const SizedBox(height: 10),
               if (_plans.isEmpty)
                 const Text(
-                  'No plans configured. Ask admin to set SUBSCRIPTIONS_MONTHLY_PRICE_INR / SUBSCRIPTIONS_YEARLY_PRICE_INR on the backend.',
+                  'No plans configured. Ask admin to enable plans and set prices in Admin → Subscriptions.',
                   style: TextStyle(color: Colors.grey, fontSize: 13),
                 )
               else

@@ -1,8 +1,53 @@
 const Subscription = require("./models/Subscription");
 const User = require("../userModule/user/models/User");
-const { plans } = require("./subscriptionConfig");
+const Plan = require("./models/Plan");
 
 const axios = require("axios");
+
+const toNumber = (v) => {
+  const n = Number(v);
+  return Number.isFinite(n) ? n : 0;
+};
+
+const getDefaultCurrency = () => {
+  return String(process.env.SUBSCRIPTIONS_CURRENCY || "INR").trim() || "INR";
+};
+
+const ensureDefaultPlans = async () => {
+  const currency = getDefaultCurrency();
+
+  // Map legacy env names to new plan ids.
+  const price1m = toNumber(process.env.SUBSCRIPTIONS_MONTHLY_PRICE_INR);
+  const price1y = toNumber(process.env.SUBSCRIPTIONS_YEARLY_PRICE_INR);
+  const price3m = toNumber(process.env.SUBSCRIPTIONS_3MONTH_PRICE_INR);
+  const price6m = toNumber(process.env.SUBSCRIPTIONS_6MONTH_PRICE_INR);
+
+  const defaults = [
+    { id: "1m", label: "1 Month", durationDays: 30, priceInr: price1m || 0, currency },
+    { id: "3m", label: "3 Months", durationDays: 90, priceInr: price3m || 0, currency },
+    { id: "6m", label: "6 Months", durationDays: 180, priceInr: price6m || 0, currency },
+    { id: "1y", label: "1 Year", durationDays: 365, priceInr: price1y || 0, currency },
+  ];
+
+  const existing = await Plan.find({ id: { $in: defaults.map((d) => d.id) } })
+    .select("id")
+    .lean();
+  const existingIds = new Set(existing.map((e) => e.id));
+  const toCreate = defaults.filter((d) => !existingIds.has(d.id));
+  if (toCreate.length > 0) {
+    await Plan.insertMany(toCreate.map((p) => ({ ...p, active: true })), { ordered: false });
+  }
+};
+
+const listActivePlans = async () => {
+  await ensureDefaultPlans();
+  return Plan.find({ active: true }).sort({ durationDays: 1 }).lean();
+};
+
+const getPlanById = async (planId) => {
+  await ensureDefaultPlans();
+  return Plan.findOne({ id: String(planId || "").trim() }).lean();
+};
 
 const getRazorpayKeys = () => {
   const keyId = String(process.env.RAZORPAY_KEY_ID || "").trim();
@@ -34,9 +79,14 @@ const getBaseUrl = (req) => {
 };
 
 exports.getPlans = async (_req, res) => {
+  const items = await listActivePlans();
   return res.status(200).json({
-    plans: plans().map(({ amountPaise, ...p }) => ({
-      ...p,
+    plans: items.map((p) => ({
+      id: p.id,
+      label: p.label,
+      currency: p.currency || "INR",
+      price: p.priceInr,
+      durationDays: p.durationDays,
     })),
   });
 };
@@ -58,9 +108,10 @@ exports.createCheckoutSession = async (req, res) => {
   // Under the hood this now creates a Razorpay Payment Link and returns its short_url.
   try {
     const { planId } = req.body || {};
-    const plan = plans().find((p) => p.id === String(planId || "").trim());
-    if (!plan) {
-      return res.status(400).json({ message: "Invalid planId" });
+    const plan = await getPlanById(planId);
+    if (!plan || plan.active === false) return res.status(400).json({ message: "Invalid planId" });
+    if (!plan.priceInr || Number(plan.priceInr) <= 0) {
+      return res.status(400).json({ message: "Plan price not configured" });
     }
 
     const user = await User.findById(req.user.id).select("name email phone");
@@ -72,7 +123,7 @@ exports.createCheckoutSession = async (req, res) => {
     const description = `German Bharatham - ${plan.label || plan.id} subscription`;
 
     const payload = {
-      amount: plan.amountPaise,
+      amount: Math.round(Number(plan.priceInr) * 100),
       currency: plan.currency || "INR",
       accept_partial: false,
       description,
@@ -126,6 +177,103 @@ exports.createCheckoutSession = async (req, res) => {
 };
 
 exports.listAllSubscriptions = async (_req, res) => {
-  const items = await Subscription.find().sort({ createdAt: -1 }).limit(500).lean();
+  const items = await Subscription.find()
+    .populate("userId", "email")
+    .sort({ createdAt: -1 })
+    .limit(500)
+    .lean();
   return res.status(200).json(items);
+};
+
+
+// List all plans (admin)
+exports.listPlansAdmin = async (_req, res) => {
+  await ensureDefaultPlans();
+  const items = await Plan.find().sort({ durationDays: 1 }).lean();
+  return res.status(200).json(
+    items.map((p) => ({
+      id: p.id,
+      label: p.label,
+      currency: p.currency || "INR",
+      priceInr: p.priceInr,
+      durationDays: p.durationDays,
+      active: p.active !== false,
+    }))
+  );
+};
+
+// Bulk update plans (admin)
+exports.upsertPlansAdmin = async (req, res) => {
+  const payload = req.body && (req.body.plans || req.body);
+  const arr = Array.isArray(payload) ? payload : [];
+  if (arr.length === 0) return res.status(400).json({ message: "Missing plans" });
+
+  await ensureDefaultPlans();
+
+  const ops = [];
+  for (const raw of arr) {
+    if (!raw) continue;
+    const id = String(raw.id || "").trim();
+    if (!id) continue;
+
+    const update = {
+      label: raw.label !== undefined ? String(raw.label || "").trim() || id : undefined,
+      currency: raw.currency !== undefined ? String(raw.currency || "INR").trim() || "INR" : undefined,
+      priceInr: raw.priceInr !== undefined ? toNumber(raw.priceInr) : undefined,
+      durationDays: raw.durationDays !== undefined ? Math.trunc(toNumber(raw.durationDays)) : undefined,
+      active: raw.active !== undefined ? Boolean(raw.active) : undefined,
+    };
+
+    Object.keys(update).forEach((k) => update[k] === undefined && delete update[k]);
+    ops.push({
+      updateOne: {
+        filter: { id },
+        update: { $set: update, $setOnInsert: { id } },
+        upsert: true,
+      },
+    });
+  }
+
+  if (ops.length === 0) return res.status(400).json({ message: "No valid plans to update" });
+  await Plan.bulkWrite(ops);
+
+  const items = await Plan.find().sort({ durationDays: 1 }).lean();
+  return res.status(200).json(
+    items.map((p) => ({
+      id: p.id,
+      label: p.label,
+      currency: p.currency || "INR",
+      priceInr: p.priceInr,
+      durationDays: p.durationDays,
+      active: p.active !== false,
+    }))
+  );
+};
+
+// Add a new plan (admin)
+exports.createPlanAdmin = async (req, res) => {
+  const { id, label, priceInr, durationDays, currency, active } = req.body || {};
+  if (!id || !label || !durationDays) {
+    return res.status(400).json({ message: "Missing required fields (id, label, durationDays)" });
+  }
+  const exists = await Plan.findOne({ id: String(id).trim() });
+  if (exists) return res.status(400).json({ message: "Plan with this id already exists" });
+  const plan = await Plan.create({
+    id: String(id).trim(),
+    label: String(label).trim(),
+    priceInr: toNumber(priceInr),
+    durationDays: Math.trunc(toNumber(durationDays)),
+    currency: String(currency || "INR").trim(),
+    active: active !== false,
+  });
+  return res.status(201).json(plan);
+};
+
+// Delete a plan (admin)
+exports.deletePlanAdmin = async (req, res) => {
+  const { id } = req.params;
+  if (!id) return res.status(400).json({ message: "Missing plan id" });
+  const plan = await Plan.findOneAndDelete({ id: String(id).trim() });
+  if (!plan) return res.status(404).json({ message: "Plan not found" });
+  return res.status(200).json({ message: "Plan deleted" });
 };

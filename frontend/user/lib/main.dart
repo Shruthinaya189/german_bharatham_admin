@@ -1324,7 +1324,9 @@ class _LocationPermissionPageState extends State<LocationPermissionPage> {
   void _goNext() {
     Navigator.pushReplacement(
       context,
-      MaterialPageRoute(builder: (_) => const UserProfilesPage()),
+      MaterialPageRoute(
+        builder: (_) => const SubscriptionsPage(),
+      ),
     );
   }
 

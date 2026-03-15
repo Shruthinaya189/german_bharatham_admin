@@ -1,7 +1,7 @@
 const crypto = require("crypto");
 const Subscription = require("./models/Subscription");
 const User = require("../userModule/user/models/User");
-const { plans } = require("./subscriptionConfig");
+const Plan = require("./models/Plan");
 
 const safeJson = (value) => {
   try {
@@ -28,9 +28,32 @@ const addDays = (date, days) => {
   return d;
 };
 
+const ensureDefaultPlans = async () => {
+  const currency = String(process.env.SUBSCRIPTIONS_CURRENCY || "INR").trim() || "INR";
+  const toNumber = (v) => {
+    const n = Number(v);
+    return Number.isFinite(n) ? n : 0;
+  };
+
+  const defaults = [
+    { id: "1m", label: "1 Month", durationDays: 30, priceInr: toNumber(process.env.SUBSCRIPTIONS_MONTHLY_PRICE_INR), currency },
+    { id: "3m", label: "3 Months", durationDays: 90, priceInr: toNumber(process.env.SUBSCRIPTIONS_3MONTH_PRICE_INR), currency },
+    { id: "6m", label: "6 Months", durationDays: 180, priceInr: toNumber(process.env.SUBSCRIPTIONS_6MONTH_PRICE_INR), currency },
+    { id: "1y", label: "1 Year", durationDays: 365, priceInr: toNumber(process.env.SUBSCRIPTIONS_YEARLY_PRICE_INR), currency },
+  ];
+
+  const existing = await Plan.find({ id: { $in: defaults.map((d) => d.id) } }).select("id").lean();
+  const existingIds = new Set(existing.map((e) => e.id));
+  const toCreate = defaults.filter((d) => !existingIds.has(d.id));
+  if (toCreate.length > 0) {
+    await Plan.insertMany(toCreate.map((p) => ({ ...p, active: true })), { ordered: false });
+  }
+};
+
 const activate = async ({ userId, planId, providerIds, eventType }) => {
-  const plan = plans().find((p) => p.id === String(planId || "").trim());
-  if (!plan) {
+  await ensureDefaultPlans();
+  const plan = await Plan.findOne({ id: String(planId || "").trim() }).lean();
+  if (!plan || plan.active === false) {
     return { ok: false, reason: "Unknown planId" };
   }
 
