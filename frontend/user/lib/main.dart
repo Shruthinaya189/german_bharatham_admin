@@ -19,6 +19,7 @@ import 'home.dart';
 import 'user_profiles_page.dart';
 import 'forgot_password.dart';
 import 'services/api_config.dart';
+import 'profile_pages/subscriptions.dart';
 
 final GlobalKey<NavigatorState> rootNavigatorKey = GlobalKey<NavigatorState>();
 
@@ -1325,7 +1326,7 @@ class _LocationPermissionPageState extends State<LocationPermissionPage> {
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(
-        builder: (_) => const SubscriptionsPage(),
+        builder: (_) => SubscriptionsPage(),
       ),
     );
   }

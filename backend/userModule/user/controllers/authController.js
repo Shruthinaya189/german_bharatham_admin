@@ -331,15 +331,8 @@ exports.login = async (req, res) => {
     ).trim();
     const password = String(req.body.password ?? "").trim();
 
-    if (!identifierRaw || !password) {
-      return res
-        .status(400)
-        .json({ message: "Email/Phone and password are required" });
-    }
-
     const isLikelyEmail = identifierRaw.includes("@");
     const email = identifierRaw.toLowerCase();
-
     const phoneDigits = identifierRaw.replace(/\D/g, "");
 
     const query = isLikelyEmail

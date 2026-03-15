@@ -23,6 +23,7 @@ const ensureDefaultPlans = async () => {
   const price6m = toNumber(process.env.SUBSCRIPTIONS_6MONTH_PRICE_INR);
 
   const defaults = [
+    { id: "free", label: "Free (7 days)", durationDays: 7, priceInr: 0, currency, active: true },
     { id: "1m", label: "1 Month", durationDays: 30, priceInr: price1m || 0, currency },
     { id: "3m", label: "3 Months", durationDays: 90, priceInr: price3m || 0, currency },
     { id: "6m", label: "6 Months", durationDays: 180, priceInr: price6m || 0, currency },
