@@ -1322,7 +1322,33 @@ class LocationPermissionPage extends StatefulWidget {
 class _LocationPermissionPageState extends State<LocationPermissionPage> {
   bool _busy = false;
 
-  void _goNext() {
+  Future<void> _goNext() async {
+    // Load user subscription status to decide where to go next
+    final token = UserSession.instance.token;
+    if (token != null) {
+      try {
+        final res = await http.get(
+          Uri.parse(ApiConfig.subscriptionStatusEndpoint),
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer $token',
+          },
+        );
+        if (res.statusCode == 200) {
+          final statusJson = jsonDecode(res.body);
+          final user = statusJson['user'] as Map?;
+          final freeTrialCompleted = user?['freeTrialCompleted'] == true;
+          final hasAnySubscription = (user?['subscriptionStatus']?.toString() == 'active') || freeTrialCompleted;
+          if (hasAnySubscription) {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (_) => UserProfilesPage()),
+            );
+            return;
+          }
+        }
+      } catch (_) {}
+    }
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(

@@ -36,8 +36,10 @@ class PublicUserProfile {
   }
 }
 
+
 class UserProfilesPage extends StatefulWidget {
-  const UserProfilesPage({super.key});
+  final bool showNextButton;
+  const UserProfilesPage({Key? key, this.showNextButton = false}) : super(key: key);
 
   @override
   State<UserProfilesPage> createState() => _UserProfilesPageState();
@@ -276,40 +278,64 @@ class _UserProfilesPageState extends State<UserProfilesPage>
                         ),
                       ),
                     ),
-                  SizedBox(
-                    width: double.infinity,
-                    height: 54,
-                    child: ElevatedButton(
-                      onPressed: _continueToHome,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: primaryGreen,
-                        elevation: 0,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
+                  if (widget.showNextButton)
+                    SizedBox(
+                      width: double.infinity,
+                      height: 54,
+                      child: ElevatedButton(
+                        onPressed: _continueToHome,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.white,
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                        ),
+                        child: const Text(
+                          'Next',
+                          style: TextStyle(
+                            color: primaryGreen,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 16,
+                          ),
                         ),
                       ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Image.asset(
-                            'assets/images/left-arrow.png',
-                            width: 18,
-                            height: 18,
-                            color: Colors.white,
+                    )
+                  else
+                    SizedBox(
+                      width: double.infinity,
+                      height: 54,
+                      child: ElevatedButton(
+                        onPressed: _continueToHome,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: primaryGreen,
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
                           ),
-                          const SizedBox(width: 10),
-                          const Text(
-                            'Back',
-                            style: TextStyle(
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Image.asset(
+                              'assets/images/left-arrow.png',
+                              width: 18,
+                              height: 18,
                               color: Colors.white,
-                              fontWeight: FontWeight.w600,
-                              fontSize: 16,
                             ),
-                          ),
-                        ],
+                            const SizedBox(width: 10),
+                            const Text(
+                              'Back',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w600,
+                                fontSize: 16,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
-                  ),
                 ],
               ),
             ),

@@ -6,6 +6,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../services/api_config.dart';
 import '../user_session.dart';
+import '../user_profiles_page.dart';
 
 class SubscriptionsPage extends StatefulWidget {
   const SubscriptionsPage({super.key});
@@ -170,11 +171,17 @@ class _SubscriptionsPageState extends State<SubscriptionsPage> {
       }
 
       if (bodyJson['free'] == true) {
-        // Free plan activated, just refresh status and show a message
+        // Free plan activated, refresh status, show message, then navigate to public profile with 'next' button
         await _load();
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Free plan activated!')),
+          );
+          // Navigate to public profile page with a flag to show 'Next' button
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => UserProfilesPage(showNextButton: true),
+            ),
           );
         }
         return;
@@ -200,6 +207,21 @@ class _SubscriptionsPageState extends State<SubscriptionsPage> {
 
   @override
   Widget build(BuildContext context) {
+    // Check if user is on free trial and already logged in (not first time)
+    final user = _status?['user'] as Map?;
+    final activePlanId = user?['activePlanId']?.toString();
+    final subscriptionStatus = user?['subscriptionStatus']?.toString();
+    final isFreeTrial = user?['freeTrialCompleted'] != true && activePlanId == 'free' && subscriptionStatus == 'active';
+    final isLoggedIn = UserSession.instance.isLoggedIn;
+    if (isLoggedIn && isFreeTrial && ModalRoute.of(context)?.isFirst != true) {
+      // If user is on free trial and this is not the first login, redirect to user profile page
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (_) => UserProfilesPage()),
+        );
+      });
+      return const SizedBox.shrink();
+    }
     return Scaffold(
       backgroundColor: const Color(0xFFF7F8FA),
       appBar: AppBar(
@@ -284,7 +306,15 @@ class _SubscriptionsPageState extends State<SubscriptionsPage> {
                   style: TextStyle(color: Colors.grey, fontSize: 13),
                 )
               else
-                ..._plans.map((p) {
+                ..._plans.where((p) {
+                  // Hide free trial if already completed
+                  final id = (p['id'] ?? '').toString();
+                  final isFree = (p['free'] == true || id == 'free');
+                  final user = _status?['user'] as Map?;
+                  final freeTrialCompleted = user?['freeTrialCompleted'] == true;
+                  if (isFree && freeTrialCompleted) return false;
+                  return true;
+                }).map((p) {
                   final id = (p['id'] ?? '').toString();
                   final label = (p['label'] ?? id).toString();
                   final price = p['price'];
@@ -292,6 +322,13 @@ class _SubscriptionsPageState extends State<SubscriptionsPage> {
                   final subtitle = (price != null && price.toString().isNotEmpty)
                       ? '$label  •  $currency ${price.toString()}'
                       : label;
+                  final isFree = (p['free'] == true || id == 'free');
+                  final user = _status?['user'] as Map?;
+                  final activePlanId = user?['activePlanId']?.toString();
+                  final subscriptionStatus = user?['subscriptionStatus']?.toString();
+                  final onFreeTrial = isFree && (activePlanId == id) && (subscriptionStatus == 'active');
+                  final freeTrialCompleted = user?['freeTrialCompleted'] == true;
+                  final isActive = (activePlanId == id) && (subscriptionStatus == 'active');
                   return Container(
                     margin: const EdgeInsets.only(bottom: 12),
                     padding: const EdgeInsets.all(14),
@@ -308,20 +345,36 @@ class _SubscriptionsPageState extends State<SubscriptionsPage> {
                             style: const TextStyle(fontWeight: FontWeight.w600),
                           ),
                         ),
-                        ElevatedButton(
-                          onPressed: _isActive ? null : () => _subscribe(id),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: primaryGreen,
-                            elevation: 0,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(10),
+                        if (isFree)
+                          ElevatedButton(
+                            onPressed: null, // Never allow unsubscribing from free trial
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: primaryGreen,
+                              elevation: 0,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                            ),
+                            child: Text(
+                              onFreeTrial ? 'Subscribed' : (freeTrialCompleted ? 'Completed' : 'Subscribe'),
+                              style: const TextStyle(color: Colors.white),
+                            ),
+                          )
+                        else
+                          ElevatedButton(
+                            onPressed: isActive ? () {/* TODO: implement unsubscribe logic */} : () => _subscribe(id),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: primaryGreen,
+                              elevation: 0,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                            ),
+                            child: Text(
+                              isActive ? 'Unsubscribe' : 'Subscribe',
+                              style: const TextStyle(color: Colors.white),
                             ),
                           ),
-                          child: Text(
-                            _isActive ? 'Active' : 'Subscribe',
-                            style: const TextStyle(color: Colors.white),
-                          ),
-                        )
                       ],
                     ),
                   );

@@ -94,12 +94,35 @@ exports.getPlans = async (_req, res) => {
 
 exports.getMySubscription = async (req, res) => {
   const sub = await Subscription.findOne({ userId: req.user.id }).sort({ createdAt: -1 }).lean();
-  const user = await User.findById(req.user.id).select(
+  let user = await User.findById(req.user.id).select(
     "subscriptionStatus subscriptionPlan subscriptionExpiresAt firstLoginAt lastLoginAt"
-  );
+  ).lean();
+
+  // If user is new and has no subscription, ensure correct defaults
+  if (user && !user.subscriptionPlan && (!user.subscriptionStatus || user.subscriptionStatus === 'none')) {
+    user.subscriptionPlan = null;
+    user.subscriptionStatus = 'none';
+    user.subscriptionExpiresAt = null;
+  }
+
+  // Determine if free trial is completed
+  let freeTrialCompleted = false;
+  if (user) {
+    if (user.subscriptionPlan === "free") {
+      // If free plan and expired
+      if (user.subscriptionExpiresAt && new Date(user.subscriptionExpiresAt) < new Date()) {
+        freeTrialCompleted = true;
+      }
+    } else if (user.subscriptionPlan) {
+      // If not on free plan, check if user ever had free plan and it expired
+      // Optionally, you can check subscription history if needed
+      // For now, if not on free plan, assume free trial completed
+      freeTrialCompleted = true;
+    }
+  }
 
   return res.status(200).json({
-    user: user || null,
+    user: user ? { ...user, freeTrialCompleted } : null,
     subscription: sub || null,
   });
 };
