@@ -110,7 +110,22 @@ exports.createCheckoutSession = async (req, res) => {
   try {
     const { planId } = req.body || {};
     const plan = await getPlanById(planId);
+
     if (!plan || plan.active === false) return res.status(400).json({ message: "Invalid planId" });
+
+    // Handle free plan (price 0) directly
+    if (Number(plan.priceInr) === 0) {
+      // Activate free plan for user
+      const now = new Date();
+      const expiresAt = new Date(now.getTime() + (plan.durationDays || 7) * 24 * 60 * 60 * 1000);
+      await User.findByIdAndUpdate(req.user.id, {
+        subscriptionStatus: "trial",
+        subscriptionPlan: plan.id,
+        subscriptionExpiresAt: expiresAt,
+      });
+      return res.status(200).json({ message: "Free plan activated", free: true });
+    }
+
     if (!plan.priceInr || Number(plan.priceInr) <= 0) {
       return res.status(400).json({ message: "Plan price not configured" });
     }
