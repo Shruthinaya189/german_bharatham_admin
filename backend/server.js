@@ -86,6 +86,12 @@ app.use(
 // ── Universal Rating Module ─────────────────────────────────────────────────
 app.use("/api/ratings", require("./routes/ratingRoutes"));
 
+// ── Problem Reports Module ───────────────────────────────────────────────────
+app.use("/api/problem-reports", require("./routes/problemReportRoutes"));
+
+// ── Help Center Module ───────────────────────────────────────────────────────
+app.use("/api/help-center", require("./routes/helpCenterRoutes"));
+
 // ── Community Module ────────────────────────────────────────────────────────
 app.use("/api/community", require("./communityModule/user/routes/communityRoutes"));
 app.use(

@@ -204,10 +204,10 @@ class _JobDetailsPageState extends State<JobDetailsPage> {
               // Row 3: Location (left), Salary (right)
               Row(
                 children: [
-                  const Icon(
-                    Icons.location_on,
-                    size: 18,
-                    color: Colors.grey,
+                  Image.asset(
+                    'assets/images/location.png',
+                    width: 18,
+                    height: 18,
                   ),
                   const SizedBox(width: 4),
                   Expanded(

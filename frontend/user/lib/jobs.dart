@@ -233,6 +233,13 @@ class JobCard extends StatefulWidget {
 
 class _JobCardState extends State<JobCard> {
   late bool isSaved;
+
+  String _formattedSalary(String? raw) {
+    final value = (raw ?? '').trim();
+    if (value.isEmpty) return '';
+    if (RegExp(r'^[€$£₹]').hasMatch(value)) return value;
+    return '€$value';
+  }
   
   @override
   void initState() {
@@ -352,9 +359,8 @@ class _JobCardState extends State<JobCard> {
                     children: [
                       Image.asset(
                         'assets/images/location.png',
-                        width: 16,
-                        height: 16,
-                        color: const Color(0xFF3A7D6B),
+                        width: 18,
+                        height: 18,
                         errorBuilder: (_, __, ___) => const SizedBox(width: 16, height: 16),
                       ),
                       const SizedBox(width: 4),
@@ -389,7 +395,7 @@ class _JobCardState extends State<JobCard> {
                       if (widget.item.salary != null)
                         Flexible(
                           child: Text(
-                            widget.item.salary!,
+                            _formattedSalary(widget.item.salary),
                             style: const TextStyle(
                               color: Colors.green,
                               fontWeight: FontWeight.w600,

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { X } from 'lucide-react';
 import API_URL from '../config';
 
@@ -770,14 +770,48 @@ const API_MAP = {
   Services: `${API_URL}/api/services/admin`,
 };
 
-const AddListingModal = ({ onClose, onSuccess, defaultCategory, lockCategory }) => {
-  const [category, setCategory] = useState(defaultCategory || 'Accommodation');
-  const [formData, setFormData] = useState(DEFAULTS[defaultCategory || 'Accommodation']);
+const mapItemToFormData = (category, item) => {
+  if (!item) return DEFAULTS[category];
+
+  if (category === 'Jobs') {
+    const rawStatus = String(item.status || 'pending').toLowerCase();
+    const status = rawStatus === 'active' ? 'active' : rawStatus === 'inactive' ? 'disabled' : rawStatus;
+
+    return {
+      ...DEFAULTS.Jobs,
+      title: item.title || item.jobTitle || '',
+      location: item.location || item.city || '',
+      contact: item.contact || item.contactPhone || item.phone || '',
+      description: item.description || '',
+      salary: item.salary || '',
+      status,
+      companyName: item.companyName || item.company || '',
+      companyLogo: item.companyLogo || '',
+      type: item.jobType || item.type || 'Full Time',
+      requirements: Array.isArray(item.requirements) ? item.requirements.join(', ') : (item.requirements || ''),
+      benefits: Array.isArray(item.benefits) ? item.benefits.join(', ') : (item.benefits || ''),
+      applyUrl: item.applyUrl || '',
+    };
+  }
+
+  return DEFAULTS[category];
+};
+
+const AddListingModal = ({ onClose, onSuccess, defaultCategory, lockCategory, editItem = null }) => {
+  const initialCategory = defaultCategory || 'Accommodation';
+  const [category, setCategory] = useState(initialCategory);
+  const [formData, setFormData] = useState(editItem ? mapItemToFormData(initialCategory, editItem) : DEFAULTS[initialCategory]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    const cat = defaultCategory || 'Accommodation';
+    setCategory(cat);
+    setFormData(editItem ? mapItemToFormData(cat, editItem) : DEFAULTS[cat]);
+  }, [defaultCategory, editItem]);
 
   const handleCategoryChange = (cat) => {
     setCategory(cat);
-    setFormData(DEFAULTS[cat]);
+    setFormData(editItem ? mapItemToFormData(cat, editItem) : DEFAULTS[cat]);
   };
 
   const handleSubmit = async (e) => {
@@ -788,19 +822,18 @@ const AddListingModal = ({ onClose, onSuccess, defaultCategory, lockCategory }) 
     try {
       const token = localStorage.getItem('adminToken');
 
-      // New listings always start as pending and must be approved in Content Moderation.
       const payload = {
         ...buildPayload(category, formData),
-        status: 'pending',
+        ...(editItem ? {} : { status: 'pending' }),
       };
 
-      const res = await fetch(API_MAP[category], {
-        method: 'POST',
+      const res = await fetch(editItem ? `${API_MAP[category]}/${editItem._id}` : API_MAP[category], {
+        method: editItem ? 'PUT' : 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify(payload),
       });
       if (res.ok) {
-        alert(`${category} listing submitted for review (Pending).`);
+        alert(editItem ? `${category} listing updated successfully.` : `${category} listing submitted for review (Pending).`);
         onSuccess && onSuccess(category);
         onClose();
       } else {
@@ -818,7 +851,11 @@ const AddListingModal = ({ onClose, onSuccess, defaultCategory, lockCategory }) 
     <div className="modal-overlay">
       <div className="modal-content modal-large" style={{ minHeight: 520, maxHeight: '90vh', overflowY: 'auto' }}>
         <div className="modal-header">
-          <h2>Add New Listing</h2>
+          <h2>
+            {editItem
+              ? `Edit ${category} Listing`
+              : (lockCategory && defaultCategory === 'Jobs' ? 'Add New Job' : 'Add New Listing')}
+          </h2>
           <button className="close-btn" onClick={onClose}><X size={24} /></button>
         </div>
 
@@ -843,18 +880,28 @@ const AddListingModal = ({ onClose, onSuccess, defaultCategory, lockCategory }) 
           {/* Status */}
           <div className="form-group" style={{ marginTop: 8 }}>
             <label>Status</label>
-            <select value={'pending'} disabled>
-              <option value="pending">Pending</option>
-            </select>
-            <div style={{ fontSize: 12, color: '#6b7280', marginTop: 6 }}>
-              New listings are reviewed in Content Moderation before going live.
-            </div>
+            {editItem ? (
+              <select value={formData.status || 'pending'} onChange={e => setFormData(p => ({ ...p, status: e.target.value }))}>
+                <option value="active">Active</option>
+                <option value="pending">Pending</option>
+                <option value="disabled">Inactive</option>
+              </select>
+            ) : (
+              <>
+                <select value={'pending'} disabled>
+                  <option value="pending">Pending</option>
+                </select>
+                <div style={{ fontSize: 12, color: '#6b7280', marginTop: 6 }}>
+                  New listings are reviewed in Content Moderation before going live.
+                </div>
+              </>
+            )}
           </div>
 
           <div className="form-actions">
             <button type="button" className="cancel-btn" onClick={onClose} disabled={isSubmitting}>Cancel</button>
             <button type="submit" className="create-btn" disabled={isSubmitting}>
-              {isSubmitting ? 'Creating…' : 'Create Listing'}
+              {isSubmitting ? (editItem ? 'Saving…' : 'Creating…') : (editItem ? 'Save Changes' : 'Create Listing')}
             </button>
           </div>
         </form>

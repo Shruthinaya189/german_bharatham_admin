@@ -32,7 +32,7 @@ class ApiConfig {
   // Default backend in debug.
   // You can override at build/run time with:
   //   flutter run --dart-define=API_BASE_URL=<YOUR_BACKEND_BASE_URL>
-  static const String _devDefaultBaseUrl = _prodBaseUrl;
+  static const String _devDefaultBaseUrl = 'http://10.152.51.147:5000';
 
   /// Base URL selection:
   /// - If --dart-define=API_BASE_URL=... is provided, that wins

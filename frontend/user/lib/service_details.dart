@@ -409,10 +409,10 @@ ${widget.item.priceRange != null ? '💰 ${widget.item.priceRange}' : ''}
                                 const SizedBox(height: 8),
                                 Row(
                                   children: [
-                                    const Icon(
-                                      Icons.location_on,
-                                      size: 16,
-                                      color: Colors.grey,
+                                    Image.asset(
+                                      'assets/images/location.png',
+                                      width: 16,
+                                      height: 16,
                                     ),
                                     const SizedBox(width: 4),
                                     Expanded(

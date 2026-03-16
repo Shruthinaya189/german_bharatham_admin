@@ -1,5 +1,6 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { Plus, TrendingUp, FolderOpen, Users, Clock } from 'lucide-react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { Plus, TrendingUp, FolderOpen, Users, Clock, Bell } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import AddListingModal from './AddListingModal';
 import API_URL from '../config';
 
@@ -17,6 +18,59 @@ const Dashboard = () => {
   const [userCount, setUserCount]           = useState(0);
   const [categoryCount, setCategoryCount]   = useState(4);
   const [recentListings, setRecentListings] = useState([]);
+  const [problemReports, setProblemReports] = useState([]);
+  const [readReportIds, setReadReportIds] = useState(() => {
+    try {
+      const saved = localStorage.getItem('adminReadProblemReportIds');
+      const parsed = saved ? JSON.parse(saved) : [];
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  });
+  const navigate = useNavigate();
+
+  const fetchProblemReports = useCallback(async () => {
+    try {
+      const token = localStorage.getItem('adminToken');
+      const headers = { Authorization: `Bearer ${token}` };
+      const endpoints = [
+        `${API_URL}/api/problem-reports/admin`,
+        `${API_URL}/api/report-problem/admin`,
+        `${API_URL}/api/reported-problems/admin`,
+      ];
+
+      let payload = null;
+      for (const endpoint of endpoints) {
+        try {
+          const response = await fetch(endpoint, { headers });
+          if (!response.ok) continue;
+          payload = await response.json();
+          break;
+        } catch {
+          continue;
+        }
+      }
+
+      const sourceList = Array.isArray(payload)
+        ? payload
+        : payload?.data || payload?.reports || payload?.problems || payload?.items || [];
+
+      const mapped = (Array.isArray(sourceList) ? sourceList : [])
+        .map((item, index) => ({
+          id: item._id || item.id || `${item.createdAt || item.reportedAt || Date.now()}-${index}`,
+          title: item.subject || item.title || item.problemType || 'Problem reported',
+          description: item.description || item.message || item.problem || item.content || item.details || item.review || '',
+          reportedBy: item.userName || item.user?.name || item.reportedBy || item.email || 'User',
+          createdAt: item.createdAt || item.reportedAt || item.date || item.updatedAt || null,
+        }))
+        .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+
+      setProblemReports(mapped);
+    } catch {
+      setProblemReports([]);
+    }
+  }, []);
 
   const fetchAll = useCallback(async () => {
     const token   = localStorage.getItem('adminToken');
@@ -88,7 +142,24 @@ const Dashboard = () => {
     } catch {}
   }, []);
 
-  useEffect(() => { fetchAll(); }, [fetchAll]);
+  useEffect(() => {
+    fetchAll();
+    fetchProblemReports();
+  }, [fetchAll, fetchProblemReports]);
+
+  const unreadCount = useMemo(
+    () => problemReports.filter(report => !readReportIds.includes(report.id)).length,
+    [problemReports, readReportIds]
+  );
+
+  const openReportedProblems = () => {
+    if (problemReports.length > 0) {
+      const nextReadIds = Array.from(new Set([...readReportIds, ...problemReports.map(report => report.id)]));
+      setReadReportIds(nextReadIds);
+      localStorage.setItem('adminReadProblemReportIds', JSON.stringify(nextReadIds));
+    }
+    navigate('/reported-problems');
+  };
 
   const stats = [
     { label: 'Total Listings', value: totalCount,    icon: TrendingUp },
@@ -111,13 +182,27 @@ const Dashboard = () => {
           <h1>Dashboard</h1>
           <p>Welcome back! Here's what's happening.</p>
         </div>
-        <button 
-          className="add-listing-btn"
-          onClick={() => setShowAddModal(true)}
-        >
-          <Plus size={20} />
-          New Listing
-        </button>
+        <div className="dashboard-header-actions">
+          <button
+            type="button"
+            className="notification-btn"
+            onClick={openReportedProblems}
+            aria-label="Open reported problems"
+          >
+            <Bell size={20} />
+            {unreadCount > 0 && (
+              <span className="notification-badge">{unreadCount > 99 ? '99+' : unreadCount}</span>
+            )}
+          </button>
+
+          <button
+            className="add-listing-btn"
+            onClick={() => setShowAddModal(true)}
+          >
+            <Plus size={20} />
+            New Listing
+          </button>
+        </div>
       </div>
 
       <div className="stats-grid">

@@ -15,6 +15,30 @@ class _ContactUsPageState extends State<ContactUsPage> {
   String? _content;
   bool _loading = true;
 
+  Map<String, String> _extractContactFields(String text) {
+    final result = <String, String>{};
+    final lines = text
+        .split(RegExp(r'\n+'))
+        .map((e) => e.trim())
+        .where((e) => e.isNotEmpty)
+        .toList();
+
+    for (final line in lines) {
+      final idx = line.indexOf(':');
+      if (idx <= 0 || idx >= line.length - 1) continue;
+      final key = line.substring(0, idx).trim().toLowerCase();
+      final value = line.substring(idx + 1).trim();
+      if (value.isEmpty) continue;
+
+      if (key.contains('email')) result['email'] = value;
+      if (key.contains('phone') || key.contains('mobile')) result['phone'] = value;
+      if (key.contains('address') || key.contains('office') || key.contains('location')) result['address'] = value;
+      if (key == 'name' || key.contains('company')) result['name'] = value;
+    }
+
+    return result;
+  }
+
   @override
   void initState() {
     super.initState();
@@ -50,6 +74,38 @@ class _ContactUsPageState extends State<ContactUsPage> {
   Widget _buildContent() {
     // If server returned contact info text, show as paragraph cards
     if (_content != null && _content!.isNotEmpty) {
+      final fields = _extractContactFields(_content!);
+
+      if (fields.isNotEmpty) {
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _heroBanner(),
+            const SizedBox(height: 16),
+            if (fields['email'] != null)
+              _contactTile(icon: Icons.email_outlined, label: 'Email', value: fields['email']!),
+            if (fields['email'] != null) const SizedBox(height: 12),
+            if (fields['phone'] != null)
+              _contactTile(icon: Icons.phone_outlined, label: 'Phone', value: fields['phone']!),
+            if (fields['phone'] != null) const SizedBox(height: 12),
+            if (fields['address'] != null)
+              _contactTile(
+                icon: Icons.location_on_outlined,
+                iconWidget: Image.asset(
+                  'assets/images/location.png',
+                  width: 22,
+                  height: 22,
+                ),
+                label: 'Address',
+                value: fields['address']!,
+              ),
+            if (fields['address'] != null) const SizedBox(height: 12),
+            if (fields['name'] != null)
+              _contactTile(icon: Icons.badge_outlined, label: 'Name', value: fields['name']!),
+          ],
+        );
+      }
+
       final paragraphs = _content!
           .split(RegExp(r'\n{2,}'))
           .map((p) => p.trim())
@@ -83,7 +139,16 @@ class _ContactUsPageState extends State<ContactUsPage> {
         const SizedBox(height: 12),
         _contactTile(icon: Icons.phone_outlined, label: 'Phone', value: '+49 123 456 789'),
         const SizedBox(height: 12),
-        _contactTile(icon: Icons.location_on_outlined, label: 'Office', value: 'Berlin, Germany'),
+        _contactTile(
+          icon: Icons.location_on_outlined,
+          iconWidget: Image.asset(
+            'assets/images/location.png',
+            width: 22,
+            height: 22,
+          ),
+          label: 'Office',
+          value: 'Berlin, Germany',
+        ),
       ],
     );
   }
@@ -153,7 +218,7 @@ class _ContactUsPageState extends State<ContactUsPage> {
     );
   }
 
-  Widget _contactTile({required IconData icon, required String label, required String value}) {
+  Widget _contactTile({required IconData icon, Widget? iconWidget, required String label, required String value}) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(16),
@@ -176,7 +241,7 @@ class _ContactUsPageState extends State<ContactUsPage> {
               color: const Color(0xFFE8F5E9),
               borderRadius: BorderRadius.circular(10),
             ),
-            child: Icon(icon, color: const Color(0xFF4E7F6D), size: 22),
+            child: iconWidget ?? Icon(icon, color: const Color(0xFF4E7F6D), size: 22),
           ),
           const SizedBox(width: 14),
           Column(

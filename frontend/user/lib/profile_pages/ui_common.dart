@@ -77,7 +77,7 @@ Widget infoCard(String title, String value) {
   );
 }
 
-Widget helpTile(String text) {
+Widget helpTile(String text, {VoidCallback? onTap}) {
   return Container(
     margin: const EdgeInsets.only(bottom: 12),
     decoration: BoxDecoration(
@@ -92,7 +92,7 @@ Widget helpTile(String text) {
         height: 18,
         color: Colors.grey,
       ),
-      onTap: () {},
+      onTap: onTap,
     ),
   );
 }

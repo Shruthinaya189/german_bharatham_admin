@@ -353,10 +353,10 @@ class _FoodCardState extends State<FoodCard> {
                         ),
                       ),
                       const SizedBox(width: 8),
-                      const Icon(
-                        Icons.location_on,
-                        size: 16,
-                        color: Color(0xFF4F7F67),
+                      Image.asset(
+                        'assets/images/location.png',
+                        width: 16,
+                        height: 16,
                       ),
                       const SizedBox(width: 4),
                       Flexible(

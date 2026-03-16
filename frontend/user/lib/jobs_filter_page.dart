@@ -132,9 +132,9 @@ class _JobsFilterPageState extends State<JobsFilterPage> {
               children: [
                 Image.asset(
                   'assets/images/location.png',
-                  height: 16,
-                  width: 16,
-                  color: const Color(0xFF4E7F6D),
+                  height: 18,
+                  width: 18,
+                  errorBuilder: (_, __, ___) => const SizedBox(width: 18, height: 18),
                 ),
                 const SizedBox(width: 6),
                 const Text(
@@ -154,7 +154,7 @@ class _JobsFilterPageState extends State<JobsFilterPage> {
                     'assets/images/location.png',
                     height: 18,
                     width: 18,
-                    color: const Color(0xFF4E7F6D),
+                    errorBuilder: (_, __, ___) => const SizedBox(width: 18, height: 18),
                   ),
                 ),
                 filled: true,

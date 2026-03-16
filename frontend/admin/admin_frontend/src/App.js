@@ -14,6 +14,7 @@ import ContentModeration from './components/ContentModeration';
 import Community from './components/Community';
 import Settings from './components/Settings';
 import Subscriptions from './components/Subscriptions';
+import ReportedProblems from './components/ReportedProblems';
 import Layout from './components/Layout';
 import './App.css';
 
@@ -57,6 +58,7 @@ function App() {
           <Route path="/community" element={<Community />} />
           <Route path="/subscriptions" element={<Subscriptions />} />
           <Route path="/settings" element={<Settings />} />
+          <Route path="/reported-problems" element={<ReportedProblems />} />
         </Routes>
       </Layout>
     </Router>

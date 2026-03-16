@@ -97,8 +97,23 @@ const ImageEditor = ({ images, onChange }) => {
 
 // ── Edit modal ──────────────────────────────────────────────────────────────
 const EditModal = ({ item, category, apiBase, onClose, onSuccess }) => {
+  const titleValue = item.title || item.jobTitle || item.name || item.restaurantName || '';
+  const phoneValue = item.phone || item.contactPhone || item.contact || '';
+  const zipCodeValue = item.zipCode || item.postalCode || '';
+  const companyValue = item.company || item.companyName || '';
+
   const [data, setData] = useState({
     ...item,
+    title: titleValue,
+    jobTitle: item.jobTitle || titleValue,
+    name: item.name || titleValue,
+    restaurantName: item.restaurantName || titleValue,
+    company: companyValue,
+    companyName: item.companyName || companyValue,
+    phone: phoneValue,
+    contactPhone: item.contactPhone || phoneValue,
+    zipCode: zipCodeValue,
+    postalCode: item.postalCode || zipCodeValue,
     _images: item.media?.images || item.images || [],
     amenitiesText: Array.isArray(item.amenities)
       ? item.amenities.join(', ')
@@ -125,6 +140,33 @@ const EditModal = ({ item, category, apiBase, onClose, onSuccess }) => {
     try {
       const token = localStorage.getItem('adminToken');
       const payload = { ...data };
+
+      if (category === 'Food') {
+        const resolvedTitle = (payload.title || payload.name || payload.restaurantName || '').toString().trim();
+        payload.title = resolvedTitle;
+        payload.name = resolvedTitle;
+        payload.restaurantName = resolvedTitle;
+        payload.phone = (payload.phone || payload.contactPhone || '').toString().trim();
+        payload.contactPhone = payload.phone;
+        payload.zipCode = (payload.zipCode || payload.postalCode || '').toString().trim();
+        payload.postalCode = payload.zipCode;
+        if (!payload.location) {
+          payload.location = [payload.city, payload.address].filter(Boolean).join(', ');
+        }
+      }
+
+      if (category === 'Jobs') {
+        const resolvedTitle = (payload.title || payload.jobTitle || '').toString().trim();
+        payload.title = resolvedTitle;
+        payload.jobTitle = resolvedTitle;
+        payload.company = (payload.company || payload.companyName || '').toString().trim();
+        payload.companyName = payload.company;
+        payload.phone = (payload.phone || payload.contactPhone || payload.contact || '').toString().trim();
+        payload.contactPhone = payload.phone;
+        if (!payload.location) {
+          payload.location = [payload.city, payload.area].filter(Boolean).join(', ');
+        }
+      }
 
       // Normalize images for both legacy and canonical shapes
       payload.media = { ...payload.media, images: data._images };
@@ -463,7 +505,16 @@ const GenericCategoryListings = ({ category, apiBase, icon, viewFields }) => {
       {viewItem && (
         <ViewModal item={viewItem} category={category} fields={viewFields} onClose={() => setViewItem(null)} />
       )}
-      {editItem && (
+      {editItem && category === 'Jobs' && (
+        <AddListingModal
+          onClose={() => setEditItem(null)}
+          onSuccess={() => { setEditItem(null); fetchItems(); }}
+          defaultCategory="Jobs"
+          lockCategory={true}
+          editItem={editItem}
+        />
+      )}
+      {editItem && category !== 'Jobs' && (
         <EditModal item={editItem} category={category} apiBase={apiBase} onClose={() => setEditItem(null)} onSuccess={fetchItems} />
       )}
     </div>

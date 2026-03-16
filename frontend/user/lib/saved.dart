@@ -506,10 +506,10 @@ class _SavedAccommodationCard extends StatelessWidget {
                   const SizedBox(height: 5),
                   Row(
                     children: [
-                      const Icon(
-                        Icons.location_on,
-                        size: 13,
-                        color: Colors.grey,
+                      Image.asset(
+                        'assets/images/location.png',
+                        width: 13,
+                        height: 13,
                       ),
                       const SizedBox(width: 4),
                       Expanded(
@@ -730,10 +730,10 @@ class _SavedFoodCard extends StatelessWidget {
                   const SizedBox(height: 5),
                   Row(
                     children: [
-                      const Icon(
-                        Icons.location_on,
-                        size: 13,
-                        color: Colors.grey,
+                      Image.asset(
+                        'assets/images/location.png',
+                        width: 13,
+                        height: 13,
                       ),
                       const SizedBox(width: 4),
                       Expanded(
@@ -848,10 +848,10 @@ class _SavedJobCard extends StatelessWidget {
                   const SizedBox(height: 5),
                   Row(
                     children: [
-                      const Icon(
-                        Icons.location_on,
-                        size: 13,
-                        color: Colors.grey,
+                      Image.asset(
+                        'assets/images/location.png',
+                        width: 13,
+                        height: 13,
                       ),
                       const SizedBox(width: 4),
                       Expanded(
@@ -954,10 +954,10 @@ class _SavedServiceCard extends StatelessWidget {
                   const SizedBox(height: 5),
                   Row(
                     children: [
-                      const Icon(
-                        Icons.location_on,
-                        size: 13,
-                        color: Colors.grey,
+                      Image.asset(
+                        'assets/images/location.png',
+                        width: 13,
+                        height: 13,
                       ),
                       const SizedBox(width: 4),
                       Expanded(
@@ -1057,10 +1057,10 @@ class SavedCard extends StatelessWidget {
                 const SizedBox(height: 6),
                 Row(
                   children: [
-                    const Icon(
-                      Icons.location_on,
-                      size: 14,
-                      color: Colors.grey,
+                    Image.asset(
+                      'assets/images/location.png',
+                      width: 14,
+                      height: 14,
                     ),
                     const SizedBox(width: 4),
                     Text(

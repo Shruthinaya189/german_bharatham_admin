@@ -394,7 +394,11 @@ class _ServiceCardState extends State<ServiceCard> {
                   const SizedBox(height: 6),
                   Row(
                     children: [
-                      const Icon(Icons.location_on, size: 16, color: Colors.grey),
+                      Image.asset(
+                        'assets/images/location.png',
+                        width: 16,
+                        height: 16,
+                      ),
                       const SizedBox(width: 4),
                       Expanded(
                         child: Text(
