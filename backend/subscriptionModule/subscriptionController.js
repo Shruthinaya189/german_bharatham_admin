@@ -10,6 +10,19 @@ const toNumber = (v) => {
   return Number.isFinite(n) ? n : 0;
 };
 
+const getFallbackPriceForPlan = (planId) => {
+  const id = String(planId || "").trim();
+  if (!id) return 0;
+  const map = {
+    "1m": toNumber(process.env.SUBSCRIPTIONS_MONTHLY_PRICE_INR),
+    "3m": toNumber(process.env.SUBSCRIPTIONS_3MONTH_PRICE_INR),
+    "6m": toNumber(process.env.SUBSCRIPTIONS_6MONTH_PRICE_INR),
+    "1y": toNumber(process.env.SUBSCRIPTIONS_YEARLY_PRICE_INR),
+    free: 0,
+  };
+  return map[id] || 0;
+};
+
 const getDefaultCurrency = () => {
   return String(process.env.SUBSCRIPTIONS_CURRENCY || "INR").trim() || "INR";
 };
@@ -178,8 +191,10 @@ exports.createCheckoutSession = async (req, res) => {
 
     if (!plan || plan.active === false) return res.status(400).json({ message: "Invalid planId" });
 
+    const effectivePrice = Number(plan.priceInr) || getFallbackPriceForPlan(plan.id);
+
     // Handle free plan (price 0) directly
-    if (Number(plan.priceInr) === 0) {
+    if (Number(effectivePrice) === 0) {
       // Activate free plan for user
       const now = new Date();
       const expiresAt = new Date(now.getTime() + (plan.durationDays || 7) * 24 * 60 * 60 * 1000);
@@ -191,8 +206,9 @@ exports.createCheckoutSession = async (req, res) => {
       return res.status(200).json({ message: "Free plan activated", free: true });
     }
 
-    if (!plan.priceInr || Number(plan.priceInr) <= 0) {
-      return res.status(400).json({ message: "Plan price not configured" });
+    if (!effectivePrice || Number(effectivePrice) <= 0) {
+      console.error("[createCheckoutSession] plan price not configured", { planId: plan.id, dbPrice: plan.priceInr, envFallback: getFallbackPriceForPlan(plan.id) });
+      return res.status(400).json({ message: "Plan price not configured", plan: { id: plan.id, priceInr: plan.priceInr, fallback: getFallbackPriceForPlan(plan.id) } });
     }
 
     const user = await User.findById(req.user.id).select("name email phone");
@@ -204,7 +220,7 @@ exports.createCheckoutSession = async (req, res) => {
     const description = `German Bharatham - ${plan.label || plan.id} subscription`;
 
     const payload = {
-      amount: Math.round(Number(plan.priceInr) * 100),
+      amount: Math.round(Number(effectivePrice) * 100),
       currency: plan.currency || "INR",
       accept_partial: false,
       description,
@@ -264,8 +280,10 @@ exports.createRazorpayOrder = async (req, res) => {
     const plan = await getPlanById(planId);
     if (!plan || plan.active === false) return res.status(400).json({ message: "Invalid planId" });
 
+    const effectivePrice = Number(plan.priceInr) || getFallbackPriceForPlan(plan.id);
+
     // Handle free plan (price 0) directly — activate trial without creating an order
-    if (Number(plan.priceInr) === 0) {
+    if (Number(effectivePrice) === 0) {
       const now = new Date();
       const expiresAt = new Date(now.getTime() + (plan.durationDays || 7) * 24 * 60 * 60 * 1000);
       await User.findByIdAndUpdate(req.user.id, {
@@ -276,14 +294,17 @@ exports.createRazorpayOrder = async (req, res) => {
       return res.status(200).json({ message: "Free plan activated", free: true });
     }
 
-    if (!plan.priceInr || Number(plan.priceInr) <= 0) return res.status(400).json({ message: "Plan price not configured" });
+    if (!effectivePrice || Number(effectivePrice) <= 0) {
+      console.error("[createRazorpayOrder] plan price not configured", { planId: plan.id, dbPrice: plan.priceInr, envFallback: getFallbackPriceForPlan(plan.id) });
+      return res.status(400).json({ message: "Plan price not configured", plan: { id: plan.id, priceInr: plan.priceInr, fallback: getFallbackPriceForPlan(plan.id) } });
+    }
 
     const user = await User.findById(req.user.id).select("name email phone");
     if (!user) return res.status(404).json({ message: "User not found" });
 
     const api = razorpayApi();
     const payload = {
-      amount: Math.round(Number(plan.priceInr) * 100),
+      amount: Math.round(Number(effectivePrice) * 100),
       currency: plan.currency || getDefaultCurrency(),
       receipt: `sub_${String(req.user.id)}_${Date.now()}`,
       notes: {
