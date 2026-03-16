@@ -48,7 +48,21 @@ const listActivePlans = async () => {
 
 const getPlanById = async (planId) => {
   await ensureDefaultPlans();
-  return Plan.findOne({ id: String(planId || "").trim() }).lean();
+  const raw = String(planId || "").trim();
+  if (!raw) return null;
+  // Try by app-level id first
+  let plan = await Plan.findOne({ id: raw }).lean();
+  if (plan) return plan;
+  // Fallback: maybe client sent Mongo _id
+  try {
+    if (/^[0-9a-fA-F]{24}$/.test(raw)) {
+      plan = await Plan.findById(raw).lean();
+      if (plan) return plan;
+    }
+  } catch (e) {
+    // ignore
+  }
+  return null;
 };
 
 const getRazorpayKeys = () => {
@@ -249,6 +263,19 @@ exports.createRazorpayOrder = async (req, res) => {
     const { planId } = req.body || {};
     const plan = await getPlanById(planId);
     if (!plan || plan.active === false) return res.status(400).json({ message: "Invalid planId" });
+
+    // Handle free plan (price 0) directly — activate trial without creating an order
+    if (Number(plan.priceInr) === 0) {
+      const now = new Date();
+      const expiresAt = new Date(now.getTime() + (plan.durationDays || 7) * 24 * 60 * 60 * 1000);
+      await User.findByIdAndUpdate(req.user.id, {
+        subscriptionStatus: "trial",
+        subscriptionPlan: plan.id,
+        subscriptionExpiresAt: expiresAt,
+      });
+      return res.status(200).json({ message: "Free plan activated", free: true });
+    }
+
     if (!plan.priceInr || Number(plan.priceInr) <= 0) return res.status(400).json({ message: "Plan price not configured" });
 
     const user = await User.findById(req.user.id).select("name email phone");
@@ -269,6 +296,26 @@ exports.createRazorpayOrder = async (req, res) => {
     const resp = await api.post("/orders", payload);
     const order = resp && resp.data ? resp.data : null;
     if (!order || !order.id) return res.status(500).json({ message: "Failed to create order" });
+
+    // Record a pending subscription row so UI / admin can see pending payment
+    try {
+      await Subscription.findOneAndUpdate(
+        { userId: req.user.id, provider: "razorpay", razorpayPaymentLinkId: null },
+        {
+          $setOnInsert: {
+            userId: req.user.id,
+            provider: "razorpay",
+            status: "pending",
+            metadata: { createdBy: "order" },
+          },
+          $set: { planId: plan.id, "metadata.razorpayOrderId": String(order.id) },
+        },
+        { upsert: true, new: true }
+      );
+    } catch (e) {
+      // non-fatal
+      console.error("Failed to upsert pending subscription", e.message || e);
+    }
 
     const { keyId } = getRazorpayKeys();
     return res.status(200).json({
