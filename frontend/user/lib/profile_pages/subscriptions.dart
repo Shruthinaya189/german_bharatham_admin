@@ -9,6 +9,7 @@ import '../services/api_config.dart';
 import '../user_session.dart';
 import 'ui_common.dart';
 import '../user_profiles_page.dart';
+import '../home.dart';
 
 class SubscriptionsPage extends StatefulWidget {
   /// If true, automatically navigate to `UserProfilesPage` when a subscription
@@ -120,8 +121,22 @@ class _SubscriptionsPageState extends State<SubscriptionsPage> {
 
     final user = _subscriptionStatus?["user"];
 
-    if (user is Map && user["subscriptionStatus"] != null) {
-      return user["subscriptionStatus"] == "active";
+    if (user is Map) {
+      final status = user["subscriptionStatus"]?.toString();
+      // If explicitly active or trial, it's active.
+      if (status == 'active' || status == 'trial') return true;
+
+      // If cancelled but the subscription expiry is in the future, treat as active
+      // until the period ends so user retains access.
+      if (status == 'cancelled' || status == 'canceled') {
+        final expires = user['subscriptionExpiresAt'];
+        if (expires != null) {
+          try {
+            final dt = DateTime.parse(expires.toString());
+            if (dt.isAfter(DateTime.now())) return true;
+          } catch (_) {}
+        }
+      }
     }
 
     return false;
@@ -216,7 +231,7 @@ class _SubscriptionsPageState extends State<SubscriptionsPage> {
         if (!mounted) return;
         final activated = await _waitForActivation();
         if (activated && mounted && widget.autoNavigateOnActivation) {
-          Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const UserProfilesPage()));
+          Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const HomePage()));
         }
         return;
       }
@@ -235,7 +250,7 @@ class _SubscriptionsPageState extends State<SubscriptionsPage> {
 
       // Navigate to native payment page which will open Razorpay checkout
       if (!mounted) return;
-      await Navigator.push(
+      final result = await Navigator.push<bool?>(
         context,
         MaterialPageRoute(
           builder: (_) => PaymentPage(
@@ -247,8 +262,16 @@ class _SubscriptionsPageState extends State<SubscriptionsPage> {
           ),
         ),
       );
-      // After returning, reload plans to reflect any activation
+
+      // After returning, reload plans and optionally navigate if activation occurred
       await _loadPlans();
+      if (!mounted) return;
+      final activated = await _waitForActivation();
+      // Only navigate to profiles page when this SubscriptionsPage was opened
+      // with autoNavigateOnActivation=true (e.g., from the location flow).
+      if (activated && widget.autoNavigateOnActivation) {
+        Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const HomePage()));
+      }
 
     } catch (e) {
 

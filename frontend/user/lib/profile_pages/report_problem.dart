@@ -59,7 +59,6 @@ class _ReportProblemPageState extends State<ReportProblemPage> {
 
       final endpoints = [
         '${ApiConfig.baseUrl}/api/problem-reports',
-        'http://10.152.51.147:5000/api/problem-reports',
       ];
 
       http.Response? response;

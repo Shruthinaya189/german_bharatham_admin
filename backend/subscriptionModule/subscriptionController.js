@@ -408,6 +408,53 @@ exports.verifyRazorpayPayment = async (req, res) => {
   }
 };
 
+// Cancel / unsubscribe for the authenticated user
+exports.cancelSubscription = async (req, res) => {
+  try {
+    const userId = String(req.user.id);
+    // Find the most recent subscription for the user
+    const sub = await Subscription.findOne({ userId }).sort({ createdAt: -1 });
+    if (!sub) return res.status(404).json({ message: "No subscription found" });
+
+    // If already canceled, return success
+    if (sub.status === 'canceled') return res.status(200).json({ message: "Subscription already cancelled" });
+
+    // If this subscription has an associated Razorpay subscription id, attempt to cancel it there as well
+    const razorpaySubId = sub.metadata && sub.metadata.razorpaySubscriptionId ? String(sub.metadata.razorpaySubscriptionId) : null;
+    if (razorpaySubId) {
+      try {
+        const api = razorpayApi();
+        // Razorpay cancel endpoint: POST /subscriptions/{id}/cancel
+        await api.post(`/subscriptions/${razorpaySubId}/cancel`);
+      } catch (e) {
+        console.warn("Failed to cancel Razorpay subscription", e && e.response && e.response.data ? e.response.data : e.message || e);
+        // continue — we still mark local subscription as canceled
+      }
+    }
+
+    sub.status = 'canceled';
+    sub.metadata = sub.metadata || {};
+    sub.metadata.cancelRequestedAt = new Date().toISOString();
+    await sub.save();
+
+    // Do not immediately remove user's access; they keep access until currentPeriodEnd.
+    // Keep user's subscriptionStatus as 'active' so UI still treats it as current.
+    try {
+      // Mark user's top-level subscription status as cancelled while preserving
+      // `subscriptionExpiresAt` so they retain access until current period ends.
+      await User.findByIdAndUpdate(userId, { subscriptionStatus: 'cancelled' });
+    } catch (e) {
+      // non-fatal
+      console.warn('Failed to update User.subscriptionStatus during cancel', e && e.message ? e.message : e);
+    }
+
+    return res.status(200).json({ message: "Subscription cancelled. You will retain access until the current period ends." });
+  } catch (err) {
+    console.error('cancelSubscription error', err && err.message ? err.message : err);
+    return res.status(500).json({ message: "Failed to cancel subscription" });
+  }
+};
+
 exports.listAllSubscriptions = async (_req, res) => {
   const items = await Subscription.find()
     .populate("userId", "email")

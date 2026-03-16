@@ -88,12 +88,12 @@ class _PaymentPageState extends State<PaymentPage> {
 
       if (resp.statusCode == 200) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Payment verified — subscription activated")));
-        // Navigate to profiles page if desired
-        Navigator.pushAndRemoveUntil(context, MaterialPageRoute(builder: (_) => const UserProfilesPage()), (r) => false);
+        // Return success to caller so it can decide where to navigate
+        Navigator.of(context).pop(true);
       } else {
         final body = jsonDecode(resp.body);
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(body["message"] ?? "Verification failed")));
-        Navigator.of(context).pop();
+        Navigator.of(context).pop(false);
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));

@@ -1505,11 +1505,11 @@ class _SplashScreenState extends State<SplashScreen> {
       ]);
       // Check subscription expiry and redirect if expired
       final expired = await isSubscriptionExpired();
-      if (expired == true && mounted) {
+        if (expired == true && mounted) {
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
-            builder: (_) => const SubscriptionsPage(),
+            builder: (_) => const SubscriptionsPage(autoNavigateOnActivation: true),
           ),
         );
         return;

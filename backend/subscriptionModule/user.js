@@ -8,5 +8,6 @@ router.get("/payment-history", controller.getPaymentHistory);
 router.post("/checkout-session", controller.createCheckoutSession);
 router.post("/create-order", controller.createRazorpayOrder);
 router.post("/verify-payment", controller.verifyRazorpayPayment);
+router.post("/cancel", controller.cancelSubscription);
 
 module.exports = router;
