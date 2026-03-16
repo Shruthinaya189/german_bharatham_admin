@@ -1,8 +1,9 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'package:razorpay_flutter/razorpay_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
+import 'payment_page.dart';
 
 import '../services/api_config.dart';
 import '../user_session.dart';
@@ -34,69 +35,16 @@ class _SubscriptionsPageState extends State<SubscriptionsPage> {
   void initState() {
     super.initState();
     _loadPlans();
-    _razorpay = Razorpay();
-    _razorpay.on(Razorpay.EVENT_PAYMENT_SUCCESS, _handlePaymentSuccess);
-    _razorpay.on(Razorpay.EVENT_PAYMENT_ERROR, _handlePaymentError);
-    _razorpay.on(Razorpay.EVENT_EXTERNAL_WALLET, _handleExternalWallet);
   }
 
-  late Razorpay _razorpay;
   String? _pendingPlanId;
 
   @override
   void dispose() {
-    try {
-      _razorpay.clear();
-    } catch (_) {}
     super.dispose();
   }
 
-  void _handlePaymentSuccess(PaymentSuccessResponse response) async {
-    final token = UserSession.instance.token;
-    if (token == null) return;
-
-    try {
-      final resp = await http.post(
-        Uri.parse(ApiConfig.subscriptionVerifyEndpoint),
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": "Bearer $token"
-        },
-        body: jsonEncode({
-          "razorpay_payment_id": response.paymentId,
-          "razorpay_order_id": response.orderId,
-          "razorpay_signature": response.signature,
-          "planId": _pendingPlanId
-        }),
-      );
-
-      if (resp.statusCode == 200) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Payment verified — subscription activated")));
-        await _loadPlans();
-        if (!mounted) return;
-        final activated = await _waitForActivation();
-        if (activated && mounted && widget.autoNavigateOnActivation) {
-          Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const UserProfilesPage()));
-        }
-      } else {
-        final body = jsonDecode(resp.body);
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(body["message"] ?? "Verification failed")));
-      }
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
-    } finally {
-      _pendingPlanId = null;
-    }
-  }
-
-  void _handlePaymentError(PaymentFailureResponse response) {
-    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Payment failed or cancelled")));
-    _pendingPlanId = null;
-  }
-
-  void _handleExternalWallet(ExternalWalletResponse response) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("External wallet: ${response.walletName}")));
-  }
+  // Payment handling moved to `PaymentPage` for native checkout.
 
   Map<String, dynamic> _decode(String body) {
     final decoded = jsonDecode(body);
@@ -205,14 +153,54 @@ class _SubscriptionsPageState extends State<SubscriptionsPage> {
       }
 
       // Use new client-driven flow: create an order and open native Razorpay checkout
+      final payload = {"planId": planId};
+      // Defensive check: ensure planId is present
+      if ((payload["planId"] ?? "").toString().trim().isEmpty) {
+        throw Exception("Missing planId for subscription request");
+      }
+
+      // Local debug: log payload and response (remove before pushing)
+      // ignore: avoid_print
+      print('[subscriptions] create-order payload: ' + payload.toString());
+
+      // For web: use payment link / checkout session endpoint which returns a URL
+      if (kIsWeb) {
+        final resp = await http.post(
+          Uri.parse(ApiConfig.subscriptionCheckoutSessionEndpoint),
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": "Bearer $token"
+          },
+          body: jsonEncode(payload),
+        );
+        final json = _decode(resp.body);
+        if (resp.statusCode != 200) throw Exception(json["message"] ?? "Checkout init failed");
+        final url = json["url"] ?? json["short_url"] ?? json["data"];
+        if (url == null) throw Exception("Payment URL not returned by server");
+        // Open in new tab/window
+        final urlStr = url.toString();
+        final uri = Uri.parse(urlStr);
+        try {
+          await launchUrl(uri, webOnlyWindowName: '_blank');
+        } catch (e) {
+          // fallback to legacy launch
+          if (!await launch(urlStr)) throw Exception('Could not open payment URL');
+        }
+        return;
+      }
+
+      // Native/mobile: create order and navigate to PaymentPage
       final response = await http.post(
         Uri.parse(ApiConfig.subscriptionCreateOrderEndpoint),
         headers: {
           "Content-Type": "application/json",
           "Authorization": "Bearer $token"
         },
-        body: jsonEncode({"planId": planId}),
+        body: jsonEncode(payload),
       );
+
+      // ignore: avoid_print
+      print('[subscriptions] create-order response: ' + response.body);
 
       final body = _decode(response.body);
       if (response.statusCode != 200) {
@@ -234,34 +222,33 @@ class _SubscriptionsPageState extends State<SubscriptionsPage> {
       }
 
       final orderId = body["orderId"] ?? body["id"];
+      final keyId = body["keyId"];
       final amount = body["amount"];
       final currency = body["currency"];
-      final keyId = body["keyId"];
 
       if (orderId == null || keyId == null) {
         throw Exception("Failed to create order");
       }
 
-      // Save pending plan so success handler can send it to backend
+      // Save pending plan so PaymentPage can verify
       _pendingPlanId = planId;
 
-      final options = {
-        'key': keyId,
-        'order_id': orderId,
-        'name': 'German Bharatham',
-        'description': planId,
-        'prefill': {
-          'contact': UserSession.instance.phone ?? '',
-          'email': UserSession.instance.email ?? ''
-        }
-      };
-
-      try {
-        _razorpay.open(options);
-      } catch (e) {
-        _pendingPlanId = null;
-        rethrow;
-      }
+      // Navigate to native payment page which will open Razorpay checkout
+      if (!mounted) return;
+      await Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => PaymentPage(
+            orderId: orderId.toString(),
+            keyId: keyId.toString(),
+            amount: amount,
+            currency: currency?.toString() ?? 'INR',
+            planId: planId,
+          ),
+        ),
+      );
+      // After returning, reload plans to reflect any activation
+      await _loadPlans();
 
     } catch (e) {
 

@@ -303,10 +303,11 @@ exports.createRazorpayOrder = async (req, res) => {
     if (!user) return res.status(404).json({ message: "User not found" });
 
     const api = razorpayApi();
+    const shortReceipt = `sub_${crypto.randomBytes(6).toString('hex')}`;
     const payload = {
       amount: Math.round(Number(effectivePrice) * 100),
       currency: plan.currency || getDefaultCurrency(),
-      receipt: `sub_${String(req.user.id)}_${Date.now()}`,
+      receipt: shortReceipt,
       notes: {
         userId: String(req.user.id),
         planId: String(plan.id),
