@@ -20,6 +20,7 @@ import 'user_profiles_page.dart';
 import 'forgot_password.dart';
 import 'services/api_config.dart';
 import 'profile_pages/subscriptions.dart';
+import 'utils/subscription_utils.dart';
 
 final GlobalKey<NavigatorState> rootNavigatorKey = GlobalKey<NavigatorState>();
 
@@ -1338,7 +1339,8 @@ class _LocationPermissionPageState extends State<LocationPermissionPage> {
           final statusJson = jsonDecode(res.body);
           final user = statusJson['user'] as Map?;
           final freeTrialCompleted = user?['freeTrialCompleted'] == true;
-          final hasAnySubscription = (user?['subscriptionStatus']?.toString() == 'active') || freeTrialCompleted;
+          final status = user?['subscriptionStatus']?.toString();
+          final hasAnySubscription = (status == 'active' || status == 'trial') || freeTrialCompleted;
           if (hasAnySubscription) {
             Navigator.pushReplacement(
               context,
@@ -1352,7 +1354,7 @@ class _LocationPermissionPageState extends State<LocationPermissionPage> {
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(
-        builder: (_) => SubscriptionsPage(),
+        builder: (_) => const SubscriptionsPage(autoNavigateOnActivation: true),
       ),
     );
   }
@@ -1501,6 +1503,17 @@ class _SplashScreenState extends State<SplashScreen> {
         SavedServiceManager.instance.switchUser(UserSession.instance.userId!),
         SavedGuidesManager.instance.switchUser(UserSession.instance.userId!),
       ]);
+      // Check subscription expiry and redirect if expired
+      final expired = await isSubscriptionExpired();
+      if (expired == true && mounted) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (_) => const SubscriptionsPage(),
+          ),
+        );
+        return;
+      }
     }
     if (mounted) {
       Navigator.pushReplacement(

@@ -1,394 +1,405 @@
 import 'dart:convert';
-
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:url_launcher/url_launcher.dart';
 
 import '../services/api_config.dart';
 import '../user_session.dart';
+import 'ui_common.dart';
 import '../user_profiles_page.dart';
 
 class SubscriptionsPage extends StatefulWidget {
-  const SubscriptionsPage({super.key});
+  /// If true, automatically navigate to `UserProfilesPage` when a subscription
+  /// (free trial or paid) is activated. This should be true when the page is
+  /// opened from the location-permission flow, and false when opened from
+  /// profile/settings so the user stays on the page.
+  const SubscriptionsPage({super.key, this.autoNavigateOnActivation = false});
+
+  final bool autoNavigateOnActivation;
 
   @override
   State<SubscriptionsPage> createState() => _SubscriptionsPageState();
 }
 
 class _SubscriptionsPageState extends State<SubscriptionsPage> {
-  static const Color primaryGreen = Color(0xFF4E7F6D);
 
   bool _loading = true;
   String? _error;
 
-  Map<String, dynamic>? _status;
   List<Map<String, dynamic>> _plans = [];
-
-  Map<String, dynamic> _tryDecodeJson(String body) {
-    final decoded = jsonDecode(body);
-    if (decoded is Map<String, dynamic>) return decoded;
-    if (decoded is Map) {
-      return decoded.map((k, v) => MapEntry(k.toString(), v));
-    }
-    return <String, dynamic>{'data': decoded};
-  }
-
-  String _summarizeNonJson(String body) {
-    final trimmed = body.trimLeft();
-    final oneLine = trimmed.replaceAll(RegExp(r'\s+'), ' ');
-    if (oneLine.length <= 180) return oneLine;
-    return '${oneLine.substring(0, 180)}…';
-  }
+  Map<String, dynamic>? _subscriptionStatus;
 
   @override
   void initState() {
     super.initState();
-    _load();
+    _loadPlans();
   }
 
-  Future<void> _load() async {
-    setState(() {
-      _loading = true;
-      _error = null;
-    });
+  Map<String, dynamic> _decode(String body) {
+    final decoded = jsonDecode(body);
+    if (decoded is Map<String, dynamic>) return decoded;
+    // Wrap non-map responses so callers can still access `data`.
+    return {"data": decoded};
+  }
+
+  Future<void> _loadPlans() async {
 
     try {
-      final session = UserSession.instance;
-      final token = session.token;
+
+      final token = UserSession.instance.token;
+
       if (token == null) {
         setState(() {
-          _error = 'Not logged in';
+          _error = "Not logged in";
           _loading = false;
         });
         return;
       }
 
-      final plansRes = await http.get(
+      final plansResponse = await http.get(
         Uri.parse(ApiConfig.subscriptionPlansEndpoint),
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token',
+          "Authorization": "Bearer $token"
         },
       );
-      final statusRes = await http.get(
+
+      final statusResponse = await http.get(
         Uri.parse(ApiConfig.subscriptionStatusEndpoint),
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token',
+          "Authorization": "Bearer $token"
         },
       );
 
-      Map<String, dynamic> plansJson = <String, dynamic>{};
-      Map<String, dynamic> statusJson = <String, dynamic>{};
+      final plansJson = _decode(plansResponse.body);
+      final statusJson = _decode(statusResponse.body);
 
-      try {
-        plansJson = _tryDecodeJson(plansRes.body);
-      } catch (_) {
-        // Non-JSON (often HTML error page from server/proxy)
-      }
-      try {
-        statusJson = _tryDecodeJson(statusRes.body);
-      } catch (_) {
-        // Non-JSON (often HTML error page from server/proxy)
-      }
+      // Extract plans from possible shapes: {plans: [...]}, {data: [...]}, or []
+      dynamic rawPlans = plansJson["plans"] ?? plansJson["data"] ?? plansJson;
+      List<Map<String, dynamic>> plans = [];
 
-      if (plansRes.statusCode != 200) {
-        final msg = plansJson['message']?.toString();
-        final hint = plansJson.isNotEmpty
-            ? msg
-            : 'Server returned non-JSON (HTTP ${plansRes.statusCode}): ${_summarizeNonJson(plansRes.body)}';
-        throw Exception(hint);
+      if (rawPlans is List) {
+        plans = [];
+        for (final item in rawPlans) {
+          if (item is Map) {
+            final m = <String, dynamic>{};
+            item.forEach((k, v) => m[k.toString()] = v);
+            plans.add(m);
+          }
+        }
       }
-      if (statusRes.statusCode != 200) {
-        final msg = statusJson['message']?.toString();
-        final hint = statusJson.isNotEmpty
-            ? msg
-            : 'Server returned non-JSON (HTTP ${statusRes.statusCode}): ${_summarizeNonJson(statusRes.body)}';
-        throw Exception(hint);
-      }
-
-      final plans = (plansJson['plans'] as List?)
-              ?.whereType<Map>()
-              .map((e) => e.map((k, v) => MapEntry(k.toString(), v)))
-              .toList() ??
-          <Map<String, dynamic>>[];
 
       setState(() {
         _plans = plans;
-        _status = statusJson;
+        _subscriptionStatus = Map<String, dynamic>.from(statusJson);
         _loading = false;
       });
+
     } catch (e) {
+
       setState(() {
         _error = e.toString();
         _loading = false;
       });
+
     }
+
   }
 
   bool get _isActive {
-    final user = _status?['user'];
-    if (user is Map && user['subscriptionStatus'] != null) {
-      return user['subscriptionStatus'].toString() == 'active';
+
+    final user = _subscriptionStatus?["user"];
+
+    if (user is Map && user["subscriptionStatus"] != null) {
+      return user["subscriptionStatus"] == "active";
     }
+
     return false;
   }
 
-  String _prettyStatus() {
-    final user = _status?['user'];
-    if (user is Map && user['subscriptionStatus'] != null) {
-      return user['subscriptionStatus'].toString();
+  String? get _activePlanId {
+
+    final user = _subscriptionStatus?["user"];
+
+    if (user is Map) {
+      // Backend uses `subscriptionPlan` to store the active plan id.
+      return user["subscriptionPlan"]?.toString() ?? user["activePlanId"]?.toString();
     }
-    return 'none';
+
+    return null;
   }
 
   Future<void> _subscribe(String planId) async {
-    final token = UserSession.instance.token;
-    if (token == null) return;
 
     try {
-      final res = await http.post(
+
+      final token = UserSession.instance.token;
+
+      if (token == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Not logged in")),
+        );
+        return;
+      }
+
+      final response = await http.post(
         Uri.parse(ApiConfig.subscriptionCheckoutSessionEndpoint),
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token',
+          "Content-Type": "application/json",
+          "Authorization": "Bearer $token"
         },
-        body: jsonEncode({'planId': planId}),
+        body: jsonEncode({
+          "planId": planId
+        }),
       );
-      Map<String, dynamic> bodyJson = <String, dynamic>{};
-      try {
-        bodyJson = _tryDecodeJson(res.body);
-      } catch (_) {
-        // Non-JSON (often HTML error page)
+
+      final body = _decode(response.body);
+
+      if (response.statusCode != 200) {
+        throw Exception(body["message"] ?? "Subscription failed");
       }
 
-      if (res.statusCode != 200) {
-        final msg = bodyJson['message']?.toString();
-        final hint = bodyJson.isNotEmpty
-            ? msg
-            : 'Server returned non-JSON (HTTP ${res.statusCode}): ${_summarizeNonJson(res.body)}';
-        throw Exception(hint);
-      }
-
-      if (bodyJson['free'] == true) {
-        // Free plan activated, refresh status, show message, then navigate to public profile with 'next' button
-        await _load();
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Free plan activated!')),
-          );
-          // Navigate to public profile page with a flag to show 'Next' button
-          Navigator.of(context).push(
-            MaterialPageRoute(
-              builder: (_) => UserProfilesPage(showNextButton: true),
-            ),
+      // Back-end returns { free: true } for free/trial plans (no checkout URL).
+      if (body["free"] == true) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(body["message"] ?? "Free plan activated")),
+        );
+        await _loadPlans();
+        // After free/trial activation navigate to user profiles.
+        if (!mounted) return;
+        final activated = await _waitForActivation();
+        if (activated && mounted && widget.autoNavigateOnActivation) {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (_) => const UserProfilesPage()),
           );
         }
         return;
       }
 
-      final url = bodyJson['url']?.toString() ?? '';
-      if (url.isEmpty) throw Exception('Missing checkout url');
+      final url = body["url"];
+      if (url == null) {
+        throw Exception("Checkout URL missing");
+      }
 
       final uri = Uri.parse(url);
-      final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
-      if (!ok && mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Could not open payment page')),
+
+      final launched = await launchUrl(
+        uri,
+        mode: LaunchMode.externalApplication,
+      );
+
+      if (launched == false) {
+        throw Exception("Could not open checkout URL");
+      }
+
+      await Future.delayed(const Duration(seconds: 3));
+
+      await _loadPlans();
+
+      // Poll backend a few times to detect activation after external payment.
+      if (!mounted) return;
+      final activated = await _waitForActivation();
+      if (activated && mounted && widget.autoNavigateOnActivation) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const UserProfilesPage()),
         );
       }
+
     } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(e.toString())),
-      );
+
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(e.toString())));
+
     }
+
+  }
+
+  Future<void> _unsubscribe(String planId) async {
+
+    try {
+
+      final token = UserSession.instance.token;
+
+      if (token == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Not logged in")),
+        );
+        return;
+      }
+
+      final response = await http.post(
+        Uri.parse(ApiConfig.subscriptionCancelEndpoint),
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer $token"
+        },
+        body: jsonEncode({
+          "planId": planId
+        }),
+      );
+
+      final body = _decode(response.body);
+
+      if (response.statusCode == 200) {
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Subscription cancelled")),
+        );
+
+        await _loadPlans();
+
+      } else {
+
+        throw Exception(body["message"] ?? "Cancel failed");
+
+      }
+
+    } catch (e) {
+
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(e.toString())));
+
+    }
+
+  }
+
+  /// Poll the subscription status endpoint until the user becomes trial/active or timeout.
+  Future<bool> _waitForActivation({int maxAttempts = 8, Duration interval = const Duration(seconds: 2)}) async {
+    for (var i = 0; i < maxAttempts; i++) {
+      try {
+        await _loadPlans();
+        final user = _subscriptionStatus?['user'];
+        if (user is Map) {
+          final status = user['subscriptionStatus']?.toString();
+          final freeTrialCompleted = user['freeTrialCompleted'] == true;
+          if (status == 'active' || status == 'trial' || freeTrialCompleted) return true;
+        }
+      } catch (_) {}
+      await Future.delayed(interval);
+    }
+    return false;
+  }
+
+  Widget _planCard(Map<String, dynamic> plan) {
+
+    final id = (plan['_id'] ?? plan['id'] ?? '').toString();
+    final name = (plan['name'] ?? plan['label'] ?? 'Plan').toString();
+    final price = plan['price'] ?? plan['priceInr'] ?? 0;
+    final duration = plan['duration'] ?? plan['durationDays'] ?? 30;
+
+    final isCurrent = _activePlanId == id && _isActive;
+
+    final user = _subscriptionStatus?["user"];
+    final freeTrialCompleted = (user is Map && user["freeTrialCompleted"] == true);
+    final isFreePlan = id == 'free' || id == 'free'.toString();
+
+    final isFreeUsed = isFreePlan && freeTrialCompleted;
+
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 6,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            name,
+            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 8),
+          Text('Price : ₹$price'),
+          const SizedBox(height: 6),
+          Text('Duration : $duration days'),
+          const SizedBox(height: 12),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: isFreeUsed
+                ? ElevatedButton(
+                    onPressed: null,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.grey.shade200,
+                      elevation: 0,
+                      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    ),
+                    child: const Text('Free trial used', style: TextStyle(color: Colors.grey)),
+                  )
+                : ElevatedButton(
+                    onPressed: isCurrent ? () => _unsubscribe(id) : () => _subscribe(id),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: isCurrent ? Colors.amber : primaryGreen,
+                      elevation: 0,
+                      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    ),
+                    child: Text(
+                      isCurrent ? 'Unsubscribe' : 'Subscribe',
+                      style: TextStyle(color: isCurrent ? Colors.black : Colors.white),
+                    ),
+                  ),
+          ),
+        ],
+      ),
+    );
+
   }
 
   @override
   Widget build(BuildContext context) {
-    // Check if user is on free trial and already logged in (not first time)
-    final user = _status?['user'] as Map?;
-    final activePlanId = user?['activePlanId']?.toString();
-    final subscriptionStatus = user?['subscriptionStatus']?.toString();
-    final isFreeTrial = user?['freeTrialCompleted'] != true && activePlanId == 'free' && subscriptionStatus == 'active';
-    final isLoggedIn = UserSession.instance.isLoggedIn;
-    if (isLoggedIn && isFreeTrial && ModalRoute.of(context)?.isFirst != true) {
-      // If user is on free trial and this is not the first login, redirect to user profile page
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (_) => UserProfilesPage()),
-        );
-      });
-      return const SizedBox.shrink();
+    if (_loading) {
+      return const Scaffold(
+        backgroundColor: Color(0xFFF7F8FA),
+        body: Center(child: CircularProgressIndicator()),
+      );
     }
-    return Scaffold(
-      backgroundColor: const Color(0xFFF7F8FA),
-      appBar: AppBar(
-        title: const Text('Subscriptions'),
-        centerTitle: true,
-        backgroundColor: Colors.white,
-        foregroundColor: Colors.black,
-        elevation: 0,
-      ),
-      body: RefreshIndicator(
-        onRefresh: _load,
-        child: ListView(
-          padding: const EdgeInsets.all(16),
-          children: [
-            Container(
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: const Color(0xFFE6E8EC)),
-              ),
-              child: Row(
-                children: [
-                  Image.asset(
-                    'assets/images/time.png',
-                    width: 22,
-                    height: 22,
-                    color: primaryGreen,
-                    errorBuilder: (_, __, ___) => const SizedBox(width: 22, height: 22),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'Your subscription',
-                          style: TextStyle(fontWeight: FontWeight.bold),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          'Status: ${_prettyStatus()}${_isActive ? ' (active)' : ''}',
-                          style: const TextStyle(color: Colors.grey, fontSize: 13),
-                        ),
-                      ],
-                    ),
-                  ),
-                  TextButton(
-                    onPressed: _load,
-                    child: const Text('Refresh'),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 16),
 
-            if (_loading)
-              const Padding(
-                padding: EdgeInsets.only(top: 32),
-                child: Center(child: CircularProgressIndicator()),
-              )
-            else if (_error != null)
-              Padding(
-                padding: const EdgeInsets.only(top: 24),
-                child: Center(
-                  child: Text(
-                    _error!,
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(color: Colors.redAccent),
-                  ),
-                ),
-              )
-            else ...[
-              const Text(
-                'Choose a plan',
-                style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 10),
-              if (_plans.isEmpty)
-                const Text(
-                  'No plans configured. Ask admin to enable plans and set prices in Admin → Subscriptions.',
-                  style: TextStyle(color: Colors.grey, fontSize: 13),
-                )
-              else
-                ..._plans.where((p) {
-                  // Hide free trial if already completed
-                  final id = (p['id'] ?? '').toString();
-                  final isFree = (p['free'] == true || id == 'free');
-                  final user = _status?['user'] as Map?;
-                  final freeTrialCompleted = user?['freeTrialCompleted'] == true;
-                  if (isFree && freeTrialCompleted) return false;
-                  return true;
-                }).map((p) {
-                  final id = (p['id'] ?? '').toString();
-                  final label = (p['label'] ?? id).toString();
-                  final price = p['price'];
-                  final currency = (p['currency'] ?? 'INR').toString();
-                  final subtitle = (price != null && price.toString().isNotEmpty)
-                      ? '$label  •  $currency ${price.toString()}'
-                      : label;
-                  final isFree = (p['free'] == true || id == 'free');
-                  final user = _status?['user'] as Map?;
-                  final activePlanId = user?['activePlanId']?.toString();
-                  final subscriptionStatus = user?['subscriptionStatus']?.toString();
-                  final onFreeTrial = isFree && (activePlanId == id) && (subscriptionStatus == 'active');
-                  final freeTrialCompleted = user?['freeTrialCompleted'] == true;
-                  final isActive = (activePlanId == id) && (subscriptionStatus == 'active');
-                  return Container(
-                    margin: const EdgeInsets.only(bottom: 12),
-                    padding: const EdgeInsets.all(14),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: const Color(0xFFE6E8EC)),
-                    ),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            subtitle,
-                            style: const TextStyle(fontWeight: FontWeight.w600),
-                          ),
-                        ),
-                        if (isFree)
-                          ElevatedButton(
-                            onPressed: null, // Never allow unsubscribing from free trial
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: primaryGreen,
-                              elevation: 0,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                            ),
-                            child: Text(
-                              onFreeTrial ? 'Subscribed' : (freeTrialCompleted ? 'Completed' : 'Subscribe'),
-                              style: const TextStyle(color: Colors.white),
-                            ),
-                          )
-                        else
-                          ElevatedButton(
-                            onPressed: isActive ? () {/* TODO: implement unsubscribe logic */} : () => _subscribe(id),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: primaryGreen,
-                              elevation: 0,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                            ),
-                            child: Text(
-                              isActive ? 'Unsubscribe' : 'Subscribe',
-                              style: const TextStyle(color: Colors.white),
-                            ),
-                          ),
-                      ],
-                    ),
-                  );
-                }),
+    if (_error != null) {
+      return basePage(
+        context: context,
+        title: 'Subscription Plans',
+        child: Center(child: Text(_error!)),
+      );
+    }
 
-              const SizedBox(height: 12),
-              const Text(
-                'Note: after payment, subscription becomes active once the backend receives the Razorpay webhook.',
-                style: TextStyle(color: Colors.grey, fontSize: 12, height: 1.3),
-              ),
-            ],
-          ],
-        ),
+    final user = _subscriptionStatus?['user'];
+    final freeTrialCompleted = user is Map && user['freeTrialCompleted'] == true;
+
+    final displayPlans = _plans.where((p) {
+      final pid = (p['_id'] ?? p['id'] ?? '').toString();
+      if (freeTrialCompleted && pid == 'free') return false;
+      return true;
+    }).toList();
+
+    return basePage(
+      context: context,
+      title: 'Subscription Plans',
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final gap = 12.0;
+          final cardWidth = (constraints.maxWidth - gap) / 2;
+          return Wrap(
+            spacing: gap,
+            runSpacing: gap,
+            children: displayPlans
+                .map((p) => SizedBox(width: cardWidth, child: _planCard(p)))
+                .toList(),
+          );
+        },
       ),
     );
+
   }
+
 }

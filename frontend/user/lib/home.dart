@@ -82,21 +82,14 @@ class _HomePageState extends State<HomePage> {
     final dueAt = firstLoginAt.add(const Duration(days: 7));
     if (now.isBefore(dueAt)) return;
 
-    final prefs = await SharedPreferences.getInstance();
     final uid = session.userId;
     if (uid == null) return;
-
-    // Show at most once per day per user until they subscribe.
-    final lastShownMs = prefs.getInt('sub_prompt_last_shown_$uid');
-    if (lastShownMs != null) {
-      final lastShown = DateTime.fromMillisecondsSinceEpoch(lastShownMs);
-      if (now.difference(lastShown) < const Duration(hours: 24)) return;
-    }
 
     final active = await _isSubscriptionActive();
     if (active) return;
 
-    await prefs.setInt('sub_prompt_last_shown_$uid', now.millisecondsSinceEpoch);
+    // Previously we recorded the prompt show time to throttle it once per day.
+    // Removed throttle so the subscription prompt appears every app open after trial ends.
     if (!mounted) return;
 
     showDialog(

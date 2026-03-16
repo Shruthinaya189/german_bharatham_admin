@@ -127,6 +127,33 @@ exports.getMySubscription = async (req, res) => {
   });
 };
 
+// Return the authenticated user's payment/subscription history.
+exports.getPaymentHistory = async (req, res) => {
+  const items = await Subscription.find({ userId: req.user.id })
+    .sort({ createdAt: -1 })
+    .lean();
+
+  // Load plan metadata to include price/label where available
+  const planIds = Array.from(new Set(items.map((it) => it.planId).filter(Boolean)));
+  const plansMap = {};
+  if (planIds.length > 0) {
+    const planDocs = await Plan.find({ id: { $in: planIds } }).lean();
+    planDocs.forEach((p) => (plansMap[p.id] = p));
+  }
+
+  const out = items.map((it) => {
+    const plan = it.planId ? plansMap[it.planId] : null;
+    return {
+      date: it.createdAt ? it.createdAt.toISOString() : null,
+      plan: plan ? (plan.label || plan.id) : (it.planId || null),
+      amount: plan ? plan.priceInr : null,
+      status: it.status || null,
+    };
+  });
+
+  return res.status(200).json(out);
+};
+
 exports.createCheckoutSession = async (req, res) => {
   // Kept for backward compatibility with existing mobile/web clients.
   // Under the hood this now creates a Razorpay Payment Link and returns its short_url.
