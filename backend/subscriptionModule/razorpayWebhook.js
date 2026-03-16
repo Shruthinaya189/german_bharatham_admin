@@ -12,14 +12,19 @@ const safeJson = (value) => {
 };
 
 const verifyWebhookSignature = ({ rawBody, signature, secret }) => {
+  // Razorpay signs the payload using HMAC-SHA256 and encodes the signature in base64.
   const hmac = crypto.createHmac("sha256", secret);
   hmac.update(rawBody);
-  const expected = hmac.digest("hex");
+  const expected = hmac.digest("base64");
 
-  const a = Buffer.from(String(expected), "utf8");
-  const b = Buffer.from(String(signature), "utf8");
-  if (a.length !== b.length) return false;
-  return crypto.timingSafeEqual(a, b);
+  try {
+    const a = Buffer.from(String(expected), "base64");
+    const b = Buffer.from(String(signature), "base64");
+    if (a.length !== b.length) return false;
+    return crypto.timingSafeEqual(a, b);
+  } catch (err) {
+    return false;
+  }
 };
 
 const addDays = (date, days) => {

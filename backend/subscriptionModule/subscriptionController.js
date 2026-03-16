@@ -3,6 +3,7 @@ const User = require("../userModule/user/models/User");
 const Plan = require("./models/Plan");
 
 const axios = require("axios");
+const crypto = require("crypto");
 
 const toNumber = (v) => {
   const n = Number(v);
@@ -242,13 +243,128 @@ exports.createCheckoutSession = async (req, res) => {
   }
 };
 
+// Create a Razorpay Order for client-side checkout (used by native/mobile SDKs)
+exports.createRazorpayOrder = async (req, res) => {
+  try {
+    const { planId } = req.body || {};
+    const plan = await getPlanById(planId);
+    if (!plan || plan.active === false) return res.status(400).json({ message: "Invalid planId" });
+    if (!plan.priceInr || Number(plan.priceInr) <= 0) return res.status(400).json({ message: "Plan price not configured" });
+
+    const user = await User.findById(req.user.id).select("name email phone");
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    const api = razorpayApi();
+    const payload = {
+      amount: Math.round(Number(plan.priceInr) * 100),
+      currency: plan.currency || getDefaultCurrency(),
+      receipt: `sub_${String(req.user.id)}_${Date.now()}`,
+      notes: {
+        userId: String(req.user.id),
+        planId: String(plan.id),
+      },
+      payment_capture: 1,
+    };
+
+    const resp = await api.post("/orders", payload);
+    const order = resp && resp.data ? resp.data : null;
+    if (!order || !order.id) return res.status(500).json({ message: "Failed to create order" });
+
+    const { keyId } = getRazorpayKeys();
+    return res.status(200).json({
+      orderId: order.id,
+      amount: order.amount,
+      currency: order.currency,
+      keyId,
+    });
+  } catch (error) {
+    const status = error && error.response && error.response.status ? Number(error.response.status) : 500;
+    const details = error && error.response && error.response.data ? JSON.stringify(error.response.data) : null;
+    return res.status(status).json({ message: error.message || "Failed to create order", details });
+  }
+};
+
+// Verify payment (called by client after successful checkout) and activate subscription
+exports.verifyRazorpayPayment = async (req, res) => {
+  try {
+    const { razorpay_payment_id, razorpay_order_id, razorpay_signature, planId } = req.body || {};
+    if (!razorpay_payment_id || !razorpay_order_id || !razorpay_signature) {
+      return res.status(400).json({ message: "Missing payment verification parameters" });
+    }
+
+    // Verify signature (order_id|payment_id with secret) as per Razorpay docs
+    const { keySecret } = getRazorpayKeys();
+    const expected = crypto.createHmac("sha256", keySecret).update(`${razorpay_order_id}|${razorpay_payment_id}`).digest("hex");
+    if (String(expected) !== String(razorpay_signature)) {
+      return res.status(400).json({ message: "Signature verification failed" });
+    }
+
+    // At this point payment is verified. Activate subscription for the user.
+    const userId = String(req.user.id);
+    const plan = await getPlanById(planId);
+    if (!plan || plan.active === false) return res.status(400).json({ message: "Invalid planId" });
+
+    // compute period
+    const now = new Date();
+    const currentPeriodStart = now;
+    const currentPeriodEnd = new Date(now.getTime() + (Number(plan.durationDays || 30) * 24 * 60 * 60 * 1000));
+
+    await Subscription.findOneAndUpdate(
+      { userId, provider: "razorpay" },
+      {
+        $set: {
+          userId,
+          provider: "razorpay",
+          planId: plan.id,
+          status: "active",
+          currentPeriodStart,
+          currentPeriodEnd,
+          razorpayPaymentId: String(razorpay_payment_id),
+          metadata: { verifiedAt: new Date().toISOString(), via: "manual_verify" },
+        },
+      },
+      { upsert: true, new: true }
+    );
+
+    await User.findByIdAndUpdate(userId, {
+      subscriptionStatus: "active",
+      subscriptionPlan: plan.id,
+      subscriptionExpiresAt: currentPeriodEnd,
+    });
+
+    return res.status(200).json({ ok: true, message: "Subscription activated" });
+  } catch (err) {
+    const status = err && err.response && err.response.status ? Number(err.response.status) : 500;
+    return res.status(status).json({ message: err.message || "Verification failed" });
+  }
+};
+
 exports.listAllSubscriptions = async (_req, res) => {
   const items = await Subscription.find()
     .populate("userId", "email")
     .sort({ createdAt: -1 })
     .limit(500)
     .lean();
-  return res.status(200).json(items);
+
+  const out = items.map((it) => {
+    const user = it.userId || null;
+    return {
+      id: it._id,
+      userId: user && user._id ? String(user._id) : null,
+      userEmail: user && user.email ? String(user.email) : null,
+      provider: it.provider || null,
+      planId: it.planId || null,
+      status: it.status || null,
+      periodStart: it.currentPeriodStart ? new Date(it.currentPeriodStart).toISOString() : null,
+      periodEnd: it.currentPeriodEnd ? new Date(it.currentPeriodEnd).toISOString() : null,
+      razorpayPaymentLinkId: it.razorpayPaymentLinkId || null,
+      razorpayPaymentId: it.razorpayPaymentId || null,
+      createdAt: it.createdAt ? new Date(it.createdAt).toISOString() : null,
+      updatedAt: it.updatedAt ? new Date(it.updatedAt).toISOString() : null,
+    };
+  });
+
+  return res.status(200).json(out);
 };
 
 
@@ -343,3 +459,4 @@ exports.deletePlanAdmin = async (req, res) => {
   if (!plan) return res.status(404).json({ message: "Plan not found" });
   return res.status(200).json({ message: "Plan deleted" });
 };
+// (removed temporary force-activate helper)

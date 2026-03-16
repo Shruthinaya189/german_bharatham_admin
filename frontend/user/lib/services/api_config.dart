@@ -58,6 +58,8 @@ class ApiConfig {
   static String get subscriptionPlansEndpoint => '$baseUrl/api/subscriptions/user/plans';
   static String get subscriptionStatusEndpoint => '$baseUrl/api/subscriptions/user/status';
   static String get subscriptionCheckoutSessionEndpoint => '$baseUrl/api/subscriptions/user/checkout-session';
+  static String get subscriptionCreateOrderEndpoint => '$baseUrl/api/subscriptions/user/create-order';
+  static String get subscriptionVerifyEndpoint => '$baseUrl/api/subscriptions/user/verify-payment';
   
   /// Get full image URL from relative path
   static String getImageUrl(String? relativePath) {

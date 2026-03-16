@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:razorpay_flutter/razorpay_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../services/api_config.dart';
@@ -33,6 +34,68 @@ class _SubscriptionsPageState extends State<SubscriptionsPage> {
   void initState() {
     super.initState();
     _loadPlans();
+    _razorpay = Razorpay();
+    _razorpay.on(Razorpay.EVENT_PAYMENT_SUCCESS, _handlePaymentSuccess);
+    _razorpay.on(Razorpay.EVENT_PAYMENT_ERROR, _handlePaymentError);
+    _razorpay.on(Razorpay.EVENT_EXTERNAL_WALLET, _handleExternalWallet);
+  }
+
+  late Razorpay _razorpay;
+  String? _pendingPlanId;
+
+  @override
+  void dispose() {
+    try {
+      _razorpay.clear();
+    } catch (_) {}
+    super.dispose();
+  }
+
+  void _handlePaymentSuccess(PaymentSuccessResponse response) async {
+    final token = UserSession.instance.token;
+    if (token == null) return;
+
+    try {
+      final resp = await http.post(
+        Uri.parse(ApiConfig.subscriptionVerifyEndpoint),
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer $token"
+        },
+        body: jsonEncode({
+          "razorpay_payment_id": response.paymentId,
+          "razorpay_order_id": response.orderId,
+          "razorpay_signature": response.signature,
+          "planId": _pendingPlanId
+        }),
+      );
+
+      if (resp.statusCode == 200) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Payment verified — subscription activated")));
+        await _loadPlans();
+        if (!mounted) return;
+        final activated = await _waitForActivation();
+        if (activated && mounted && widget.autoNavigateOnActivation) {
+          Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const UserProfilesPage()));
+        }
+      } else {
+        final body = jsonDecode(resp.body);
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(body["message"] ?? "Verification failed")));
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+    } finally {
+      _pendingPlanId = null;
+    }
+  }
+
+  void _handlePaymentError(PaymentFailureResponse response) {
+    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Payment failed or cancelled")));
+    _pendingPlanId = null;
+  }
+
+  void _handleExternalWallet(ExternalWalletResponse response) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("External wallet: ${response.walletName}")));
   }
 
   Map<String, dynamic> _decode(String body) {
@@ -141,69 +204,63 @@ class _SubscriptionsPageState extends State<SubscriptionsPage> {
         return;
       }
 
+      // Use new client-driven flow: create an order and open native Razorpay checkout
       final response = await http.post(
-        Uri.parse(ApiConfig.subscriptionCheckoutSessionEndpoint),
+        Uri.parse(ApiConfig.subscriptionCreateOrderEndpoint),
         headers: {
           "Content-Type": "application/json",
           "Authorization": "Bearer $token"
         },
-        body: jsonEncode({
-          "planId": planId
-        }),
+        body: jsonEncode({"planId": planId}),
       );
 
       final body = _decode(response.body);
-
       if (response.statusCode != 200) {
         throw Exception(body["message"] ?? "Subscription failed");
       }
 
-      // Back-end returns { free: true } for free/trial plans (no checkout URL).
+      // Handle free/trial plans (backend may still return free:true)
       if (body["free"] == true) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(body["message"] ?? "Free plan activated")),
         );
         await _loadPlans();
-        // After free/trial activation navigate to user profiles.
         if (!mounted) return;
         final activated = await _waitForActivation();
         if (activated && mounted && widget.autoNavigateOnActivation) {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (_) => const UserProfilesPage()),
-          );
+          Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const UserProfilesPage()));
         }
         return;
       }
 
-      final url = body["url"];
-      if (url == null) {
-        throw Exception("Checkout URL missing");
+      final orderId = body["orderId"] ?? body["id"];
+      final amount = body["amount"];
+      final currency = body["currency"];
+      final keyId = body["keyId"];
+
+      if (orderId == null || keyId == null) {
+        throw Exception("Failed to create order");
       }
 
-      final uri = Uri.parse(url);
+      // Save pending plan so success handler can send it to backend
+      _pendingPlanId = planId;
 
-      final launched = await launchUrl(
-        uri,
-        mode: LaunchMode.externalApplication,
-      );
+      final options = {
+        'key': keyId,
+        'order_id': orderId,
+        'name': 'German Bharatham',
+        'description': planId,
+        'prefill': {
+          'contact': UserSession.instance.phone ?? '',
+          'email': UserSession.instance.email ?? ''
+        }
+      };
 
-      if (launched == false) {
-        throw Exception("Could not open checkout URL");
-      }
-
-      await Future.delayed(const Duration(seconds: 3));
-
-      await _loadPlans();
-
-      // Poll backend a few times to detect activation after external payment.
-      if (!mounted) return;
-      final activated = await _waitForActivation();
-      if (activated && mounted && widget.autoNavigateOnActivation) {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => const UserProfilesPage()),
-        );
+      try {
+        _razorpay.open(options);
+      } catch (e) {
+        _pendingPlanId = null;
+        rethrow;
       }
 
     } catch (e) {
@@ -288,10 +345,14 @@ class _SubscriptionsPageState extends State<SubscriptionsPage> {
     final price = plan['price'] ?? plan['priceInr'] ?? 0;
     final duration = plan['duration'] ?? plan['durationDays'] ?? 30;
 
-    final isCurrent = _activePlanId == id && _isActive;
-
     final user = _subscriptionStatus?["user"];
+    final status = (user is Map) ? user["subscriptionStatus"]?.toString() : null;
     final freeTrialCompleted = (user is Map && user["freeTrialCompleted"] == true);
+
+    // Treat both 'active' and 'trial' as current for the purposes of the UI so
+    // an already-activated free trial shows as current (and the button
+    // becomes Unsubscribe or disabled) instead of offering Subscribe again.
+    final isCurrent = _activePlanId == id && (status == 'active' || status == 'trial');
     final isFreePlan = id == 'free' || id == 'free'.toString();
 
     final isFreeUsed = isFreePlan && freeTrialCompleted;
