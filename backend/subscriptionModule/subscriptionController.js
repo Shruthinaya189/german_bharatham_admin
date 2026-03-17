@@ -149,6 +149,17 @@ exports.getMySubscription = async (req, res) => {
     }
   }
 
+  // If the stored subscription period has already passed, reflect that in
+  // the returned user object so clients show the correct UI. Do not throw
+  // here if DB is out-of-date; just adjust the in-memory response.
+  if (user && user.subscriptionExpiresAt && new Date(user.subscriptionExpiresAt) < new Date()) {
+    if (user.subscriptionStatus === 'active' || user.subscriptionStatus === 'trial') {
+      user.subscriptionStatus = 'none';
+      // Clear active plan so UI no longer treats it as current
+      user.subscriptionPlan = null;
+    }
+  }
+
   return res.status(200).json({
     user: user ? { ...user, freeTrialCompleted } : null,
     subscription: sub || null,

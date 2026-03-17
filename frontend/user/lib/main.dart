@@ -1503,17 +1503,8 @@ class _SplashScreenState extends State<SplashScreen> {
         SavedServiceManager.instance.switchUser(UserSession.instance.userId!),
         SavedGuidesManager.instance.switchUser(UserSession.instance.userId!),
       ]);
-      // Check subscription expiry and redirect if expired
-      final expired = await isSubscriptionExpired();
-      if (expired == true && mounted) {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (_) => const SubscriptionsPage(autoNavigateOnActivation: true),
-          ),
-        );
-        return;
-      }
+      // Do not auto-redirect to SubscriptionsPage on app start.
+      // The popup/banner flow will handle notifying the user after navigation.
     }
     if (mounted) {
       Navigator.pushReplacement(

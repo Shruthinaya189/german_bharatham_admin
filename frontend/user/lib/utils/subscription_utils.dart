@@ -1,10 +1,13 @@
 import 'dart:async';
+import 'dart:io';
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import '../services/api_config.dart';
 import '../user_session.dart';
 import '../profile_pages/subscriptions.dart';
+import '../home.dart';
 
 const int _kTrialWarningDays = 3; // show banner when trial ends within this many days
 
@@ -114,39 +117,50 @@ Future<void> checkSubscriptionAndNotify(BuildContext context, {int forceRedirect
         barrierDismissible: true,
         builder: (ctx) {
           return AlertDialog(
+            insetPadding: const EdgeInsets.symmetric(horizontal: 40.0, vertical: 24.0),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             title: const Text('Trial expired'),
             content: const Text('Trial expired – subscribe now'),
             actions: [
               TextButton(
                 onPressed: () {
+                  // Exit the app when user taps Exit
                   acted = true;
                   Navigator.of(ctx).pop();
-                  Navigator.of(context).push(MaterialPageRoute(builder: (_) => const SubscriptionsPage()));
+                  try {
+                    SystemNavigator.pop();
+                  } catch (_) {
+                    try {
+                      exit(0);
+                    } catch (_) {}
+                  }
                 },
-                child: const Text('Subscribe'),
+                child: const Text('Exit'),
               ),
-              TextButton(
+              ElevatedButton(
                 onPressed: () {
                   acted = true;
                   Navigator.of(ctx).pop();
+                  try {
+                    Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (_) => const SubscriptionsPage()));
+                  } catch (_) {
+                    Navigator.of(context).push(MaterialPageRoute(builder: (_) => const SubscriptionsPage()));
+                  }
                 },
-                child: const Text('Later'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: HomePage.primaryGreen,
+                  elevation: 0,
+                ),
+                child: const Text('Subscribe', style: TextStyle(color: Colors.white)),
               ),
             ],
           );
         },
       );
 
-      // If user ignored (didn't press Subscribe/Later), force redirect after timeout
-      if (!acted) {
-        Timer(Duration(seconds: forceRedirectAfterSeconds), () {
-          // If still in app, navigate to subscriptions page
-          final nav = Navigator.of(context);
-          try {
-            nav.pushAndRemoveUntil(MaterialPageRoute(builder: (_) => const SubscriptionsPage()), (route) => false);
-          } catch (_) {}
-        });
-      }
+      // If user ignored (didn't press Subscribe/Later), do not auto-redirect.
+      // Keep the modal dialog only; allow user to navigate to subscriptions
+      // manually by tapping Subscribe. This prevents unexpected page popups.
     }
   } catch (e) {
     // non-fatal

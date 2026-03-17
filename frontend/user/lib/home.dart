@@ -1,4 +1,6 @@
 import 'dart:convert';
+import 'dart:io';
+import 'package:flutter/services.dart';
 
 import 'package:flutter/material.dart';
 import 'saved.dart';
@@ -96,14 +98,23 @@ class _HomePageState extends State<HomePage> {
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: const Text('Subscription'),
-          content: const Text(
-            'Your 7-day access period is over. Subscribe to continue using all features.',
-          ),
-          actions: [
+          insetPadding: const EdgeInsets.symmetric(horizontal: 40.0, vertical: 24.0),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          title: const Text('Trial ended'),
+          content: const Text('Your trial has ended. Subscribe now to continue using all features.'),
+            actions: [
             TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Later'),
+              onPressed: () {
+                // Exit the app when user taps Exit
+                try {
+                  SystemNavigator.pop();
+                } catch (_) {
+                  try {
+                    exit(0);
+                  } catch (_) {}
+                }
+              },
+              child: const Text('Exit'),
             ),
             ElevatedButton(
               onPressed: () {
@@ -117,7 +128,7 @@ class _HomePageState extends State<HomePage> {
                 backgroundColor: HomePage.primaryGreen,
                 elevation: 0,
               ),
-              child: const Text('View Plans'),
+              child: const Text('Subscribe now'),
             ),
           ],
         );
