@@ -1,4 +1,6 @@
 import 'dart:convert';
+import 'dart:io';
+import 'package:flutter/services.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:url_launcher/url_launcher.dart';
@@ -265,7 +267,16 @@ class _SubscriptionsPageState extends State<SubscriptionsPage> {
       // Only navigate to profiles page when this SubscriptionsPage was opened
       // with autoNavigateOnActivation=true (e.g., from the location flow).
       if (activated && widget.autoNavigateOnActivation) {
-        Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const HomePage()));
+          Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const UserProfilesPage()));
+        } else if (widget.autoNavigateOnActivation) {
+          // If not activated and coming from popup, exit the app
+          try {
+            SystemNavigator.pop();
+          } catch (_) {
+            try {
+              exit(0);
+            } catch (_) {}
+          }
       }
 
     } catch (e) {
