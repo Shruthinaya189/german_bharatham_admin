@@ -143,13 +143,15 @@ class _HomePageState extends State<HomePage> {
       backgroundColor: const Color(0xFFF6F8FA),
 
       // 🔹 BODY
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          _header(),
-          const SizedBox(height: 16),
-          _promoCard(),
-          const SizedBox(height: 20),
+      body: SafeArea(
+        child: ListView(
+          padding: const EdgeInsets.all(16),
+          children: [
+            const SizedBox(height: 6),
+            _header(),
+            const SizedBox(height: 16),
+            _promoCard(),
+            const SizedBox(height: 20),
 
           const Text(
             "Category",
@@ -216,7 +218,8 @@ CategoryTile(
     );
   },
 ),
-        ],
+          ],
+        ),
       ),
 
       // 🔹 BOTTOM NAV

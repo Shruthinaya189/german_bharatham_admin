@@ -38,8 +38,6 @@ class _SubscriptionsPageState extends State<SubscriptionsPage> {
     _loadPlans();
   }
 
-  String? _pendingPlanId;
-
   @override
   void dispose() {
     super.dispose();
@@ -176,7 +174,7 @@ class _SubscriptionsPageState extends State<SubscriptionsPage> {
 
       // Local debug: log payload and response (remove before pushing)
       // ignore: avoid_print
-      print('[subscriptions] create-order payload: ' + payload.toString());
+      print('[subscriptions] create-order payload: $payload');
 
       // For web: use payment link / checkout session endpoint which returns a URL
       if (kIsWeb) {
@@ -215,7 +213,7 @@ class _SubscriptionsPageState extends State<SubscriptionsPage> {
       );
 
       // ignore: avoid_print
-      print('[subscriptions] create-order response: ' + response.body);
+      print('[subscriptions] create-order response: ${response.body}');
 
       final body = _decode(response.body);
       if (response.statusCode != 200) {
@@ -245,12 +243,9 @@ class _SubscriptionsPageState extends State<SubscriptionsPage> {
         throw Exception("Failed to create order");
       }
 
-      // Save pending plan so PaymentPage can verify
-      _pendingPlanId = planId;
-
       // Navigate to native payment page which will open Razorpay checkout
       if (!mounted) return;
-      final result = await Navigator.push<bool?>(
+      await Navigator.push<bool?>(
         context,
         MaterialPageRoute(
           builder: (_) => PaymentPage(

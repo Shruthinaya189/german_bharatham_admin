@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import Login from './components/Login';
 import Dashboard from './components/Dashboard';
@@ -19,12 +19,17 @@ import Layout from './components/Layout';
 import './App.css';
 
 function App() {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const initialAuth = useMemo(() => {
+    try {
+      return Boolean(localStorage.getItem('adminToken'));
+    } catch (_) {
+      return false;
+    }
+  }, []);
+
+  const [isAuthenticated, setIsAuthenticated] = useState(initialAuth);
 
   const handleLogin = () => {
-    // Ensure the admin always lands on the dashboard after login,
-    // even if the browser URL was previously on another protected route.
-    window.history.replaceState({}, '', '/dashboard');
     setIsAuthenticated(true);
   };
 

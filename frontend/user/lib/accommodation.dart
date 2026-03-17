@@ -258,7 +258,12 @@ class AccommodationPage extends StatefulWidget {
 }
 
 class _AccommodationPageState extends State<AccommodationPage> {
+  final TextEditingController _searchController = TextEditingController();
+
   List<Accommodation> accommodations = [];
+  // Base set after applying the filter sheet (or full list by default)
+  List<Accommodation> _filterBase = [];
+  // Final list after search is applied on top of _filterBase
   List<Accommodation> filteredAccommodations = [];
   bool isLoading = true;
   String searchQuery = '';
@@ -271,6 +276,12 @@ class _AccommodationPageState extends State<AccommodationPage> {
         fetchAccommodations();
       }
     });
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
   }
 
   Future<void> fetchAccommodations() async {
@@ -308,7 +319,8 @@ class _AccommodationPageState extends State<AccommodationPage> {
         }
         setState(() {
           accommodations = loaded;
-          filteredAccommodations = accommodations;
+          _filterBase = accommodations;
+          filteredAccommodations = _applySearchOnBase(_filterBase, searchQuery);
           isLoading = false;
         });
       } else {
@@ -332,26 +344,34 @@ class _AccommodationPageState extends State<AccommodationPage> {
     }
   }
 
+  List<Accommodation> _applySearchOnBase(List<Accommodation> base, String query) {
+    if (query.trim().isEmpty) return base;
+
+    final q = query.toLowerCase();
+    // Exact / direct matches first
+    final exact = base
+        .where((acc) =>
+            acc.title.toLowerCase().contains(q) ||
+            acc.location.toLowerCase().contains(q) ||
+            acc.description.toLowerCase().contains(q))
+        .toList();
+
+    // Similar: same property type as any exact match, not already in exact
+    final exactIds = exact.map((e) => e.id).toSet();
+    final exactTypes = exact.map((e) => e.propertyType.toLowerCase()).toSet();
+    final similar = base
+        .where((acc) =>
+            !exactIds.contains(acc.id) &&
+            exactTypes.any((t) => acc.propertyType.toLowerCase().contains(t)))
+        .toList();
+
+    return [...exact, ...similar];
+  }
+
   void searchAccommodations(String query) {
     setState(() {
       searchQuery = query;
-      if (query.isEmpty) {
-        filteredAccommodations = accommodations;
-      } else {
-        final q = query.toLowerCase();
-        // Exact / direct matches first
-        final exact = accommodations.where((acc) =>
-            acc.title.toLowerCase().contains(q) ||
-            acc.location.toLowerCase().contains(q) ||
-            acc.description.toLowerCase().contains(q)).toList();
-        // Similar: same property type as any exact match, not already in exact
-        final exactIds = exact.map((e) => e.id).toSet();
-        final exactTypes = exact.map((e) => e.propertyType.toLowerCase()).toSet();
-        final similar = accommodations.where((acc) =>
-            !exactIds.contains(acc.id) &&
-            exactTypes.any((t) => acc.propertyType.toLowerCase().contains(t))).toList();
-        filteredAccommodations = [...exact, ...similar];
-      }
+      filteredAccommodations = _applySearchOnBase(_filterBase, searchQuery);
     });
   }
 
@@ -382,6 +402,7 @@ class _AccommodationPageState extends State<AccommodationPage> {
               children: [
                 Expanded(
                   child: TextField(
+                    controller: _searchController,
                     onChanged: searchAccommodations,
                     decoration: InputDecoration(
                       hintText: "Search Accommodations",
@@ -413,7 +434,8 @@ class _AccommodationPageState extends State<AccommodationPage> {
     );
     if (result != null) {
       setState(() {
-        filteredAccommodations = result;
+        _filterBase = result;
+        filteredAccommodations = _applySearchOnBase(_filterBase, searchQuery);
       });
     }
   },
