@@ -1340,7 +1340,11 @@ class _LocationPermissionPageState extends State<LocationPermissionPage> {
           final user = statusJson['user'] as Map?;
           final freeTrialCompleted = user?['freeTrialCompleted'] == true;
           final status = user?['subscriptionStatus']?.toString();
-          final hasAnySubscription = (status == 'active' || status == 'trial') || freeTrialCompleted;
+          // Treat a subscription as present only when its status is explicitly
+          // 'active' or 'trial'. If the trial has completed (freeTrialCompleted)
+          // or expiry passed, the backend will report 'none' and we should
+          // direct the user to the SubscriptionsPage after location flow.
+          final hasAnySubscription = (status == 'active' || status == 'trial');
           if (hasAnySubscription) {
             Navigator.pushReplacement(
               context,
