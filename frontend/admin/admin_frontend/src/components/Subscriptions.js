@@ -319,10 +319,10 @@ const Subscriptions = () => {
           <thead>
             <tr>
               <th>USER (EMAIL)</th>
-              <th>STATUS</th>
               <th>PLAN</th>
-              <th>PERIOD END</th>
-              <th>PROVIDER</th>
+              <th>STATUS</th>
+              <th>START</th>
+              <th>EXPIRES</th>
             </tr>
           </thead>
           <tbody>
@@ -333,16 +333,14 @@ const Subscriptions = () => {
             ) : items.length === 0 ? (
               <tr><td colSpan={5} style={{ textAlign: 'center', padding: 24, color: '#6b7280' }}>No subscriptions found.</td></tr>
             ) : items.map((s) => (
-              <tr key={s._id}>
+              <tr key={s.id || s._id || s.userId}>
                 <td style={{ fontFamily: 'monospace', fontSize: 12 }}>
-                  {s.userId && typeof s.userId === 'object'
-                    ? (s.userId.email || s.userId._id)
-                    : s.userId}
+                  {s.userEmail || (s.userId && typeof s.userId === 'object' ? s.userId.email : s.userId) || '-'}
                 </td>
-                <td>{s.status}</td>
                 <td>{s.planId || '-'}</td>
-                <td>{s.currentPeriodEnd ? new Date(s.currentPeriodEnd).toLocaleString() : '-'}</td>
-                <td>{s.provider}</td>
+                <td>{s.status || '-'}</td>
+                <td>{s.periodStart ? new Date(s.periodStart).toLocaleString() : '-'}</td>
+                <td>{s.periodEnd ? new Date(s.periodEnd).toLocaleString() : '-'}</td>
               </tr>
             ))}
           </tbody>

@@ -48,6 +48,7 @@ const userSchema = new mongoose.Schema(
     },
     subscriptionPlan: { type: String, default: null },
     subscriptionExpiresAt: { type: Date, default: null },
+    subscriptionStartedAt: { type: Date, default: null },
 
     // Login tracking (used for 7-day subscription prompt)
     firstLoginAt: { type: Date, default: null },

@@ -2,7 +2,6 @@ import 'package:flutter/foundation.dart' show kReleaseMode;
 
 class ApiConfig {
     static String get paymentHistoryEndpoint => '$baseUrl/api/subscriptions/user/payment-history';
-    static String get subscriptionCancelEndpoint => '$baseUrl/api/subscriptions/user/cancel';
   // Production backend (Render)
   static const String _prodBaseUrl = 'https://german-bharatham-backend.onrender.com';
 

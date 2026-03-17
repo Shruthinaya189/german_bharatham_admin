@@ -99,6 +99,7 @@ const activate = async ({ userId, planId, providerIds, eventType }) => {
     subscriptionStatus: "active",
     subscriptionPlan: plan.id,
     subscriptionExpiresAt: currentPeriodEnd,
+    subscriptionStartedAt: currentPeriodStart,
   });
 
   return { ok: true };

@@ -198,10 +198,36 @@ exports.createCheckoutSession = async (req, res) => {
       // Activate free plan for user
       const now = new Date();
       const expiresAt = new Date(now.getTime() + (plan.durationDays || 7) * 24 * 60 * 60 * 1000);
+      const currentPeriodStart = now;
+      const currentPeriodEnd = expiresAt;
+
+      // Upsert a Subscription document so admin and history have a record
+      try {
+        await Subscription.findOneAndUpdate(
+          { userId: req.user.id, provider: "razorpay", razorpayPaymentLinkId: null },
+          {
+            $set: {
+              userId: req.user.id,
+              provider: "razorpay",
+              planId: plan.id,
+              status: "active",
+              currentPeriodStart,
+              currentPeriodEnd,
+              metadata: { createdBy: "free_activation" },
+            },
+          },
+          { upsert: true, new: true }
+        );
+      } catch (e) {
+        // non-fatal
+        console.warn('Failed to upsert free Subscription', e && e.message ? e.message : e);
+      }
+
       await User.findByIdAndUpdate(req.user.id, {
         subscriptionStatus: "trial",
         subscriptionPlan: plan.id,
         subscriptionExpiresAt: expiresAt,
+        subscriptionStartedAt: currentPeriodStart,
       });
       return res.status(200).json({ message: "Free plan activated", free: true });
     }
@@ -286,11 +312,36 @@ exports.createRazorpayOrder = async (req, res) => {
     if (Number(effectivePrice) === 0) {
       const now = new Date();
       const expiresAt = new Date(now.getTime() + (plan.durationDays || 7) * 24 * 60 * 60 * 1000);
+      const currentPeriodStart = now;
+      const currentPeriodEnd = expiresAt;
+
+      try {
+        await Subscription.findOneAndUpdate(
+          { userId: req.user.id, provider: "razorpay", razorpayPaymentLinkId: null },
+          {
+            $set: {
+              userId: req.user.id,
+              provider: "razorpay",
+              planId: plan.id,
+              status: "active",
+              currentPeriodStart,
+              currentPeriodEnd,
+              metadata: { createdBy: "free_activation" },
+            },
+          },
+          { upsert: true, new: true }
+        );
+      } catch (e) {
+        console.error('Failed to upsert free Subscription', e && e.message ? e.message : e);
+      }
+
       await User.findByIdAndUpdate(req.user.id, {
         subscriptionStatus: "trial",
         subscriptionPlan: plan.id,
         subscriptionExpiresAt: expiresAt,
+        subscriptionStartedAt: currentPeriodStart,
       });
+
       return res.status(200).json({ message: "Free plan activated", free: true });
     }
 
@@ -395,65 +446,26 @@ exports.verifyRazorpayPayment = async (req, res) => {
       { upsert: true, new: true }
     );
 
-    await User.findByIdAndUpdate(userId, {
+    // Read back the subscription we just upserted
+    const subDoc = await Subscription.findOne({ userId, provider: "razorpay" }).sort({ createdAt: -1 }).lean();
+
+    const userUpdate = {
       subscriptionStatus: "active",
       subscriptionPlan: plan.id,
       subscriptionExpiresAt: currentPeriodEnd,
-    });
+      subscriptionStartedAt: currentPeriodStart,
+    };
 
-    return res.status(200).json({ ok: true, message: "Subscription activated" });
+    await User.findByIdAndUpdate(userId, userUpdate);
+
+    return res.status(200).json({ ok: true, message: "Subscription activated", subscription: subDoc, user: userUpdate });
   } catch (err) {
     const status = err && err.response && err.response.status ? Number(err.response.status) : 500;
     return res.status(status).json({ message: err.message || "Verification failed" });
   }
 };
 
-// Cancel / unsubscribe for the authenticated user
-exports.cancelSubscription = async (req, res) => {
-  try {
-    const userId = String(req.user.id);
-    // Find the most recent subscription for the user
-    const sub = await Subscription.findOne({ userId }).sort({ createdAt: -1 });
-    if (!sub) return res.status(404).json({ message: "No subscription found" });
-
-    // If already canceled, return success
-    if (sub.status === 'canceled') return res.status(200).json({ message: "Subscription already cancelled" });
-
-    // If this subscription has an associated Razorpay subscription id, attempt to cancel it there as well
-    const razorpaySubId = sub.metadata && sub.metadata.razorpaySubscriptionId ? String(sub.metadata.razorpaySubscriptionId) : null;
-    if (razorpaySubId) {
-      try {
-        const api = razorpayApi();
-        // Razorpay cancel endpoint: POST /subscriptions/{id}/cancel
-        await api.post(`/subscriptions/${razorpaySubId}/cancel`);
-      } catch (e) {
-        console.warn("Failed to cancel Razorpay subscription", e && e.response && e.response.data ? e.response.data : e.message || e);
-        // continue — we still mark local subscription as canceled
-      }
-    }
-
-    sub.status = 'canceled';
-    sub.metadata = sub.metadata || {};
-    sub.metadata.cancelRequestedAt = new Date().toISOString();
-    await sub.save();
-
-    // Do not immediately remove user's access; they keep access until currentPeriodEnd.
-    // Keep user's subscriptionStatus as 'active' so UI still treats it as current.
-    try {
-      // Mark user's top-level subscription status as cancelled while preserving
-      // `subscriptionExpiresAt` so they retain access until current period ends.
-      await User.findByIdAndUpdate(userId, { subscriptionStatus: 'cancelled' });
-    } catch (e) {
-      // non-fatal
-      console.warn('Failed to update User.subscriptionStatus during cancel', e && e.message ? e.message : e);
-    }
-
-    return res.status(200).json({ message: "Subscription cancelled. You will retain access until the current period ends." });
-  } catch (err) {
-    console.error('cancelSubscription error', err && err.message ? err.message : err);
-    return res.status(500).json({ message: "Failed to cancel subscription" });
-  }
-};
+// (cancelSubscription removed)
 
 exports.listAllSubscriptions = async (_req, res) => {
   const items = await Subscription.find()

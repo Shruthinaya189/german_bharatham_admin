@@ -1505,7 +1505,7 @@ class _SplashScreenState extends State<SplashScreen> {
       ]);
       // Check subscription expiry and redirect if expired
       final expired = await isSubscriptionExpired();
-        if (expired == true && mounted) {
+      if (expired == true && mounted) {
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
@@ -1524,6 +1524,11 @@ class _SplashScreenState extends State<SplashScreen> {
               : const WelcomeScreen(),
         ),
       );
+      // After navigating to main UI, show subscription banner/popup if needed.
+      Future.delayed(const Duration(milliseconds: 400), () {
+        final ctx = rootNavigatorKey.currentState?.context;
+        if (ctx != null) checkSubscriptionAndNotify(ctx);
+      });
     }
   }
 

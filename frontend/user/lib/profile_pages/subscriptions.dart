@@ -282,54 +282,7 @@ class _SubscriptionsPageState extends State<SubscriptionsPage> {
 
   }
 
-  Future<void> _unsubscribe(String planId) async {
-
-    try {
-
-      final token = UserSession.instance.token;
-
-      if (token == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Not logged in")),
-        );
-        return;
-      }
-
-      final response = await http.post(
-        Uri.parse(ApiConfig.subscriptionCancelEndpoint),
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": "Bearer $token"
-        },
-        body: jsonEncode({
-          "planId": planId
-        }),
-      );
-
-      final body = _decode(response.body);
-
-      if (response.statusCode == 200) {
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Subscription cancelled")),
-        );
-
-        await _loadPlans();
-
-      } else {
-
-        throw Exception(body["message"] ?? "Cancel failed");
-
-      }
-
-    } catch (e) {
-
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(e.toString())));
-
-    }
-
-  }
+  // Unsubscribe functionality removed: users cannot cancel subscriptions from the app.
 
   /// Poll the subscription status endpoint until the user becomes trial/active or timeout.
   Future<bool> _waitForActivation({int maxAttempts = 8, Duration interval = const Duration(seconds: 2)}) async {
@@ -408,15 +361,15 @@ class _SubscriptionsPageState extends State<SubscriptionsPage> {
                     child: const Text('Free trial used', style: TextStyle(color: Colors.grey)),
                   )
                 : ElevatedButton(
-                    onPressed: isCurrent ? () => _unsubscribe(id) : () => _subscribe(id),
+                    onPressed: isCurrent ? null : () => _subscribe(id),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: isCurrent ? Colors.amber : primaryGreen,
+                      backgroundColor: isCurrent ? Colors.grey : primaryGreen,
                       elevation: 0,
                       padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                     ),
                     child: Text(
-                      isCurrent ? 'Unsubscribe' : 'Subscribe',
+                      isCurrent ? 'Subscribed' : 'Subscribe',
                       style: TextStyle(color: isCurrent ? Colors.black : Colors.white),
                     ),
                   ),
