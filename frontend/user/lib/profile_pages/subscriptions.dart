@@ -231,6 +231,8 @@ class _SubscriptionsPageState extends State<SubscriptionsPage> {
         if (!mounted) return;
         final activated = await _waitForActivation();
         if (activated && mounted && widget.autoNavigateOnActivation) {
+          Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const UserProfilesPage()));
+        } else if (activated && mounted) {
           Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const HomePage()));
         }
         return;
@@ -314,17 +316,17 @@ class _SubscriptionsPageState extends State<SubscriptionsPage> {
     final price = plan['price'] ?? plan['priceInr'] ?? 0;
     final duration = plan['duration'] ?? plan['durationDays'] ?? 30;
 
-    final user = _subscriptionStatus?["user"];
-    final status = (user is Map) ? user["subscriptionStatus"]?.toString() : null;
-    final freeTrialCompleted = (user is Map && user["freeTrialCompleted"] == true);
+    final user = _subscriptionStatus?['user'];
+    final status = (user is Map) ? user['subscriptionStatus']?.toString() : null;
+    final freeTrialCompleted = (user is Map && user['freeTrialCompleted'] == true);
 
-    // Treat both 'active' and 'trial' as current for the purposes of the UI so
-    // an already-activated free trial shows as current (and the button
-    // becomes Unsubscribe or disabled) instead of offering Subscribe again.
     final isCurrent = _activePlanId == id && (status == 'active' || status == 'trial');
     final isFreePlan = id == 'free' || id == 'free'.toString();
 
-    final isFreeUsed = isFreePlan && freeTrialCompleted;
+    // HIDE the free trial plan if freeTrialCompleted is true (already used or not eligible)
+    if (isFreePlan && freeTrialCompleted) {
+      return const SizedBox.shrink();
+    }
 
     return Container(
       width: double.infinity,
@@ -355,30 +357,19 @@ class _SubscriptionsPageState extends State<SubscriptionsPage> {
           const SizedBox(height: 12),
           Align(
             alignment: Alignment.centerLeft,
-            child: isFreeUsed
-                ? ElevatedButton(
-                    onPressed: null,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.grey.shade200,
-                      elevation: 0,
-                      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                    ),
-                    child: const Text('Free trial used', style: TextStyle(color: Colors.grey)),
-                  )
-                : ElevatedButton(
-                    onPressed: isCurrent ? null : () => _subscribe(id),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: isCurrent ? Colors.grey : primaryGreen,
-                      elevation: 0,
-                      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                    ),
-                    child: Text(
-                      isCurrent ? 'Subscribed' : 'Subscribe',
-                      style: TextStyle(color: isCurrent ? Colors.black : Colors.white),
-                    ),
-                  ),
+            child: ElevatedButton(
+              onPressed: isCurrent ? null : () => _subscribe(id),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: isCurrent ? Colors.grey : primaryGreen,
+                elevation: 0,
+                padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              ),
+              child: Text(
+                isCurrent ? 'Subscribed' : 'Subscribe',
+                style: TextStyle(color: isCurrent ? Colors.black : Colors.white),
+              ),
+            ),
           ),
         ],
       ),
@@ -412,7 +403,7 @@ class _SubscriptionsPageState extends State<SubscriptionsPage> {
       return true;
     }).toList();
 
-    return basePage(
+    final content = basePage(
       context: context,
       title: 'Subscription Plans',
       child: LayoutBuilder(
@@ -428,6 +419,31 @@ class _SubscriptionsPageState extends State<SubscriptionsPage> {
           );
         },
       ),
+    );
+
+    if (!widget.autoNavigateOnActivation) return content;
+
+    return WillPopScope(
+      onWillPop: () async {
+        // If subscription became active, navigate to profiles page.
+        if (_isActive) {
+          try {
+            Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const UserProfilesPage()));
+          } catch (_) {}
+          return false;
+        }
+
+        // Not active — exit the app as per desired behaviour.
+        try {
+          SystemNavigator.pop();
+        } catch (_) {
+          try {
+            exit(0);
+          } catch (_) {}
+        }
+        return false;
+      },
+      child: content,
     );
 
   }

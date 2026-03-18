@@ -78,6 +78,15 @@ const getPlanById = async (planId) => {
   return null;
 };
 
+const normalizePhoneDigits = (phone) => {
+  if (!phone) return "";
+  try {
+    return String(phone).replace(/\D/g, "");
+  } catch (_) {
+    return "";
+  }
+};
+
 const getRazorpayKeys = () => {
   const keyId = String(process.env.RAZORPAY_KEY_ID || "").trim();
   const keySecret = String(process.env.RAZORPAY_KEY_SECRET || "").trim();
@@ -133,18 +142,35 @@ exports.getMySubscription = async (req, res) => {
     user.subscriptionExpiresAt = null;
   }
 
-  // Determine if free trial is completed
+
+  // Determine if free trial is completed or not eligible (phone reused)
   let freeTrialCompleted = false;
   if (user) {
+    // Check if this phone number is unique (first user with this phone)
+    const userDoc = await User.findById(req.user.id).select("phone createdAt");
+    if (userDoc && userDoc.phone) {
+      const phoneDigits = normalizePhoneDigits(userDoc.phone);
+      const firstUserWithPhone = await User.find({
+        $or: [
+          { phone: String(userDoc.phone) },
+          { phone: phoneDigits },
+          { phone: `+${phoneDigits}` },
+          { phone: new RegExp(`${phoneDigits}$`) },
+        ],
+      })
+        .sort({ createdAt: 1 })
+        .limit(1);
+      if (!firstUserWithPhone.length || String(firstUserWithPhone[0]._id) !== String(req.user.id)) {
+        // Not the first signup with this phone, so free trial is completed/blocked
+        freeTrialCompleted = true;
+      }
+    }
+    // Also, if user already used or expired their free trial, mark as completed
     if (user.subscriptionPlan === "free") {
-      // If free plan and expired
       if (user.subscriptionExpiresAt && new Date(user.subscriptionExpiresAt) < new Date()) {
         freeTrialCompleted = true;
       }
     } else if (user.subscriptionPlan) {
-      // If not on free plan, check if user ever had free plan and it expired
-      // Optionally, you can check subscription history if needed
-      // For now, if not on free plan, assume free trial completed
       freeTrialCompleted = true;
     }
   }
@@ -206,17 +232,26 @@ exports.createCheckoutSession = async (req, res) => {
 
     // Handle free plan (price 0) directly
     if (Number(effectivePrice) === 0) {
-      // Only allow free trial for first user with this phone number
-      const user = await User.findById(req.user.id).select("phone");
-      if (!user || !user.phone) {
-        return res.status(400).json({ message: "Phone number required for free trial" });
-      }
-      // Find the first user with this phone
-      const firstUserWithPhone = await User.find({ phone: user.phone }).sort({ createdAt: 1 }).limit(1);
-      if (!firstUserWithPhone.length || String(firstUserWithPhone[0]._id) !== String(req.user.id)) {
-        // Not the first signup with this phone
-        return res.status(403).json({ message: "Free trial already used for this phone number" });
-      }
+        // Only allow free trial for first user with this phone number (robust matching)
+        const user = await User.findById(req.user.id).select("phone");
+        if (!user || !user.phone) {
+          return res.status(400).json({ message: "Phone number required for free trial" });
+        }
+        const phoneDigits = normalizePhoneDigits(user.phone);
+        const firstUserWithPhone = await User.find({
+          $or: [
+            { phone: String(user.phone) },
+            { phone: phoneDigits },
+            { phone: `+${phoneDigits}` },
+            { phone: new RegExp(`${phoneDigits}$`) },
+          ],
+        })
+          .sort({ createdAt: 1 })
+          .limit(1);
+        if (!firstUserWithPhone.length || String(firstUserWithPhone[0]._id) !== String(req.user.id)) {
+          // Not the first signup with this phone
+          return res.status(403).json({ message: "Free trial already used for this phone number" });
+        }
 
       // Activate free plan for user
       const now = new Date();
