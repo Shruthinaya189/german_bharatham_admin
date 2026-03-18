@@ -121,7 +121,7 @@ class _HomePageState extends State<HomePage> {
                 Navigator.pop(context);
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (_) => const SubscriptionsPage()),
+                  MaterialPageRoute(builder: (_) => const SubscriptionsPage(autoNavigateOnActivation: true)),
                 );
               },
               style: ElevatedButton.styleFrom(
