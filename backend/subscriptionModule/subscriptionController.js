@@ -206,6 +206,18 @@ exports.createCheckoutSession = async (req, res) => {
 
     // Handle free plan (price 0) directly
     if (Number(effectivePrice) === 0) {
+      // Only allow free trial for first user with this phone number
+      const user = await User.findById(req.user.id).select("phone");
+      if (!user || !user.phone) {
+        return res.status(400).json({ message: "Phone number required for free trial" });
+      }
+      // Find the first user with this phone
+      const firstUserWithPhone = await User.find({ phone: user.phone }).sort({ createdAt: 1 }).limit(1);
+      if (!firstUserWithPhone.length || String(firstUserWithPhone[0]._id) !== String(req.user.id)) {
+        // Not the first signup with this phone
+        return res.status(403).json({ message: "Free trial already used for this phone number" });
+      }
+
       // Activate free plan for user
       const now = new Date();
       const expiresAt = new Date(now.getTime() + (plan.durationDays || 7) * 24 * 60 * 60 * 1000);
