@@ -11,6 +11,7 @@ import '../services/api_config.dart';
 import '../user_session.dart';
 import 'ui_common.dart';
 import '../user_profiles_page.dart';
+import '../profile.dart';
 import '../home.dart';
 
 class SubscriptionsPage extends StatefulWidget {
@@ -426,12 +427,16 @@ class _SubscriptionsPageState extends State<SubscriptionsPage> {
     return WillPopScope(
       onWillPop: () async {
         // If subscription became active, navigate to profiles page.
-        if (_isActive) {
-          try {
-            Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const UserProfilesPage()));
-          } catch (_) {}
-          return false;
-        }
+        final user = _subscriptionStatus?['user'];
+final status = user is Map ? user['subscriptionStatus']?.toString() : null;
+
+if (status == 'active' || status == 'trial') {
+  Navigator.pushReplacement(
+    context,
+    MaterialPageRoute(builder: (_) => const ProfilePage()),
+  );
+  return false;
+}
 
         // Not active — exit the app as per desired behaviour.
         try {

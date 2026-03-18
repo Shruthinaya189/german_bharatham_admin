@@ -8,7 +8,7 @@ import '../models/service_model.dart';
 import '../models/rating_model.dart';
 
 class ApiService {
-  static String get baseUrl => ApiConfig.baseUrl;
+  static String get baseUrl => 'https://german-bharatham-backend.onrender.com';
 
   static const Duration _defaultTimeout = Duration(seconds: 60);
   static const int _defaultRetries = 1;

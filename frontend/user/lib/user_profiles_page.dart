@@ -99,7 +99,7 @@ class _UserProfilesPageState extends State<UserProfilesPage>
 
     try {
       final response = await http.get(
-        Uri.parse('${ApiConfig.baseUrl}/api/user/public-users'),
+        Uri.parse('https://german-bharatham-backend.onrender.com/api/user/public-users'),
       );
 
       if (response.statusCode == 200) {
@@ -174,7 +174,7 @@ class _UserProfilesPageState extends State<UserProfilesPage>
       if (token == null || token.trim().isEmpty) return;
 
       await http.post(
-        Uri.parse('${ApiConfig.baseUrl}/api/user/notifications/like'),
+        Uri.parse('https://german-bharatham-backend.onrender.com/api/user/notifications/like'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
