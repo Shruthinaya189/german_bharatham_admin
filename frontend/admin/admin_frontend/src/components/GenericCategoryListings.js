@@ -300,12 +300,21 @@ const GenericCategoryListings = ({ category, apiBase, icon, viewFields }) => {
   const [statusFilter, setStatusFilter] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
 
+  const handleUnauthorized = () => {
+    localStorage.removeItem('adminToken');
+    window.location.reload();
+  };
+
   const fetchItems = useCallback(async () => {
     setLoading(true);
     try {
       const token = localStorage.getItem('adminToken');
       const url = statusFilter ? `${apiBase}?status=${statusFilter}` : apiBase;
       const res = await fetch(url, { headers: { 'Authorization': `Bearer ${token}` } });
+      if (res.status === 401 || res.status === 403) {
+        handleUnauthorized();
+        return;
+      }
       if (res.ok) { const d = await res.json(); setItems(d.data || []); }
     } catch (e) { console.error(e); }
     finally { setLoading(false); }

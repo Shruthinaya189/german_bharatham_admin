@@ -34,4 +34,4 @@ const jobSchema = new mongoose.Schema(
 );
 
 // Collection name: jobs
-module.exports = mongoose.model("Job", jobSchema);
+module.exports = mongoose.models.Job || mongoose.model("Job", jobSchema);

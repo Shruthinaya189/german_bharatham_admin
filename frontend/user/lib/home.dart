@@ -53,13 +53,15 @@ class _HomePageState extends State<HomePage> {
     final token = UserSession.instance.token;
     if (token == null) return false;
     try {
-      final res = await http.get(
-        Uri.parse(ApiConfig.subscriptionStatusEndpoint),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token',
-        },
-      ).timeout(const Duration(seconds: 12));
+      final res = await http
+          .get(
+            Uri.parse(ApiConfig.subscriptionStatusEndpoint),
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer $token',
+            },
+          )
+          .timeout(const Duration(seconds: 12));
 
       if (res.statusCode != 200) return false;
       final json = jsonDecode(res.body);
@@ -98,11 +100,18 @@ class _HomePageState extends State<HomePage> {
       context: context,
       builder: (context) {
         return AlertDialog(
-          insetPadding: const EdgeInsets.symmetric(horizontal: 40.0, vertical: 24.0),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          insetPadding: const EdgeInsets.symmetric(
+            horizontal: 40.0,
+            vertical: 24.0,
+          ),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
           title: const Text('Trial ended'),
-          content: const Text('Your trial has ended. Subscribe now to continue using all features.'),
-            actions: [
+          content: const Text(
+            'Your trial has ended. Subscribe now to continue using all features.',
+          ),
+          actions: [
             TextButton(
               onPressed: () {
                 // Exit the app when user taps Exit
@@ -121,7 +130,10 @@ class _HomePageState extends State<HomePage> {
                 Navigator.pop(context);
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (_) => const SubscriptionsPage(autoNavigateOnActivation: true)),
+                  MaterialPageRoute(
+                    builder: (_) =>
+                        const SubscriptionsPage(autoNavigateOnActivation: true),
+                  ),
                 );
               },
               style: ElevatedButton.styleFrom(
@@ -164,71 +176,71 @@ class _HomePageState extends State<HomePage> {
             _promoCard(),
             const SizedBox(height: 20),
 
-          const Text(
-            "Category",
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 12),
+            const Text(
+              "Category",
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 12),
 
-          CategoryTile(
-  imagePath: 'assets/images/accommodation.png',
-  title: "Accommodation",
-  subtitle: "Rooms & apartments for rent",
-  onTap: () {
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (_) => const AccommodationPage()),
-    );
-  },
-),
+            CategoryTile(
+              imagePath: 'assets/images/accommodation.png',
+              title: "Accommodation",
+              subtitle: "Rooms & apartments for rent",
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const AccommodationPage()),
+                );
+              },
+            ),
 
-CategoryTile(
-  imagePath: 'assets/images/grocery-store.png',
-  title: "Food & Grocery",
-  subtitle: "Indian groceries & restaurants",
-  onTap: () {
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (_) => const FoodGroceryPage()),
-    );
-  },
-),
+            CategoryTile(
+              imagePath: 'assets/images/grocery-store.png',
+              title: "Food & Grocery",
+              subtitle: "Indian groceries & restaurants",
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const FoodGroceryPage()),
+                );
+              },
+            ),
 
-CategoryTile(
-  imagePath: 'assets/images/job-search.png',
-  title: "Jobs",
-  subtitle: "Part-time & full-time jobs",
-  onTap: () {
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (_) => const JobsPage()),
-    );
-  },
-),
+            CategoryTile(
+              imagePath: 'assets/images/job-search.png',
+              title: "Jobs",
+              subtitle: "Part-time & full-time jobs",
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const JobsPage()),
+                );
+              },
+            ),
 
-CategoryTile(
-  imagePath: 'assets/images/shift.png',
-  title: "Services",
-  subtitle: "Relocation & documentation help",
-  onTap: () {
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (_) => const ServicesPage()),
-    );
-  },
-),
+            CategoryTile(
+              imagePath: 'assets/images/shift.png',
+              title: "Services",
+              subtitle: "Relocation & documentation help",
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const ServicesPage()),
+                );
+              },
+            ),
 
-CategoryTile(
-  imagePath: 'assets/images/handshake.png',
-  title: "Community",
-  subtitle: "Support & guides for Indians",
-  onTap: () {
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (_) => const CommunityPage()),
-    );
-  },
-),
+            CategoryTile(
+              imagePath: 'assets/images/handshake.png',
+              title: "Community",
+              subtitle: "Support & guides for Indians",
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const CommunityPage()),
+                );
+              },
+            ),
           ],
         ),
       ),
@@ -247,15 +259,12 @@ CategoryTile(
               context,
               MaterialPageRoute(builder: (_) => const SavedPage()),
             );
-          }
-          else if (index == 1) {
+          } else if (index == 1) {
             Navigator.pushReplacement(
               context,
-              MaterialPageRoute(
-                  builder: (_) => const SearchPage()),
+              MaterialPageRoute(builder: (_) => const SearchPage()),
             );
-          }
-          else if (index == 2) {
+          } else if (index == 2) {
             Navigator.pushReplacement(
               context,
               MaterialPageRoute(builder: (_) => const UserProfilesPage()),
@@ -342,86 +351,88 @@ CategoryTile(
   }
 
   // 🔹 HEADER
- // 🔹 HEADER
-Widget _header() {
-  final session = UserSession.instance;
-  final displayName = (session.name ?? '').trim().isEmpty
-      ? 'User'
-      : session.name!.trim();
+  // 🔹 HEADER
+  Widget _header() {
+    final session = UserSession.instance;
+    final displayName = (session.name ?? '').trim().isEmpty
+        ? 'User'
+        : session.name!.trim();
 
-  return Row(
-    children: [
-      CircleAvatar(
-        radius: 22,
-        backgroundImage: _avatarProvider(session.photoBase64),
-      ),
-      const SizedBox(width: 12),
-
-      Expanded(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              "Welcome back",
-              style: TextStyle(fontSize: 14, color: Colors.grey),
-            ),
-            Text(
-              displayName,
-              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-          ],
+    return Row(
+      children: [
+        CircleAvatar(
+          radius: 22,
+          backgroundImage: _avatarProvider(session.photoBase64),
         ),
-      ),
+        const SizedBox(width: 12),
 
-      // 🔔 Bell icon in header (NO AppBar)
-      ValueListenableBuilder<int>(
-        valueListenable: NotificationManager.instance.unreadCount,
-        builder: (context, unread, _) {
-          return IconButton(
-            icon: Stack(
-              clipBehavior: Clip.none,
-              children: [
-                Image.asset(
-                  'assets/images/bell.png',
-                  width: 22,
-                  height: 22,
-                  color: HomePage.primaryGreen,
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                "Welcome back",
+                style: TextStyle(fontSize: 14, color: Colors.grey),
+              ),
+              Text(
+                displayName,
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
                 ),
-                if (unread > 0)
-                  Positioned(
-                    right: -1,
-                    top: -1,
-                    child: Container(
-                      width: 9,
-                      height: 9,
-                      decoration: const BoxDecoration(
-                        color: Colors.red,
-                        shape: BoxShape.circle,
+              ),
+            ],
+          ),
+        ),
+
+        // 🔔 Bell icon in header (NO AppBar)
+        ValueListenableBuilder<int>(
+          valueListenable: NotificationManager.instance.unreadCount,
+          builder: (context, unread, _) {
+            return IconButton(
+              icon: Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  Image.asset(
+                    'assets/images/bell.png',
+                    width: 22,
+                    height: 22,
+                    color: HomePage.primaryGreen,
+                  ),
+                  if (unread > 0)
+                    Positioned(
+                      right: -1,
+                      top: -1,
+                      child: Container(
+                        width: 9,
+                        height: 9,
+                        decoration: const BoxDecoration(
+                          color: Colors.red,
+                          shape: BoxShape.circle,
+                        ),
                       ),
                     ),
-                  ),
-              ],
-            ),
-            onPressed: () async {
-              await Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const NotificationsPage()),
-              );
-              if (!mounted) return;
-              await NotificationManager.instance.refresh();
-            },
-          );
-        },
-      ),
-    ],
-  );
-}
-
+                ],
+              ),
+              onPressed: () async {
+                await Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const NotificationsPage()),
+                );
+                if (!mounted) return;
+                await NotificationManager.instance.refresh();
+              },
+            );
+          },
+        ),
+      ],
+    );
+  }
 
   // 🔹 PROMO CARD
   Widget _promoCard() {
     return Container(
-      height: 140,
+      constraints: const BoxConstraints(minHeight: 140),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: HomePage.primaryGreen,
@@ -436,9 +447,10 @@ Widget _header() {
                 const Text(
                   "New to Germany? Start Here",
                   style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold),
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
                 const SizedBox(height: 2),
                 const Text(
@@ -450,25 +462,38 @@ Widget _header() {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.white,
                     foregroundColor: HomePage.primaryGreen,
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 4,
+                    ),
                     minimumSize: Size.zero,
                     tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                   ),
-                  onPressed: () {},
-                  child: const Text("Get Started", style: TextStyle(fontSize: 12)),
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const AccommodationPage(),
+                      ),
+                    );
+                  },
+                  child: const Text(
+                    "Get Started",
+                    style: TextStyle(fontSize: 12),
+                  ),
                 ),
               ],
             ),
           ),
           const SizedBox(width: 12),
           ClipRRect(
-  borderRadius: BorderRadius.circular(9),
-  child: Image.asset(
-    "assets/images/person.jpeg", // change to your image name
-    width: 90,
-    fit: BoxFit.cover,
-  ),
-)
+            borderRadius: BorderRadius.circular(9),
+            child: Image.asset(
+              "assets/images/person.jpeg", // change to your image name
+              width: 90,
+              fit: BoxFit.cover,
+            ),
+          ),
         ],
       ),
     );
@@ -493,49 +518,54 @@ class CategoryTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-     onTap: onTap,
+      onTap: onTap,
       child: Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row(
-        children: [
-          CircleAvatar(
-            radius: 22,
-            backgroundColor: HomePage.primaryGreen.withOpacity(0.15),
-            child: Image.asset(
-              imagePath,
-              width: 22,
-              height: 22,
-              color: HomePage.primaryGreen,
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          children: [
+            CircleAvatar(
+              radius: 22,
+              backgroundColor: HomePage.primaryGreen.withOpacity(0.15),
+              child: Image.asset(
+                imagePath,
+                width: 22,
+                height: 22,
+                color: HomePage.primaryGreen,
+              ),
             ),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(title,
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
                     style: const TextStyle(
-                        fontSize: 16, fontWeight: FontWeight.bold)),
-                const SizedBox(height: 4),
-                Text(subtitle,
-                    style:
-                        const TextStyle(fontSize: 13, color: Colors.grey)),
-              ],
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    subtitle,
+                    style: const TextStyle(fontSize: 13, color: Colors.grey),
+                  ),
+                ],
+              ),
             ),
-          ),
-          Image.asset(
-            'assets/images/right-arrow.png',
-            width: 18,
-            height: 18,
-            color: Colors.grey,
-          ),
-        ],
-      ),
+            Image.asset(
+              'assets/images/right-arrow.png',
+              width: 18,
+              height: 18,
+              color: Colors.grey,
+            ),
+          ],
+        ),
       ),
     );
   }

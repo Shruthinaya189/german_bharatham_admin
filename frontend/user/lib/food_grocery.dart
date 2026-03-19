@@ -21,14 +21,14 @@ class _FoodGroceryPageState extends State<FoodGroceryPage> {
   bool isLoading = true;
   String searchQuery = '';
   String? errorMessage;
-  
+
   @override
   void initState() {
     super.initState();
     _loadFoodItems();
     SavedFoodManager.instance.initialize();
   }
-  
+
   Future<void> _loadFoodItems() async {
     try {
       if (!mounted) return;
@@ -48,12 +48,13 @@ class _FoodGroceryPageState extends State<FoodGroceryPage> {
     } catch (e) {
       if (!mounted) return;
       setState(() {
-        errorMessage = 'Unable to load food items. Please check your internet or try again.';
+        errorMessage =
+            'Unable to load food items. Please check your internet or try again.';
         isLoading = false;
       });
     }
   }
-  
+
   void _filterItems(String query) {
     setState(() {
       searchQuery = query;
@@ -62,8 +63,8 @@ class _FoodGroceryPageState extends State<FoodGroceryPage> {
       } else {
         filteredItems = allItems.where((item) {
           return item.title.toLowerCase().contains(query.toLowerCase()) ||
-                 item.city.toLowerCase().contains(query.toLowerCase()) ||
-                 item.subCategory.toLowerCase().contains(query.toLowerCase());
+              item.city.toLowerCase().contains(query.toLowerCase()) ||
+              item.subCategory.toLowerCase().contains(query.toLowerCase());
         }).toList();
       }
     });
@@ -76,7 +77,7 @@ class _FoodGroceryPageState extends State<FoodGroceryPage> {
         builder: (context) => FoodFilterPage(allItems: allItems),
       ),
     );
-    
+
     if (!mounted) return;
     if (result != null) {
       setState(() {
@@ -150,7 +151,7 @@ class _FoodGroceryPageState extends State<FoodGroceryPage> {
                       color: Colors.black,
                     ),
                   ),
-                )
+                ),
               ],
             ),
 
@@ -159,34 +160,39 @@ class _FoodGroceryPageState extends State<FoodGroceryPage> {
             /// ðŸ“‹ List
             Expanded(
               child: isLoading
-                  ? const Center(child: CircularProgressIndicator(
-                      color: Color(0xFF4E7F6D),
-                    ))
+                  ? const Center(
+                      child: CircularProgressIndicator(
+                        color: Color(0xFF4E7F6D),
+                      ),
+                    )
                   : (errorMessage != null)
-                      ? Center(
-                          child: Text(
-                            errorMessage!,
-                            textAlign: TextAlign.center,
-                            style: const TextStyle(fontSize: 16, color: Colors.grey),
-                          ),
-                        )
-                      : filteredItems.isEmpty
-                          ? const Center(
-                              child: Text(
-                                'No food items found',
-                                style: TextStyle(fontSize: 16, color: Colors.grey),
-                              ),
-                            )
-                      : ListView.builder(
-                          itemCount: filteredItems.length,
-                          itemBuilder: (context, index) {
-                            return FoodCard(
-                              item: filteredItems[index],
-                              onRefresh: _loadFoodItems,
-                            );
-                          },
+                  ? Center(
+                      child: Text(
+                        errorMessage!,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          fontSize: 16,
+                          color: Colors.grey,
                         ),
-            )
+                      ),
+                    )
+                  : filteredItems.isEmpty
+                  ? const Center(
+                      child: Text(
+                        'No food items found',
+                        style: TextStyle(fontSize: 16, color: Colors.grey),
+                      ),
+                    )
+                  : ListView.builder(
+                      itemCount: filteredItems.length,
+                      itemBuilder: (context, index) {
+                        return FoodCard(
+                          item: filteredItems[index],
+                          onRefresh: _loadFoodItems,
+                        );
+                      },
+                    ),
+            ),
           ],
         ),
       ),
@@ -198,11 +204,7 @@ class FoodCard extends StatefulWidget {
   final FoodGrocery item;
   final VoidCallback onRefresh;
 
-  const FoodCard({
-    super.key,
-    required this.item,
-    required this.onRefresh,
-  });
+  const FoodCard({super.key, required this.item, required this.onRefresh});
 
   @override
   State<FoodCard> createState() => _FoodCardState();
@@ -210,13 +212,13 @@ class FoodCard extends StatefulWidget {
 
 class _FoodCardState extends State<FoodCard> {
   late bool isSaved;
-  
+
   @override
   void initState() {
     super.initState();
     isSaved = SavedFoodManager.instance.isSaved(widget.item.id);
   }
-  
+
   void _toggleSave() async {
     final nowSaved = await SavedFoodManager.instance.toggle(widget.item);
     if (!mounted) return;
@@ -226,7 +228,9 @@ class _FoodCardState extends State<FoodCard> {
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(nowSaved ? 'Saved to bookmarks' : 'Removed from bookmarks'),
+        content: Text(
+          nowSaved ? 'Saved to bookmarks' : 'Removed from bookmarks',
+        ),
         duration: const Duration(seconds: 1),
         backgroundColor: const Color(0xFF4E7F6D),
       ),
@@ -241,10 +245,8 @@ class _FoodCardState extends State<FoodCard> {
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (_) => FoodDetailPage(
-              item: widget.item,
-              onRefresh: widget.onRefresh,
-            ),
+            builder: (_) =>
+                FoodDetailPage(item: widget.item, onRefresh: widget.onRefresh),
           ),
         );
       },
@@ -261,20 +263,20 @@ class _FoodCardState extends State<FoodCard> {
               borderRadius: BorderRadius.circular(8),
               child: widget.item.image != null && widget.item.image!.isNotEmpty
                   ? (widget.item.image!.startsWith('http')
-                      ? Image.network(
-                          widget.item.image!,
-                          width: 80,
-                          height: 80,
-                          fit: BoxFit.cover,
-                          errorBuilder: (_, _, _) => _placeholderImage(),
-                        )
-                      : Image.asset(
-                          widget.item.image!,
-                          width: 80,
-                          height: 80,
-                          fit: BoxFit.cover,
-                          errorBuilder: (_, _, _) => _placeholderImage(),
-                        ))
+                        ? Image.network(
+                            widget.item.image!,
+                            width: 80,
+                            height: 80,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, _, _) => _placeholderImage(),
+                          )
+                        : Image.asset(
+                            widget.item.image!,
+                            width: 80,
+                            height: 80,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, _, _) => _placeholderImage(),
+                          ))
                   : _placeholderImage(),
             ),
             const SizedBox(width: 12),
@@ -315,11 +317,10 @@ class _FoodCardState extends State<FoodCard> {
                     children: [
                       Image.asset(
                         'assets/images/location.png',
-                        width: 16,
-                        height: 16,
-                        errorBuilder: (_, _, _) => const Icon(Icons.location_on, size: 16, color: Color(0xFF4F7F67)),
+                        width: 14,
+                        height: 14,
                       ),
-                      const SizedBox(width: 4),
+                      const SizedBox(width: 6),
                       Expanded(
                         child: Text(
                           '${widget.item.city}, ${widget.item.state ?? 'Bavaria'}',
@@ -352,11 +353,11 @@ class _FoodCardState extends State<FoodCard> {
                           maxLines: 1,
                         ),
                       ),
-                      const SizedBox(width: 8),
+                      const SizedBox(width: 6),
                       Image.asset(
                         'assets/images/location.png',
-                        width: 16,
-                        height: 16,
+                        width: 12,
+                        height: 12,
                       ),
                       const SizedBox(width: 4),
                       Flexible(
@@ -381,7 +382,7 @@ class _FoodCardState extends State<FoodCard> {
       ),
     );
   }
-  
+
   Widget _placeholderImage() {
     return Container(
       width: 80,

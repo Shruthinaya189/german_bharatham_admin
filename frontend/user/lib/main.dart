@@ -1489,15 +1489,25 @@ class SplashScreen extends StatefulWidget {
   State<SplashScreen> createState() => _SplashScreenState();
 }
 
-class _SplashScreenState extends State<SplashScreen> {
+class _SplashScreenState extends State<SplashScreen>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _logoController;
+  late final Animation<double> _zoom;
+
   @override
   void initState() {
     super.initState();
+    _logoController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1300),
+    );
+    _zoom = Tween<double>(begin: 0.82, end: 1.0).animate(
+      CurvedAnimation(parent: _logoController, curve: Curves.easeOutCubic),
+    );
     _initAndNavigate();
   }
 
   Future<void> _initAndNavigate() async {
-    await Future.delayed(const Duration(seconds: 3));
     await UserSession.instance.load();
     if (UserSession.instance.isLoggedIn) {
       SavedManager.instance.switchUser(UserSession.instance.userId!);
@@ -1510,6 +1520,9 @@ class _SplashScreenState extends State<SplashScreen> {
       // Do not auto-redirect to SubscriptionsPage on app start.
       // The popup/banner flow will handle notifying the user after navigation.
     }
+
+    await _logoController.forward();
+
     if (mounted) {
       Navigator.pushReplacement(
         context,
@@ -1528,42 +1541,34 @@ class _SplashScreenState extends State<SplashScreen> {
   }
 
   @override
+  void dispose() {
+    _logoController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final Size screen = MediaQuery.of(context).size;
+
     return Scaffold(
-      backgroundColor: Colors.white,
-      body: Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 76,
-              height: 76,
-              decoration: const BoxDecoration(
-                shape: BoxShape.circle,
-                color: Colors.white,
-              ),
-              child: ClipOval(
-                child: Padding(
-                  padding: const EdgeInsets.all(10),
-                  child: Image.asset(
-                    'assets/images/app_logo.jpeg',
-                    width: 76,
-                    height: 76,
-                    fit: BoxFit.contain,
-                  ),
-                ),
-              ),
+      backgroundColor: Colors.black,
+      body: SizedBox.expand(
+        child: Center(
+          child: AnimatedBuilder(
+            animation: _logoController,
+            child: Image.asset(
+              'assets/images/app_logo.jpeg',
+              width: screen.width,
+              height: screen.height,
+              fit: BoxFit.contain,
             ),
-            const SizedBox(height: 14),
-            const Text(
-              'German Bharatham',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w600,
-                letterSpacing: 0.3,
-              ),
-            ),
-          ],
+            builder: (context, child) {
+              return Transform.scale(
+                scale: _zoom.value,
+                child: child,
+              );
+            },
+          ),
         ),
       ),
     );

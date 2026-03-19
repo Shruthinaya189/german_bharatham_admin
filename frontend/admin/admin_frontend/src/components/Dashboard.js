@@ -30,6 +30,11 @@ const Dashboard = () => {
   });
   const navigate = useNavigate();
 
+  const handleUnauthorized = useCallback(() => {
+    localStorage.removeItem('adminToken');
+    window.location.reload();
+  }, []);
+
   const fetchProblemReports = useCallback(async () => {
     try {
       const token = localStorage.getItem('adminToken');
@@ -44,6 +49,10 @@ const Dashboard = () => {
       for (const endpoint of endpoints) {
         try {
           const response = await fetch(endpoint, { headers });
+          if (response.status === 401 || response.status === 403) {
+            handleUnauthorized();
+            return;
+          }
           if (!response.ok) continue;
           payload = await response.json();
           break;
@@ -70,7 +79,7 @@ const Dashboard = () => {
     } catch {
       setProblemReports([]);
     }
-  }, []);
+  }, [handleUnauthorized]);
 
   const fetchAll = useCallback(async () => {
     const token   = localStorage.getItem('adminToken');
@@ -80,10 +89,30 @@ const Dashboard = () => {
     const listingResults = await Promise.allSettled(
       Object.entries(CATEGORY_APIS).map(([cat, url]) =>
         fetch(url, { headers })
-          .then(r => r.json())
+          .then(r => {
+            if (r.status === 401 || r.status === 403) {
+              const err = new Error('Unauthorized');
+              err.code = 'UNAUTHORIZED';
+              throw err;
+            }
+            if (!r.ok) {
+              const err = new Error(`Request failed (${r.status})`);
+              err.code = 'HTTP_ERROR';
+              throw err;
+            }
+            return r.json();
+          })
           .then(d => ({ cat, count: d.count || 0, data: d.data || [] }))
       )
     );
+
+    const hasUnauthorized = listingResults.some(
+      r => r.status === 'rejected' && r.reason?.code === 'UNAUTHORIZED'
+    );
+    if (hasUnauthorized) {
+      handleUnauthorized();
+      return;
+    }
 
     const counts   = { Accommodation: 0, Food: 0, Jobs: 0, Services: 0 };
     const allItems = [];
@@ -102,6 +131,10 @@ const Dashboard = () => {
     // ── 2. Custom category listings ──────────────────────────────────────────
     try {
       const catsRes = await fetch(`${API_URL}/api/custom-categories`, { headers });
+      if (catsRes.status === 401 || catsRes.status === 403) {
+        handleUnauthorized();
+        return;
+      }
       if (catsRes.ok) {
         const customCats = await catsRes.json();
         // Fetch each category's listing count
@@ -135,12 +168,16 @@ const Dashboard = () => {
     // ── 3. User count (customers only, no admins) ────────────────────────────
     try {
       const ur = await fetch(`${API_URL}/api/user/all-users`, { headers });
+      if (ur.status === 401 || ur.status === 403) {
+        handleUnauthorized();
+        return;
+      }
       if (ur.ok) {
         const ud = await ur.json();
         setUserCount(Array.isArray(ud) ? ud.length : 0);
       }
     } catch {}
-  }, []);
+  }, [handleUnauthorized]);
 
   useEffect(() => {
     fetchAll();

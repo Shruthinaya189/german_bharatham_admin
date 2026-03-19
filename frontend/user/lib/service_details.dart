@@ -138,7 +138,8 @@ class _ServiceDetailsPageState extends State<ServiceDetailsPage> {
   }
 
   void _shareItem() {
-    final String shareText = '''
+    final String shareText =
+        '''
 ${widget.item.title}
 ${widget.item.provider ?? ''}
 
@@ -154,7 +155,12 @@ ${widget.item.priceRange != null ? '💰 ${widget.item.priceRange}' : ''}
 
   Future<void> _makePhoneCall() async {
     if (widget.item.phone == null || widget.item.phone!.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Phone number not available'), backgroundColor: Colors.red));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Phone number not available'),
+          backgroundColor: Colors.red,
+        ),
+      );
       return;
     }
     final Uri phoneUri = Uri(scheme: 'tel', path: widget.item.phone);
@@ -234,7 +240,9 @@ ${widget.item.priceRange != null ? '💰 ${widget.item.priceRange}' : ''}
     try {
       final encoded = Uri.encodeComponent(address);
       final response = await http.get(
-        Uri.parse('https://nominatim.openstreetmap.org/search?q=$encoded&format=json&limit=1'),
+        Uri.parse(
+          'https://nominatim.openstreetmap.org/search?q=$encoded&format=json&limit=1',
+        ),
         headers: {'User-Agent': 'GermanBharatham/1.0'},
       );
       if (response.statusCode == 200) {
@@ -279,7 +287,9 @@ ${widget.item.priceRange != null ? '💰 ${widget.item.priceRange}' : ''}
         return GestureDetector(
           onTap: () async {
             final query = Uri.encodeComponent(address);
-            final url = Uri.parse('https://www.google.com/maps/search/?api=1&query=$query');
+            final url = Uri.parse(
+              'https://www.google.com/maps/search/?api=1&query=$query',
+            );
             if (await canLaunchUrl(url)) {
               await launchUrl(url, mode: LaunchMode.externalApplication);
             }
@@ -324,16 +334,27 @@ ${widget.item.priceRange != null ? '💰 ${widget.item.priceRange}' : ''}
         ? _ratingStats!.averageRating
         : widget.item.averageRating;
     final displayRatingText = (displayRatingValue > 0)
-      ? displayRatingValue.toStringAsFixed(1)
-      : '4.5';
+        ? displayRatingValue.toStringAsFixed(1)
+        : '4.5';
 
     return Scaffold(
       backgroundColor: const Color(0xFFF7FAFC),
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
-        leading: IconButton(onPressed: () => Navigator.pop(context), icon: Image.asset('assets/images/left-arrow.png', height: 22, width: 22, color: Colors.black)),
-        title: const Text("Service Details", style: TextStyle(color: Colors.black, fontWeight: FontWeight.w600)),
+        leading: IconButton(
+          onPressed: () => Navigator.pop(context),
+          icon: Image.asset(
+            'assets/images/left-arrow.png',
+            height: 22,
+            width: 22,
+            color: Colors.black,
+          ),
+        ),
+        title: const Text(
+          "Service Details",
+          style: TextStyle(color: Colors.black, fontWeight: FontWeight.w600),
+        ),
         centerTitle: true,
         actions: const [],
       ),
@@ -346,7 +367,10 @@ ${widget.item.priceRange != null ? '💰 ${widget.item.priceRange}' : ''}
               children: [
                 Container(
                   padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16)),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                  ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -367,7 +391,8 @@ ${widget.item.priceRange != null ? '💰 ${widget.item.priceRange}' : ''}
                                       _displayImage,
                                       width: 80,
                                       height: 80,
-                                      placeholderAsset: 'assets/images/service.jpg',
+                                      placeholderAsset:
+                                          'assets/images/service.jpg',
                                     ),
                                   )
                                 : ClipRRect(
@@ -411,10 +436,10 @@ ${widget.item.priceRange != null ? '💰 ${widget.item.priceRange}' : ''}
                                   children: [
                                     Image.asset(
                                       'assets/images/location.png',
-                                      width: 16,
-                                      height: 16,
+                                      width: 14,
+                                      height: 14,
                                     ),
-                                    const SizedBox(width: 4),
+                                    const SizedBox(width: 6),
                                     Expanded(
                                       child: Text(
                                         locationText,
@@ -456,9 +481,89 @@ ${widget.item.priceRange != null ? '💰 ${widget.item.priceRange}' : ''}
                   ),
                 ),
 
-                  const SizedBox(height: 16),
+                const SizedBox(height: 16),
 
-                  // Info / contact section
+                // Info / contact section
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Information',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+                      if (widget.item.serviceType.trim().isNotEmpty)
+                        _infoRow(
+                          iconAsset: 'assets/images/handshake.png',
+                          title: 'Service Type',
+                          value: widget.item.serviceType,
+                        ),
+                      if ((widget.item.provider ?? '').trim().isNotEmpty)
+                        _infoRow(
+                          iconAsset: 'assets/images/profile.png',
+                          title: 'Provider',
+                          value: widget.item.provider!.trim(),
+                        ),
+                      if ((widget.item.phone ?? '').trim().isNotEmpty)
+                        _infoRow(
+                          iconAsset: 'assets/images/call.png',
+                          title: 'Phone',
+                          value: widget.item.phone!.trim(),
+                        ),
+                      if ((widget.item.whatsapp ?? '').trim().isNotEmpty)
+                        _infoRow(
+                          iconAsset: 'assets/images/whatsapp.png',
+                          title: 'WhatsApp',
+                          value: widget.item.whatsapp!.trim(),
+                        ),
+                      if ((widget.item.email ?? '').trim().isNotEmpty)
+                        InkWell(
+                          onTap: _sendEmail,
+                          child: _infoRow(
+                            iconAsset: 'assets/images/msg.png',
+                            title: 'Email',
+                            value: widget.item.email!.trim(),
+                            valueColor: const Color(0xFF1A56DB),
+                          ),
+                        ),
+                      if ((widget.item.website ?? '').trim().isNotEmpty)
+                        InkWell(
+                          onTap: _openWebsite,
+                          child: _infoRow(
+                            iconAsset: 'assets/images/link.png',
+                            title: 'Website',
+                            value: widget.item.website!.trim(),
+                            valueColor: const Color(0xFF1A56DB),
+                          ),
+                        ),
+                      if ((widget.item.priceRange ?? '').trim().isNotEmpty)
+                        _infoRow(
+                          iconAsset: 'assets/images/info.png',
+                          title: 'Price Range',
+                          value: widget.item.priceRange!.trim(),
+                        ),
+                      if ((widget.item.address ?? '').trim().isNotEmpty)
+                        _infoRow(
+                          iconAsset: 'assets/images/location.png',
+                          title: 'Address',
+                          value: widget.item.address!.trim(),
+                        ),
+                    ],
+                  ),
+                ),
+
+                const SizedBox(height: 16),
+                if (widget.item.description != null &&
+                    widget.item.description!.isNotEmpty)
                   Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
@@ -469,86 +574,20 @@ ${widget.item.priceRange != null ? '💰 ${widget.item.priceRange}' : ''}
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         const Text(
-                          'Information',
-                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                        ),
-                        const SizedBox(height: 14),
-                        if (widget.item.serviceType.trim().isNotEmpty)
-                          _infoRow(
-                            iconAsset: 'assets/images/handshake.png',
-                            title: 'Service Type',
-                            value: widget.item.serviceType,
-                          ),
-                        if ((widget.item.provider ?? '').trim().isNotEmpty)
-                          _infoRow(
-                            iconAsset: 'assets/images/profile.png',
-                            title: 'Provider',
-                            value: widget.item.provider!.trim(),
-                          ),
-                        if ((widget.item.phone ?? '').trim().isNotEmpty)
-                          _infoRow(
-                            iconAsset: 'assets/images/call.png',
-                            title: 'Phone',
-                            value: widget.item.phone!.trim(),
-                          ),
-                        if ((widget.item.whatsapp ?? '').trim().isNotEmpty)
-                          _infoRow(
-                            iconAsset: 'assets/images/whatsapp.png',
-                            title: 'WhatsApp',
-                            value: widget.item.whatsapp!.trim(),
-                          ),
-                        if ((widget.item.email ?? '').trim().isNotEmpty)
-                          InkWell(
-                            onTap: _sendEmail,
-                            child: _infoRow(
-                              iconAsset: 'assets/images/msg.png',
-                              title: 'Email',
-                              value: widget.item.email!.trim(),
-                              valueColor: const Color(0xFF1A56DB),
-                            ),
-                          ),
-                        if ((widget.item.website ?? '').trim().isNotEmpty)
-                          InkWell(
-                            onTap: _openWebsite,
-                            child: _infoRow(
-                              iconAsset: 'assets/images/link.png',
-                              title: 'Website',
-                              value: widget.item.website!.trim(),
-                              valueColor: const Color(0xFF1A56DB),
-                            ),
-                          ),
-                        if ((widget.item.priceRange ?? '').trim().isNotEmpty)
-                          _infoRow(
-                            iconAsset: 'assets/images/info.png',
-                            title: 'Price Range',
-                            value: widget.item.priceRange!.trim(),
-                          ),
-                        if ((widget.item.address ?? '').trim().isNotEmpty)
-                          _infoRow(
-                            iconAsset: 'assets/images/location.png',
-                            title: 'Address',
-                            value: widget.item.address!.trim(),
-                          ),
-                      ],
-                    ),
-                  ),
-
-                const SizedBox(height: 16),
-                if (widget.item.description != null && widget.item.description!.isNotEmpty)
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16)),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
                           'Description',
-                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                         const SizedBox(height: 12),
                         Text(
                           widget.item.description!,
-                          style: const TextStyle(fontSize: 14, color: Colors.grey, height: 1.5),
+                          style: const TextStyle(
+                            fontSize: 14,
+                            color: Colors.grey,
+                            height: 1.5,
+                          ),
                         ),
                       ],
                     ),
@@ -566,7 +605,10 @@ ${widget.item.priceRange != null ? '💰 ${widget.item.priceRange}' : ''}
                       children: [
                         const Text(
                           'Services Offered',
-                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                         const SizedBox(height: 12),
                         Wrap(
@@ -602,11 +644,20 @@ ${widget.item.priceRange != null ? '💰 ${widget.item.priceRange}' : ''}
                 const SizedBox(height: 16),
                 Container(
                   padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16)),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                  ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text("Location", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                      const Text(
+                        "Location",
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                       const SizedBox(height: 12),
                       _buildMapSection(
                         widget.item.latitude,
@@ -621,7 +672,9 @@ ${widget.item.priceRange != null ? '💰 ${widget.item.priceRange}' : ''}
             ),
           ),
           Positioned(
-            bottom: 16, left: 16, right: 16,
+            bottom: 16,
+            left: 16,
+            right: 16,
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -740,26 +793,60 @@ ${widget.item.priceRange != null ? '💰 ${widget.item.priceRange}' : ''}
     );
   }
 
-  Widget _infoRow({required String iconAsset, required String title, required String value, Color? valueColor}) {
+  Widget _infoRow({
+    required String iconAsset,
+    required String title,
+    required String value,
+    Color? valueColor,
+  }) {
+    final bool isLocationIcon = iconAsset.contains('location.png');
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Image.asset(
-            iconAsset,
-            height: 20,
-            width: 20,
-            color: const Color(0xFF4E7F6D),
-          ),
+          isLocationIcon
+              ? Image.asset(
+                  iconAsset,
+                  height: 18,
+                  width: 18,
+                )
+              : Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF4E7F6D).withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(18),
+                  ),
+                  child: Center(
+                    child: Image.asset(
+                      iconAsset,
+                      height: 18,
+                      width: 18,
+                      color: const Color(0xFF4E7F6D),
+                    ),
+                  ),
+                ),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
                 const SizedBox(height: 4),
-                Text(value, style: TextStyle(fontSize: 14, color: valueColor ?? Colors.grey)),
+                Text(
+                  value,
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: valueColor ?? Colors.grey,
+                  ),
+                ),
               ],
             ),
           ),
@@ -796,7 +883,8 @@ class _ServiceMapWidgetState extends State<_ServiceMapWidget> {
       if (permission == LocationPermission.denied) {
         permission = await Geolocator.requestPermission();
       }
-      if (permission == LocationPermission.denied || permission == LocationPermission.deniedForever) {
+      if (permission == LocationPermission.denied ||
+          permission == LocationPermission.deniedForever) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
@@ -810,7 +898,9 @@ class _ServiceMapWidgetState extends State<_ServiceMapWidget> {
       }
 
       final position = await Geolocator.getCurrentPosition(
-        locationSettings: const LocationSettings(accuracy: LocationAccuracy.high),
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.high,
+        ),
       );
       final userLatLng = LatLng(position.latitude, position.longitude);
       if (!mounted) return;
@@ -872,7 +962,6 @@ class _ServiceMapWidgetState extends State<_ServiceMapWidget> {
                         'assets/images/location.png',
                         width: 40,
                         height: 40,
-                        color: Colors.red,
                       ),
                     ),
                     if (_userLocation != null)
@@ -901,7 +990,10 @@ class _ServiceMapWidgetState extends State<_ServiceMapWidget> {
               child: GestureDetector(
                 onTap: _openGoogleMaps,
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 5,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.white.withOpacity(0.92),
                     borderRadius: BorderRadius.circular(8),
@@ -916,7 +1008,8 @@ class _ServiceMapWidgetState extends State<_ServiceMapWidget> {
                         'assets/images/google.png',
                         width: 14,
                         height: 14,
-                        errorBuilder: (_, __, ___) => const SizedBox(width: 14, height: 14),
+                        errorBuilder: (_, __, ___) =>
+                            const SizedBox(width: 14, height: 14),
                       ),
                       const SizedBox(width: 6),
                       const Text(
@@ -956,7 +1049,6 @@ class _ServiceMapWidgetState extends State<_ServiceMapWidget> {
                           'assets/images/location.png',
                           width: 20,
                           height: 20,
-                          color: _userLocation != null ? const Color(0xFF1A56DB) : Colors.grey,
                         ),
                 ),
               ),
@@ -976,8 +1068,14 @@ class _Chip extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-      decoration: BoxDecoration(color: const Color(0xFFF1F3F5), borderRadius: BorderRadius.circular(22)),
-      child: Text(label, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF1F3F5),
+        borderRadius: BorderRadius.circular(22),
+      ),
+      child: Text(
+        label,
+        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+      ),
     );
   }
 }

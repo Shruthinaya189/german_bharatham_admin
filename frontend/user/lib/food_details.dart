@@ -452,9 +452,10 @@ ${widget.item.phone != null && widget.item.phone!.isNotEmpty ? 'Phone: ${widget.
     required String label,
     required String value,
   }) {
+    final bool isLocationIcon = iconAsset.contains('location.png');
     IconData fallbackIcon = Icons.info_outline;
     if (iconAsset.contains('location')) {
-      fallbackIcon = Icons.location_on;
+      fallbackIcon = Icons.place;
     } else if (iconAsset.contains('time') || iconAsset.contains('clock')) {
       fallbackIcon = Icons.access_time;
     } else if (iconAsset.contains('phone') || iconAsset.contains('call')) {
@@ -468,12 +469,12 @@ ${widget.item.phone != null && widget.item.phone!.isNotEmpty ? 'Phone: ${widget.
           iconAsset,
           height: 20,
           width: 20,
-          color: const Color(0xFF4E7F6D),
+          color: isLocationIcon ? null : const Color(0xFF4E7F6D),
           errorBuilder: (context, error, stackTrace) {
             return Icon(
               fallbackIcon,
               size: 20,
-              color: const Color(0xFF4E7F6D),
+              color: isLocationIcon ? Colors.green : const Color(0xFF4E7F6D),
             );
           },
         ),
@@ -702,7 +703,6 @@ class _FoodMapWidgetState extends State<_FoodMapWidget> {
                         'assets/images/location.png',
                         width: 40,
                         height: 40,
-                        color: Colors.red,
                       ),
                     ),
                     // User location — blue dot
@@ -796,9 +796,6 @@ class _FoodMapWidgetState extends State<_FoodMapWidget> {
                           'assets/images/location.png',
                           width: 20,
                           height: 20,
-                          color: _userLocation != null
-                              ? const Color(0xFF1A56DB)
-                              : Colors.grey[600],
                         ),
                 ),
               ),

@@ -25,7 +25,8 @@ class AccommodationDetailPage extends StatefulWidget {
   });
 
   @override
-  State<AccommodationDetailPage> createState() => _AccommodationDetailPageState();
+  State<AccommodationDetailPage> createState() =>
+      _AccommodationDetailPageState();
 }
 
 class _AccommodationDetailPageState extends State<AccommodationDetailPage> {
@@ -120,7 +121,9 @@ class _AccommodationDetailPageState extends State<AccommodationDetailPage> {
                     Row(
                       children: [
                         StarRatingWidget(
-                          rating: _ratingStats?.averageRating ?? (widget.item.averageRating ?? 0.0),
+                          rating:
+                              _ratingStats?.averageRating ??
+                              (widget.item.averageRating ?? 0.0),
                           size: 18,
                         ),
                         const SizedBox(width: 6),
@@ -149,9 +152,8 @@ class _AccommodationDetailPageState extends State<AccommodationDetailPage> {
                                 'assets/images/location.png',
                                 width: 14,
                                 height: 14,
-                                color: const Color(0xFF7A7A7A),
                               ),
-                              const SizedBox(width: 4),
+                              const SizedBox(width: 6),
                               Expanded(
                                 child: Text(
                                   widget.item.location,
@@ -328,11 +330,13 @@ class _AccommodationDetailPageState extends State<AccommodationDetailPage> {
       final Uri url;
       if (latitude != null && longitude != null) {
         url = Uri.parse(
-            'https://www.google.com/maps/dir/?api=1&destination=$latitude,$longitude');
+          'https://www.google.com/maps/dir/?api=1&destination=$latitude,$longitude',
+        );
       } else {
         final query = Uri.encodeComponent(widget.item.location ?? '');
         url = Uri.parse(
-            'https://www.google.com/maps/search/?api=1&query=$query');
+          'https://www.google.com/maps/search/?api=1&query=$query',
+        );
       }
       if (await canLaunchUrl(url)) {
         await launchUrl(url, mode: LaunchMode.externalApplication);
@@ -412,7 +416,8 @@ class _AccommodationDetailPageState extends State<AccommodationDetailPage> {
       final encoded = Uri.encodeComponent(address);
       final response = await http.get(
         Uri.parse(
-            'https://nominatim.openstreetmap.org/search?q=$encoded&format=json&limit=1'),
+          'https://nominatim.openstreetmap.org/search?q=$encoded&format=json&limit=1',
+        ),
         headers: {'User-Agent': 'GermanBharatham/1.0'},
       );
       if (response.statusCode == 200) {
@@ -504,13 +509,9 @@ class _AccommodationDetailPageState extends State<AccommodationDetailPage> {
     VoidCallback? onPressed,
     Widget? iconOverride,
   }) {
-    final Widget iconWidget = iconOverride ??
-        Image.asset(
-          icon,
-          width: 18,
-          height: 18,
-          color: Colors.white,
-        );
+    final Widget iconWidget =
+        iconOverride ??
+        Image.asset(icon, width: 18, height: 18, color: Colors.white);
     return ElevatedButton.icon(
       onPressed: onPressed ?? () {},
       icon: iconWidget,
@@ -524,9 +525,7 @@ class _AccommodationDetailPageState extends State<AccommodationDetailPage> {
       style: ElevatedButton.styleFrom(
         backgroundColor: color,
         padding: const EdgeInsets.symmetric(vertical: 14),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(10),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       ),
     );
   }
@@ -541,7 +540,7 @@ class _AccommodationDetailPageState extends State<AccommodationDetailPage> {
       );
       return;
     }
-    
+
     final Uri phoneUri = Uri(scheme: 'tel', path: phoneNumber);
     if (await canLaunchUrl(phoneUri)) {
       await launchUrl(phoneUri);
@@ -567,13 +566,13 @@ class _AccommodationDetailPageState extends State<AccommodationDetailPage> {
       );
       return;
     }
-    
+
     // Remove any non-digit characters and ensure it has country code
     String cleanPhone = phoneNumber.replaceAll(RegExp(r'[^\d+]'), '');
     if (!cleanPhone.startsWith('+')) {
       cleanPhone = '+49$cleanPhone'; // Default to Germany
     }
-    
+
     final Uri whatsappUri = Uri.parse('https://wa.me/$cleanPhone');
     if (await canLaunchUrl(whatsappUri)) {
       await launchUrl(whatsappUri, mode: LaunchMode.externalApplication);
@@ -590,7 +589,8 @@ class _AccommodationDetailPageState extends State<AccommodationDetailPage> {
   }
 
   Future<void> _shareAccommodation() async {
-    final String shareText = '''
+    final String shareText =
+        '''
 ${widget.item.title}
 ${widget.item.location}
 Price: €${widget.item.price} per month
@@ -643,8 +643,9 @@ class _AccommodationMapWidgetState extends State<_AccommodationMapWidget> {
         return;
       }
       final position = await Geolocator.getCurrentPosition(
-        locationSettings:
-            const LocationSettings(accuracy: LocationAccuracy.high),
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.high,
+        ),
       );
       final userLatLng = LatLng(position.latitude, position.longitude);
       if (mounted) {
@@ -695,8 +696,7 @@ class _AccommodationMapWidgetState extends State<_AccommodationMapWidget> {
               ),
               children: [
                 TileLayer(
-                  urlTemplate:
-                      'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                  urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                   userAgentPackageName: 'com.germanbharatham.app',
                 ),
                 MarkerLayer(
@@ -710,7 +710,6 @@ class _AccommodationMapWidgetState extends State<_AccommodationMapWidget> {
                         'assets/images/location.png',
                         width: 40,
                         height: 40,
-                        color: Colors.red,
                       ),
                     ),
                     // User location — blue dot (shown after locating)
@@ -723,11 +722,9 @@ class _AccommodationMapWidgetState extends State<_AccommodationMapWidget> {
                           decoration: BoxDecoration(
                             color: const Color(0xFF1A73E8),
                             shape: BoxShape.circle,
-                            border:
-                                Border.all(color: Colors.white, width: 2.5),
+                            border: Border.all(color: Colors.white, width: 2.5),
                             boxShadow: const [
-                              BoxShadow(
-                                  color: Colors.black26, blurRadius: 4)
+                              BoxShadow(color: Colors.black26, blurRadius: 4),
                             ],
                           ),
                         ),
@@ -745,12 +742,14 @@ class _AccommodationMapWidgetState extends State<_AccommodationMapWidget> {
                 onTap: _openGoogleMaps,
                 child: Container(
                   padding: const EdgeInsets.symmetric(
-                      horizontal: 10, vertical: 5),
+                    horizontal: 10,
+                    vertical: 5,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.white.withOpacity(0.92),
                     borderRadius: BorderRadius.circular(8),
                     boxShadow: const [
-                      BoxShadow(color: Colors.black26, blurRadius: 4)
+                      BoxShadow(color: Colors.black26, blurRadius: 4),
                     ],
                   ),
                   child: Row(
@@ -789,22 +788,18 @@ class _AccommodationMapWidgetState extends State<_AccommodationMapWidget> {
                     color: Colors.white,
                     shape: BoxShape.circle,
                     boxShadow: const [
-                      BoxShadow(color: Colors.black26, blurRadius: 4)
+                      BoxShadow(color: Colors.black26, blurRadius: 4),
                     ],
                   ),
                   child: _locating
                       ? const Padding(
                           padding: EdgeInsets.all(8),
-                          child:
-                              CircularProgressIndicator(strokeWidth: 2),
+                          child: CircularProgressIndicator(strokeWidth: 2),
                         )
                       : Image.asset(
                           'assets/images/location.png',
                           width: 20,
                           height: 20,
-                          color: _userLocation != null
-                              ? const Color(0xFF1A56DB)
-                              : Colors.grey[600],
                         ),
                 ),
               ),

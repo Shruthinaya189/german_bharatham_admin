@@ -24,6 +24,11 @@ const Listings = () => {
   const [statusFilter, setStatusFilter] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
 
+  const handleUnauthorized = () => {
+    localStorage.removeItem('adminToken');
+    window.location.reload();
+  };
+
   useEffect(() => { fetchAllListings(); }, []);
 
   const fetchAllListings = async () => {
@@ -34,7 +39,19 @@ const Listings = () => {
       const results = await Promise.allSettled(
         Object.entries(APIS).map(([cat, conf]) =>
           fetch(conf.get, { headers })
-            .then(r => r.json())
+            .then(r => {
+              if (r.status === 401 || r.status === 403) {
+                const err = new Error('Unauthorized');
+                err.code = 'UNAUTHORIZED';
+                throw err;
+              }
+              if (!r.ok) {
+                const err = new Error(`Request failed (${r.status})`);
+                err.code = 'HTTP_ERROR';
+                throw err;
+              }
+              return r.json();
+            })
             .then(data => (data.data || []).map(item => ({
               _id: item._id,
               title: item[conf.titleKey] || 'Untitled',
@@ -51,6 +68,13 @@ const Listings = () => {
             })))
         )
       );
+      const hasUnauthorized = results.some(
+        r => r.status === 'rejected' && r.reason?.code === 'UNAUTHORIZED'
+      );
+      if (hasUnauthorized) {
+        handleUnauthorized();
+        return;
+      }
       const all = results.flatMap(r => r.status === 'fulfilled' ? r.value : []);
       all.sort((a, b) => b.created.localeCompare(a.created));
       setListings(all);

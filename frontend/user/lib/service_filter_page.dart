@@ -120,10 +120,7 @@ class _ServiceFilterPageState extends State<ServiceFilterPage> {
         centerTitle: true,
         title: const Text(
           'Filters',
-          style: TextStyle(
-            color: Colors.black,
-            fontWeight: FontWeight.w600,
-          ),
+          style: TextStyle(color: Colors.black, fontWeight: FontWeight.w600),
         ),
         leading: IconButton(
           icon: Image.asset(
@@ -190,6 +187,8 @@ class _ServiceFilterPageState extends State<ServiceFilterPage> {
               ),
             ),
             const SizedBox(height: 28),
+
+            /// SERVICE TYPE FILTER
             Row(
               children: [
                 Image.asset(
@@ -211,35 +210,6 @@ class _ServiceFilterPageState extends State<ServiceFilterPage> {
               ],
             ),
             const SizedBox(height: 12),
-
-            // PRICE RANGE (matches the filter UI pattern used elsewhere)
-            Row(
-              children: [
-                const Icon(Icons.euro, size: 16, color: Color(0xFF4E7F6D)),
-                const SizedBox(width: 6),
-                Text(
-                  'Price Range: €${_priceRange.start.toInt()} - €${_priceRange.end.toInt()}',
-                  style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            SliderTheme(
-              data: SliderThemeData(
-                activeTrackColor: const Color(0xFF4E7F6D),
-                inactiveTrackColor: const Color(0xFFD1E8DF),
-                thumbColor: const Color(0xFF4E7F6D),
-                overlayColor: const Color(0xFF4E7F6D).withOpacity(0.15),
-                rangeThumbShape: const RoundRangeSliderThumbShape(enabledThumbRadius: 10),
-              ),
-              child: RangeSlider(
-                values: _priceRange,
-                min: 0,
-                max: _maxPrice,
-                divisions: 20,
-                onChanged: (v) => setState(() => _priceRange = v),
-              ),
-            ),
             Wrap(
               spacing: 10,
               runSpacing: 10,
@@ -269,6 +239,41 @@ class _ServiceFilterPageState extends State<ServiceFilterPage> {
                   ),
                 );
               }),
+            ),
+            const SizedBox(height: 28),
+
+            /// PRICE RANGE FILTER
+            Row(
+              children: [
+                const Icon(Icons.euro, size: 16, color: Color(0xFF4E7F6D)),
+                const SizedBox(width: 6),
+                Text(
+                  'Price Range: €${_priceRange.start.toInt()} - €${_priceRange.end.toInt()}',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 15,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            SliderTheme(
+              data: SliderThemeData(
+                activeTrackColor: const Color(0xFF4E7F6D),
+                inactiveTrackColor: const Color(0xFFD1E8DF),
+                thumbColor: const Color(0xFF4E7F6D),
+                overlayColor: const Color(0xFF4E7F6D).withOpacity(0.15),
+                rangeThumbShape: const RoundRangeSliderThumbShape(
+                  enabledThumbRadius: 10,
+                ),
+              ),
+              child: RangeSlider(
+                values: _priceRange,
+                min: 0,
+                max: _maxPrice,
+                divisions: 20,
+                onChanged: (v) => setState(() => _priceRange = v),
+              ),
             ),
             const SizedBox(height: 40),
             Row(

@@ -68,10 +68,35 @@ const Categories = () => {
   // Custom categories from MongoDB
   const [customCats, setCustomCats] = useState([]);
 
-  const [counts,       setCounts]       = useState({});
+  const [counts,       setCounts]       = useState(() => {
+    try {
+      const saved = localStorage.getItem('adminCategoryCounts');
+      const parsed = saved ? JSON.parse(saved) : {};
+      return parsed && typeof parsed === 'object' ? parsed : {};
+    } catch {
+      return {};
+    }
+  });
   const [statusFilter, setStatusFilter] = useState('all');
   const [showAdd,      setShowAdd]      = useState(false);
   const [editCat,      setEditCat]      = useState(null);
+
+  const handleUnauthorized = useCallback(() => {
+    localStorage.removeItem('adminToken');
+    window.location.reload();
+  }, []);
+
+  const extractCount = useCallback((payload) => {
+    if (typeof payload?.count === 'number') return payload.count;
+    if (typeof payload?.count === 'string' && payload.count.trim() !== '') {
+      const parsed = Number(payload.count);
+      if (!Number.isNaN(parsed)) return parsed;
+    }
+    if (Array.isArray(payload?.data)) return payload.data.length;
+    if (Array.isArray(payload?.items)) return payload.items.length;
+    if (Array.isArray(payload)) return payload.length;
+    return 0;
+  }, []);
 
   const getAuthHeaders = useCallback(
     () => ({ Authorization: `Bearer ${localStorage.getItem('adminToken')}` }),
@@ -82,6 +107,10 @@ const Categories = () => {
   const fetchCustomCats = useCallback(async () => {
     try {
       const res = await fetch(`${API_URL}/api/custom-categories`, { headers: getAuthHeaders() });
+      if (res.status === 401 || res.status === 403) {
+        handleUnauthorized();
+        return;
+      }
       if (res.ok) {
         const data = await res.json();
         setCustomCats(data.map(c => ({
@@ -97,7 +126,7 @@ const Categories = () => {
         })));
       }
     } catch (e) { console.error(e); }
-  }, [getAuthHeaders]);
+  }, [getAuthHeaders, handleUnauthorized]);
 
   useEffect(() => { fetchCustomCats(); }, [fetchCustomCats]);
 
@@ -108,26 +137,77 @@ const Categories = () => {
   );
   const visible = statusFilter === 'all' ? allCategories : allCategories.filter(c => c.status === statusFilter);
 
+  useEffect(() => {
+    localStorage.setItem('adminCategoryCounts', JSON.stringify(counts));
+  }, [counts]);
+
   // Fetch listing counts for each category
   useEffect(() => {
     const fetchCounts = async () => {
-      const apiCats = allCategories.filter(c => c.api);
+      const headers = getAuthHeaders();
+
+      // 1) Load built-in category counts via one aggregated endpoint for faster UI.
+      try {
+        const statsRes = await fetch(`${API_URL}/api/admin/category-stats`, { headers });
+        if (statsRes.status === 401 || statsRes.status === 403) {
+          handleUnauthorized();
+          return;
+        }
+        if (statsRes.ok) {
+          const stats = await statsRes.json();
+          if (Array.isArray(stats)) {
+            setCounts(prev => {
+              const next = { ...prev };
+              for (const item of stats) {
+                const name = String(item?.name || '').toLowerCase();
+                if (name === 'accommodation') next.accommodation = extractCount(item);
+                if (name === 'food') next.food = extractCount(item);
+                if (name === 'services') next.services = extractCount(item);
+                if (name === 'jobs') next.jobs = extractCount(item);
+              }
+              return next;
+            });
+          }
+        }
+      } catch {}
+
+      // 2) Refresh custom category counts (and any remaining categories) in parallel.
+      const apiCats = allCategories.filter(c => c.api && c.isCustom);
       const results = await Promise.allSettled(
         apiCats.map(c =>
-          fetch(c.api, { headers: getAuthHeaders() })
-            .then(r => r.json())
+          fetch(c.api, { headers })
+            .then(async (r) => {
+              if (r.status === 401 || r.status === 403) {
+                const err = new Error('Unauthorized');
+                err.code = 'UNAUTHORIZED';
+                throw err;
+              }
+              if (!r.ok) return { count: 0 };
+              return r.json();
+            })
             .catch(() => ({ count: 0 }))
         )
       );
-      const map = {};
-      apiCats.forEach((c, i) => {
-        const val = results[i].status === 'fulfilled' ? results[i].value : {};
-        map[c.id] = val.count || 0;
+
+      const hasUnauthorized = results.some(
+        r => r.status === 'rejected' && r.reason?.code === 'UNAUTHORIZED'
+      );
+      if (hasUnauthorized) {
+        handleUnauthorized();
+        return;
+      }
+
+      setCounts(prev => {
+        const next = { ...prev };
+        apiCats.forEach((c, i) => {
+          const val = results[i].status === 'fulfilled' ? results[i].value : {};
+          next[c.id] = extractCount(val);
+        });
+        return next;
       });
-      setCounts(map);
     };
     if (allCategories.some(c => c.api)) fetchCounts();
-  }, [allCategories, getAuthHeaders]);
+  }, [allCategories, getAuthHeaders, extractCount, handleUnauthorized]);
 
   // ── Add (custom category → backend) ────────────────────────────────────────
   const handleAdd = async form => {

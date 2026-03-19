@@ -8,7 +8,6 @@ import 'dart:convert';
 import 'dart:typed_data';
 import 'widgets/star_rating_widget.dart';
 
-
 /// =======================
 /// DATA MODEL
 /// =======================
@@ -25,7 +24,7 @@ class Accommodation {
   final double? latitude;
   final double? longitude;
   bool isSaved;
-  
+
   // MongoDB nested fields
   final int? bedrooms;
   final int? bathrooms;
@@ -87,10 +86,9 @@ class Accommodation {
       amenities.forEach((key, value) {
         if (value == true) {
           // Convert camelCase to readable format
-          String formatted = key.replaceAllMapped(
-            RegExp(r'([A-Z])'),
-            (Match m) => ' ${m[0]}'
-          ).trim();
+          String formatted = key
+              .replaceAllMapped(RegExp(r'([A-Z])'), (Match m) => ' ${m[0]}')
+              .trim();
           formatted = formatted[0].toUpperCase() + formatted.substring(1);
           extractedAmenities.add(formatted);
         }
@@ -100,8 +98,11 @@ class Accommodation {
     // Calculate price from rentDetails
     int displayPrice = 0;
     if (json['rentDetails'] != null) {
-      displayPrice = (json['rentDetails']['warmRent'] ?? 
-                     json['rentDetails']['coldRent'] ?? 0).toInt();
+      displayPrice =
+          (json['rentDetails']['warmRent'] ??
+                  json['rentDetails']['coldRent'] ??
+                  0)
+              .toInt();
     }
 
     // Build location string
@@ -112,12 +113,15 @@ class Accommodation {
 
     // Get property type
     String propertyType = json['propertyType'] ?? 'shared_rooms';
-    String formattedPropertyType = propertyType.replaceAll('_', ' ').split(' ')
-      .where((word) => word.isNotEmpty)
-      .map((word) => word[0].toUpperCase() + word.substring(1))
-      .join(' ');
+    String formattedPropertyType = propertyType
+        .replaceAll('_', ' ')
+        .split(' ')
+        .where((word) => word.isNotEmpty)
+        .map((word) => word[0].toUpperCase() + word.substring(1))
+        .join(' ');
 
-    final String rawImage = (json['media']?['images'] != null &&
+    final String rawImage =
+        (json['media']?['images'] != null &&
             (json['media']['images'] as List).isNotEmpty)
         ? (() {
             final img = json['media']['images'][0];
@@ -131,13 +135,14 @@ class Accommodation {
         : 'assets/images/room.jpg';
 
     final String resolvedImageUrl = ApiConfig.getImageUrl(rawImage);
-    final String normalizedImage = (rawImage.startsWith('http') ||
-        rawImage.startsWith('data:image') ||
-        rawImage.startsWith('assets/'))
-      ? rawImage
-      : (resolvedImageUrl.isNotEmpty
-        ? resolvedImageUrl
-        : 'assets/images/room.jpg');
+    final String normalizedImage =
+        (rawImage.startsWith('http') ||
+            rawImage.startsWith('data:image') ||
+            rawImage.startsWith('assets/'))
+        ? rawImage
+        : (resolvedImageUrl.isNotEmpty
+              ? resolvedImageUrl
+              : 'assets/images/room.jpg');
 
     return Accommodation(
       id: (json['_id'] ?? '').toString(),
@@ -286,21 +291,19 @@ class _AccommodationPageState extends State<AccommodationPage> {
 
   Future<void> fetchAccommodations() async {
     setState(() => isLoading = true);
-    
+
     try {
       final response = await http.get(
         Uri.parse(ApiConfig.accommodationEndpoint),
-        headers: {
-          'x-user-id': 'user123',
-          'x-user-role': 'user',
-        },
+        headers: {'x-user-id': 'user123', 'x-user-role': 'user'},
       );
 
       if (response.statusCode == 200) {
         final decoded = json.decode(response.body);
         // Support both plain array and wrapped { data: [...] } responses
-        final List<dynamic> data =
-            decoded is List ? decoded : (decoded['data'] ?? []) as List;
+        final List<dynamic> data = decoded is List
+            ? decoded
+            : (decoded['data'] ?? []) as List;
         final loaded = data
             .map((j) {
               try {
@@ -327,7 +330,11 @@ class _AccommodationPageState extends State<AccommodationPage> {
         setState(() => isLoading = false);
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Server error ${response.statusCode}: ${response.body}')),
+            SnackBar(
+              content: Text(
+                'Server error ${response.statusCode}: ${response.body}',
+              ),
+            ),
           );
         }
       }
@@ -344,28 +351,22 @@ class _AccommodationPageState extends State<AccommodationPage> {
     }
   }
 
-  List<Accommodation> _applySearchOnBase(List<Accommodation> base, String query) {
+  List<Accommodation> _applySearchOnBase(
+    List<Accommodation> base,
+    String query,
+  ) {
     if (query.trim().isEmpty) return base;
 
     final q = query.toLowerCase();
-    // Exact / direct matches first
-    final exact = base
-        .where((acc) =>
-            acc.title.toLowerCase().contains(q) ||
-            acc.location.toLowerCase().contains(q) ||
-            acc.description.toLowerCase().contains(q))
+    // Return only exact matches based on title, location, or description
+    return base
+        .where(
+          (acc) =>
+              acc.title.toLowerCase().contains(q) ||
+              acc.location.toLowerCase().contains(q) ||
+              acc.description.toLowerCase().contains(q),
+        )
         .toList();
-
-    // Similar: same property type as any exact match, not already in exact
-    final exactIds = exact.map((e) => e.id).toSet();
-    final exactTypes = exact.map((e) => e.propertyType.toLowerCase()).toSet();
-    final similar = base
-        .where((acc) =>
-            !exactIds.contains(acc.id) &&
-            exactTypes.any((t) => acc.propertyType.toLowerCase().contains(t)))
-        .toList();
-
-    return [...exact, ...similar];
   }
 
   void searchAccommodations(String query) {
@@ -425,33 +426,37 @@ class _AccommodationPageState extends State<AccommodationPage> {
                 ),
                 const SizedBox(width: 10),
                 GestureDetector(
-  onTap: () async {
-    final result = await Navigator.push<List<Accommodation>>(
-      context,
-      MaterialPageRoute(
-        builder: (_) => FilterPage(allAccommodations: accommodations),
-      ),
-    );
-    if (result != null) {
-      setState(() {
-        _filterBase = result;
-        filteredAccommodations = _applySearchOnBase(_filterBase, searchQuery);
-      });
-    }
-  },
-  child: Container(
-    padding: const EdgeInsets.all(12),
-    decoration: BoxDecoration(
-      color: Colors.white,
-      borderRadius: BorderRadius.circular(10),
-    ),
-    child: Image.asset(
-      'assets/images/sort.png',
-      height: 22,
-      width: 22,
-    ),
-  ),
-)
+                  onTap: () async {
+                    final result = await Navigator.push<List<Accommodation>>(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) =>
+                            FilterPage(allAccommodations: accommodations),
+                      ),
+                    );
+                    if (result != null) {
+                      setState(() {
+                        _filterBase = result;
+                        filteredAccommodations = _applySearchOnBase(
+                          _filterBase,
+                          searchQuery,
+                        );
+                      });
+                    }
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Image.asset(
+                      'assets/images/sort.png',
+                      height: 22,
+                      width: 22,
+                    ),
+                  ),
+                ),
               ],
             ),
           ),
@@ -461,41 +466,41 @@ class _AccommodationPageState extends State<AccommodationPage> {
             child: isLoading
                 ? const Center(child: CircularProgressIndicator())
                 : filteredAccommodations.isEmpty
-                    ? const Center(
-                        child: Text(
-                          'No accommodations found',
-                          style: TextStyle(fontSize: 16, color: Colors.grey),
-                        ),
-                      )
-                    : ListView.builder(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        itemCount: filteredAccommodations.length,
-              itemBuilder: (context, index) {
-                final item = filteredAccommodations[index];
+                ? const Center(
+                    child: Text(
+                      'No accommodations found',
+                      style: TextStyle(fontSize: 16, color: Colors.grey),
+                    ),
+                  )
+                : ListView.builder(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    itemCount: filteredAccommodations.length,
+                    itemBuilder: (context, index) {
+                      final item = filteredAccommodations[index];
 
-                return AccommodationCard(
-                  accommodation: item,
-                  onBookmarkTap: () {
-                    setState(() {
-                      SavedManager.instance.toggle(item);
-                    });
-                  },
-                  onTap: () async {
-                    await Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => AccommodationDetailPage(
-                          item: item,
-                          onRefresh: fetchAccommodations,
-                        ),
-                      ),
-                    );
-                    // Refresh after returning from details
-                    fetchAccommodations();
-                  },
-                );
-              },
-            ),
+                      return AccommodationCard(
+                        accommodation: item,
+                        onBookmarkTap: () {
+                          setState(() {
+                            SavedManager.instance.toggle(item);
+                          });
+                        },
+                        onTap: () async {
+                          await Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => AccommodationDetailPage(
+                                item: item,
+                                onRefresh: fetchAccommodations,
+                              ),
+                            ),
+                          );
+                          // Refresh after returning from details
+                          fetchAccommodations();
+                        },
+                      );
+                    },
+                  ),
           ),
         ],
       ),
@@ -551,7 +556,11 @@ class AccommodationCard extends StatelessWidget {
                       Expanded(
                         child: Text(
                           accommodation.title,
-                          style: const TextStyle(fontSize: 15,fontWeight: FontWeight.w600,letterSpacing: 0.2,),
+                          style: const TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                            letterSpacing: 0.2,
+                          ),
                         ),
                       ),
                       InkWell(
@@ -577,7 +586,6 @@ class AccommodationCard extends StatelessWidget {
                         'assets/images/location.png',
                         width: 16,
                         height: 16,
-                        errorBuilder: (_, __, ___) => const Icon(Icons.location_on, size: 16, color: Color(0xFF4F7F67)),
                       ),
                       const SizedBox(width: 4),
                       Expanded(
@@ -585,14 +593,18 @@ class AccommodationCard extends StatelessWidget {
                           accommodation.location,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(color: Color(0xFF6B7280),fontSize: 12,fontWeight: FontWeight.w400,),
+                          style: const TextStyle(
+                            color: Color(0xFF6B7280),
+                            fontSize: 12,
+                            fontWeight: FontWeight.w400,
+                          ),
                         ),
                       ),
                     ],
                   ),
 
                   const SizedBox(height: 6),
-                  
+
                   /// AMENITIES
                   Wrap(
                     spacing: 6,
@@ -618,8 +630,9 @@ class AccommodationCard extends StatelessWidget {
                       );
                     }).toList(),
                   ),
-                  
+
                   const SizedBox(height: 6),
+
                   /// RATING + PRICE
                   Row(
                     children: [
@@ -637,7 +650,11 @@ class AccommodationCard extends StatelessWidget {
                       const Spacer(),
                       Text(
                         "€${accommodation.price} / month",
-                        style: const TextStyle(color: Color(0xFF16A34A),fontWeight: FontWeight.w700,fontSize: 13,),
+                        style: const TextStyle(
+                          color: Color(0xFF16A34A),
+                          fontWeight: FontWeight.w700,
+                          fontSize: 13,
+                        ),
                       ),
                     ],
                   ),
@@ -651,26 +668,41 @@ class AccommodationCard extends StatelessWidget {
   }
 
   static Widget _placeholderImage() => Container(
-        width: 90,
-        height: 90,
-        color: const Color(0xFFE8F5E9),
-        child: const Icon(Icons.home, color: Color(0xFF4F7F67), size: 36),
-      );
+    width: 90,
+    height: 90,
+    color: const Color(0xFFE8F5E9),
+    child: const Icon(Icons.home, color: Color(0xFF4F7F67), size: 36),
+  );
 
   /// Handles URL, base64 data-URI and asset images
   static Widget _buildListingImage(String src, double w, double h) {
     if (src.startsWith('data:image')) {
       try {
         final Uint8List bytes = base64Decode(src.split(',').last);
-        return Image.memory(bytes, width: w, height: h, fit: BoxFit.cover,
-            errorBuilder: (_, __, ___) => _placeholderImage());
+        return Image.memory(
+          bytes,
+          width: w,
+          height: h,
+          fit: BoxFit.cover,
+          errorBuilder: (_, __, ___) => _placeholderImage(),
+        );
       } catch (_) {}
     }
     if (src.startsWith('http')) {
-      return Image.network(src, width: w, height: h, fit: BoxFit.cover,
-          errorBuilder: (_, __, ___) => _placeholderImage());
+      return Image.network(
+        src,
+        width: w,
+        height: h,
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) => _placeholderImage(),
+      );
     }
-    return Image.asset(src, width: w, height: h, fit: BoxFit.cover,
-        errorBuilder: (_, __, ___) => _placeholderImage());
+    return Image.asset(
+      src,
+      width: w,
+      height: h,
+      fit: BoxFit.cover,
+      errorBuilder: (_, __, ___) => _placeholderImage(),
+    );
   }
 }
