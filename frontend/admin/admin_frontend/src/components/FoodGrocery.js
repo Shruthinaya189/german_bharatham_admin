@@ -25,7 +25,12 @@ const FoodGrocery = () => {
     try {
       setLoading(true);
       const token = localStorage.getItem('adminToken');
-      const response = await fetch(`${API_URL}/api/admin/foodgrocery`, {
+      const qs = new URLSearchParams();
+      qs.set('page', String(currentPage));
+      qs.set('limit', String(itemsPerPage));
+      if (statusFilter && statusFilter !== 'all') qs.set('status', statusFilter);
+      const url = `${API_URL}/api/admin/foodgrocery?${qs.toString()}`;
+      const response = await fetch(url, {
         headers: {
           'Authorization': `Bearer ${token}`
         }

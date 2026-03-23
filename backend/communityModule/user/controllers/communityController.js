@@ -2,8 +2,17 @@ const Guide = require("../models/Guide");
 
 exports.getAllGuides = async (req, res) => {
   try {
-    const guides = await Guide.find().sort({ createdAt: -1 });
-    res.json(guides);
+    const page = Math.max(1, parseInt(req.query.page) || 1);
+    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 20));
+    const skip = (page - 1) * limit;
+
+    const query = {};
+    const [total, guides] = await Promise.all([
+      Guide.countDocuments(query),
+      Guide.find(query).sort({ createdAt: -1 }).skip(skip).limit(limit)
+    ]);
+    const totalPages = Math.ceil(total / limit);
+    res.json({ data: guides, count: total, page, limit, totalPages });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

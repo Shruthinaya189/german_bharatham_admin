@@ -21,13 +21,24 @@ async function geocode(address) {
   return {};
 }
 
-// Get all food/grocery items - most recent first
+// Get all food/grocery items - paginated
 exports.getAllFoodGrocery = async (req, res) => {
   try {
-    const items = await FoodGrocery.find().sort({ createdAt: -1 });
-    console.log(`📊 Found ${items.length} food/grocery items`);
-    // Return in format expected by frontend: {data, count}
-    res.json({ data: items, count: items.length });
+    const page = Math.max(1, parseInt(req.query.page) || 1);
+    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 20));
+    const skip = (page - 1) * limit;
+
+    const query = {};
+    // optional status filter
+    if (req.query.status) query.status = req.query.status;
+
+    const [total, items] = await Promise.all([
+      FoodGrocery.countDocuments(query),
+      FoodGrocery.find(query).sort({ createdAt: -1 }).skip(skip).limit(limit)
+    ]);
+
+    const totalPages = Math.ceil(total / limit);
+    res.json({ data: items, count: total, page, limit, totalPages });
   } catch (err) {
     console.error('Error fetching food items:', err);
     res.status(500).json({ message: err.message });
