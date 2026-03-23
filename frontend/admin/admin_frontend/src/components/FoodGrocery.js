@@ -433,17 +433,28 @@ const FoodGrocery = () => {
             setShowEditModal(false);
             setSelectedItem(null);
           }}
-          onSuccess={(updated) => {
-            // close modal
-            setShowEditModal(false);
-            setSelectedItem(null);
-            // optimistically update current listings if possible
-            if (updated && updated._id) {
-              setListings(prev => prev.map(it => it._id === updated._id ? (Array.isArray(updated.data) ? updated.data[0] : updated) : it));
-            }
-            // refresh from server to ensure canonical state
-            fetchListings();
-          }}
+            onSuccess={(updated) => {
+              // close modal
+              setShowEditModal(false);
+              setSelectedItem(null);
+              try {
+                console.debug('FoodGrocery onSuccess payload:', updated);
+                // Normalize updated item whether backend returns {data: [...]}, {item: ...} or item directly
+                let updatedItem = updated;
+                if (!updatedItem) updatedItem = null;
+                else if (Array.isArray(updatedItem.data)) updatedItem = updatedItem.data[0];
+                else if (updatedItem.data) updatedItem = updatedItem.data;
+                else if (updatedItem.item) updatedItem = updatedItem.item;
+
+                if (updatedItem && updatedItem._id) {
+                  setListings(prev => prev.map(it => it._id === updatedItem._id ? updatedItem : it));
+                }
+              } catch (e) {
+                console.error('Error applying optimistic update:', e);
+              }
+              // refresh from server to ensure canonical state
+              fetchListings();
+            }}
         />
       )}
 

@@ -127,7 +127,7 @@ const EditFoodGroceryModal = ({ item, onClose, onSuccess }) => {
       }
 
       const data = await response.json();
-      console.log('Updated listing:', data);
+      console.debug('EditFoodGroceryModal: update response', data);
       // pass updated item back to parent so it can update immediately
       onSuccess && onSuccess(data);
     } catch (err) {
