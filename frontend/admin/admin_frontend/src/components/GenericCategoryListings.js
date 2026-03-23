@@ -142,13 +142,14 @@ const EditModal = ({ item, category, apiBase, onClose, onSuccess }) => {
       const payload = { ...data };
 
       if (category === 'Food') {
-        const resolvedTitle = (payload.title || payload.name || payload.restaurantName || '').toString().trim();
+        // Prefer explicit edited fields (name, restaurantName) over legacy title
+        const resolvedTitle = (payload.name || payload.restaurantName || payload.title || '').toString().trim();
         payload.title = resolvedTitle;
         payload.name = resolvedTitle;
         payload.restaurantName = resolvedTitle;
-        payload.phone = (payload.phone || payload.contactPhone || '').toString().trim();
+        payload.phone = (payload.contactPhone || payload.phone || '').toString().trim();
         payload.contactPhone = payload.phone;
-        payload.zipCode = (payload.zipCode || payload.postalCode || '').toString().trim();
+        payload.zipCode = (payload.postalCode || payload.zipCode || '').toString().trim();
         payload.postalCode = payload.zipCode;
         if (!payload.location) {
           payload.location = [payload.city, payload.address].filter(Boolean).join(', ');
