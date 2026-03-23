@@ -45,11 +45,43 @@ exports.createJob = async (req, res) => {
   }
 };
 
-// GET ALL JOBS (Admin)
+// GET ALL JOBS (Admin) - with pagination
 exports.getAllJobs = async (req, res) => {
   try {
-    const jobs = await Job.find().sort({ createdAt: -1 });
-    res.json(jobs);
+    // Parse pagination parameters
+    const page = Math.max(1, parseInt(req.query.page) || 1);
+    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 20));
+    const skip = (page - 1) * limit;
+    const statusRaw = String(req.query.status || '').trim().toLowerCase();
+
+    const filter = {};
+    if (statusRaw) {
+      if (statusRaw === 'active') filter.status = { $in: ['Active', 'active'] };
+      else if (statusRaw === 'pending') filter.status = { $in: ['Pending', 'pending'] };
+      else if (statusRaw === 'disabled' || statusRaw === 'inactive') {
+        filter.status = { $in: ['Inactive', 'inactive', 'disabled'] };
+      }
+    }
+
+    // Parallel count and data queries
+    const [jobs, totalCount] = await Promise.all([
+      Job.find(filter)
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean() // Plain objects (faster)
+        .select('_id title companyName company companyLogo jobType location contact salary requirements benefits applyUrl status createdAt'), // Fields used by admin UI
+      Object.keys(filter).length === 0 ? Job.estimatedDocumentCount() : Job.countDocuments(filter)
+    ]);
+
+    res.json({
+      data: jobs,
+      count: jobs.length,
+      totalCount,
+      page,
+      limit,
+      totalPages: Math.ceil(totalCount / limit)
+    });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

@@ -2,8 +2,30 @@ const Guide = require("../models/Guide");
 
 exports.getAllGuides = async (req, res) => {
   try {
-    const guides = await Guide.find().sort({ createdAt: -1 });
-    res.json(guides);
+    // Parse pagination parameters
+    const page = Math.max(1, parseInt(req.query.page) || 1);
+    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 20));
+    const skip = (page - 1) * limit;
+
+    // Parallel count and data queries
+    const [guides, totalCount] = await Promise.all([
+      Guide.find()
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean() // Plain objects (faster)
+        .select('_id title description category createdAt'), // Only needed fields
+      Guide.countDocuments()
+    ]);
+
+    res.json({
+      data: guides,
+      count: guides.length,
+      totalCount,
+      page,
+      limit,
+      totalPages: Math.ceil(totalCount / limit)
+    });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

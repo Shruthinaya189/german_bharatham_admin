@@ -33,5 +33,10 @@ const jobSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+// Query performance indexes for admin listing pages.
+jobSchema.index({ createdAt: -1 });
+jobSchema.index({ status: 1, createdAt: -1 });
+jobSchema.index({ location: 1 });
+
 // Collection name: jobs
 module.exports = mongoose.models.Job || mongoose.model("Job", jobSchema);

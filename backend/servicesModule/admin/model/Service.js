@@ -128,4 +128,9 @@ serviceSchema.pre("validate", function syncServiceFields() {
 
 });
 
+// Query performance indexes for admin listing pages.
+serviceSchema.index({ createdAt: -1 });
+serviceSchema.index({ status: 1, createdAt: -1 });
+serviceSchema.index({ city: 1 });
+
 module.exports = mongoose.models.Service || mongoose.model("Service", serviceSchema);

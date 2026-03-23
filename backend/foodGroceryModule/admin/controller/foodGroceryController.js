@@ -21,13 +21,36 @@ async function geocode(address) {
   return {};
 }
 
-// Get all food/grocery items - most recent first
+// Get all food/grocery items - most recent first (with pagination)
 exports.getAllFoodGrocery = async (req, res) => {
   try {
-    const items = await FoodGrocery.find().sort({ createdAt: -1 });
-    console.log(`📊 Found ${items.length} food/grocery items`);
-    // Return in format expected by frontend: {data, count}
-    res.json({ data: items, count: items.length });
+    // Parse pagination parameters from query
+    const page = Math.max(1, parseInt(req.query.page) || 1);
+    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 20)); // Max 100, default 20
+    const skip = (page - 1) * limit;
+
+    // Execute count and data queries in parallel for speed
+    const [items, totalCount] = await Promise.all([
+      FoodGrocery.find()
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean() // Return plain objects, not Mongoose documents (much faster)
+        .select('_id title restaurantName image images media category subCategory city area address phone contactPhone email website status createdAt averageRating totalRatings'), // Fields needed by listings UI
+      FoodGrocery.countDocuments() // Get total count for pagination info
+    ]);
+
+    console.log(`📊 Food/Grocery: Page ${page}, fetched ${items.length}/${totalCount} items`);
+    
+    // Return in format expected by frontend
+    res.json({ 
+      data: items, 
+      count: items.length,
+      totalCount, // Total items in collection
+      page,
+      limit,
+      totalPages: Math.ceil(totalCount / limit)
+    });
   } catch (err) {
     console.error('Error fetching food items:', err);
     res.status(500).json({ message: err.message });

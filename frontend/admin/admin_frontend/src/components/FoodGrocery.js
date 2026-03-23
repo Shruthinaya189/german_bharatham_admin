@@ -17,21 +17,28 @@ const FoodGrocery = () => {
   const [categoryFilter, setCategoryFilter] = useState('All');
   const [sortBy, setSortBy] = useState('newest');
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 10;
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
+  const itemsPerPage = 20; // Load 20 items per page from server
 
-  // Fetch all food & grocery listings
-  const fetchListings = async () => {
+  // Fetch food & grocery listings with pagination
+  const fetchListings = async (page = 1) => {
     try {
       setLoading(true);
       const token = localStorage.getItem('adminToken');
-      const response = await fetch(`${API_URL}/api/admin/foodgrocery`, {
+      const response = await fetch(`${API_URL}/api/admin/foodgrocery?page=${page}&limit=${itemsPerPage}`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
       });
       if (!response.ok) throw new Error('Failed to fetch listings');
       const data = await response.json();
-      setListings(data);
+      // Support both API shapes: array and { data, count }.
+      const items = Array.isArray(data) ? data : (Array.isArray(data?.data) ? data.data : []);
+      setListings(items);
+      setCurrentPage(page);
+      setTotalCount(data.totalCount || data.count || items.length);
+      setTotalPages(data.totalPages || Math.ceil((data.totalCount || data.count || items.length) / itemsPerPage));
       setError(null);
     } catch (err) {
       setError(err.message);
@@ -42,7 +49,7 @@ const FoodGrocery = () => {
   };
 
   useEffect(() => {
-    fetchListings();
+    fetchListings(1);
   }, []);
 
   // Handle delete
@@ -60,8 +67,8 @@ const FoodGrocery = () => {
       
       if (!response.ok) throw new Error('Failed to delete listing');
       
-      // Refresh listings
-      fetchListings();
+      // Refresh listings, go back to page 1 if current page is now empty
+      fetchListings(listings.length === 1 ? 1 : currentPage);
     } catch (err) {
       alert('Error deleting listing: ' + err.message);
       console.error('Error deleting:', err);
@@ -88,7 +95,7 @@ const FoodGrocery = () => {
     if (searchTerm) {
       const searchLower = searchTerm.toLowerCase();
       filtered = filtered.filter(item =>
-        (item.title || item.name || '').toLowerCase().includes(searchLower) ||
+        (item.restaurantName || item.title || item.name || '').toLowerCase().includes(searchLower) ||
         (item.location || '').toLowerCase().includes(searchLower) ||
         (item.city || '').toLowerCase().includes(searchLower) ||
         (item.address || '').toLowerCase().includes(searchLower) ||
@@ -111,10 +118,10 @@ const FoodGrocery = () => {
         filtered.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
         break;
       case 'a-z':
-        filtered.sort((a, b) => (a.title || a.name || '').localeCompare(b.title || b.name || ''));
+        filtered.sort((a, b) => (a.restaurantName || a.title || a.name || '').localeCompare(b.restaurantName || b.title || b.name || ''));
         break;
       case 'z-a':
-        filtered.sort((a, b) => (b.title || b.name || '').localeCompare(a.title || a.name || ''));
+        filtered.sort((a, b) => (b.restaurantName || b.title || b.name || '').localeCompare(a.restaurantName || a.title || a.name || ''));
         break;
       default:
         break;
@@ -235,11 +242,11 @@ const FoodGrocery = () => {
                           {item.image && (
                             <img 
                               src={item.image} 
-                              alt={item.title || item.name} 
+                              alt={item.restaurantName || item.title || item.name} 
                               className="listing-thumbnail"
                             />
                           )}
-                          <span>{item.title || item.name}</span>
+                          <span>{item.restaurantName || item.title || item.name}</span>
                         </div>
                       </td>
                       <td>
@@ -297,12 +304,12 @@ const FoodGrocery = () => {
           {filteredListings.length > 0 && (
             <div className="pagination">
               <div className="pagination-info">
-                Showing {((currentPage - 1) * itemsPerPage) + 1}-{Math.min(currentPage * itemsPerPage, filteredListings.length)} of {filteredListings.length} results
+                Showing {listings.length > 0 ? ((currentPage - 1) * itemsPerPage) + 1 : 0}-{Math.min(currentPage * itemsPerPage, totalCount)} of {totalCount} results
               </div>
               <div className="pagination-controls">
                 <button 
                   className="pagination-btn"
-                  onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                  onClick={() => fetchListings(Math.max(1, currentPage - 1))}
                   disabled={currentPage === 1}
                 >
                   <ChevronLeft size={16} />
@@ -323,7 +330,7 @@ const FoodGrocery = () => {
                     <button
                       key={idx}
                       className={`pagination-btn ${currentPage === pageNum ? 'active' : ''}`}
-                      onClick={() => setCurrentPage(pageNum)}
+                      onClick={() => fetchListings(pageNum)}
                     >
                       {pageNum}
                     </button>
@@ -331,7 +338,7 @@ const FoodGrocery = () => {
                 })}
                 <button 
                   className="pagination-btn"
-                  onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                  onClick={() => fetchListings(Math.min(totalPages, currentPage + 1))}
                   disabled={currentPage === totalPages}
                 >
                   <ChevronRight size={16} />
@@ -348,7 +355,7 @@ const FoodGrocery = () => {
           onClose={() => setShowAddModal(false)}
           onSuccess={() => {
             setShowAddModal(false);
-            fetchListings();
+            fetchListings(1);
           }}
         />
       )}
@@ -363,7 +370,7 @@ const FoodGrocery = () => {
           onSuccess={() => {
             setShowEditModal(false);
             setSelectedItem(null);
-            fetchListings();
+            fetchListings(currentPage);
           }}
         />
       )}

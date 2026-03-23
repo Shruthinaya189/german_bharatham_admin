@@ -8,7 +8,10 @@ const Users = () => {
   const [filterBy, setFilterBy] = useState('all');
   const [users, setUsers]     = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
   const BASE = API_URL;
+  const ITEMS_PER_PAGE = 20; // Server-side page size
 
   const getUserPhotoSrc = (user) => {
     const p = user?.photo;
@@ -25,14 +28,14 @@ const Users = () => {
     return null;
   };
   useEffect(() => {
-  fetchUsers();
+  fetchUsers(1);
 }, []);
 
-const fetchUsers = async () => {
+const fetchUsers = async (page = 1) => {
   try {
     const token = localStorage.getItem("adminToken");
 
-    const response = await fetch(`${BASE}/api/user/all-users`, {
+    const response = await fetch(`${BASE}/api/user/all-users?page=${page}&limit=${ITEMS_PER_PAGE}`, {
       headers: {
         Authorization: `Bearer ${token}`,
       },
@@ -45,8 +48,12 @@ const fetchUsers = async () => {
       return;
     }
 
-    setUsers(data);
-    setCurrentPage(1); // reset to first page on fresh fetch
+    // Handle both array and object responses
+    const users = Array.isArray(data) ? data : (data.data || []);
+    setUsers(users);
+    setCurrentPage(page);
+    setTotalCount(data.totalCount || data.count || users.length);
+    setTotalPages(data.totalPages || Math.ceil((data.totalCount || data.count || users.length) / ITEMS_PER_PAGE));
 
   } catch (error) {
     console.error("Error fetching users:", error);
@@ -63,7 +70,7 @@ const fetchUsers = async () => {
       },
     });
 
-    fetchUsers(); // refresh table
+    fetchUsers(currentPage); // refresh same page
 
   } catch (error) {
     console.error("Error updating user:", error);
@@ -116,9 +123,9 @@ const fetchUsers = async () => {
         if (sortBy === 'oldest')      list.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
         if (sortBy === 'alphabetical') list.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
 
-        const totalPages  = Math.ceil(list.length / ITEMS_PER_PAGE);
-        const safePage    = Math.min(currentPage, totalPages || 1);
-        const pageSlice   = list.slice((safePage - 1) * ITEMS_PER_PAGE, safePage * ITEMS_PER_PAGE);
+        const totalPagesLocal  = Math.ceil(list.length / ITEMS_PER_PAGE);
+        const safePageLocal    = Math.min(1, totalPagesLocal || 1); // Only show first page of filtered results
+        const pageSlice   = list.slice(0, list.length); // Show all items on first page
 
         return (
           <>
@@ -174,22 +181,29 @@ const fetchUsers = async () => {
             {totalPages > 1 && (
               <div className="pagination">
                 <div className="pagination-numbers">
-                  {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
-                    <button
-                      key={page}
-                      className={`pagination-btn ${safePage === page ? 'active' : ''}`}
-                      onClick={() => setCurrentPage(page)}
-                    >
-                      {page}
-                    </button>
-                  ))}
+                  {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
+                    let pageNum = i + 1;
+                    if (totalPages > 5 && currentPage > 3) {
+                      pageNum = currentPage - 2 + i;
+                    }
+                    return (
+                      <button
+                        key={pageNum}
+                        className={`pagination-btn ${currentPage === pageNum ? 'active' : ''}`}
+                        onClick={() => fetchUsers(pageNum)}
+                        disabled={pageNum > totalPages}
+                      >
+                        {pageNum}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
             )}
 
-            {list.length > 0 && (
+            {users.length > 0 && (
               <p style={{ fontSize: 13, color: '#6b7280', padding: '8px 0', textAlign: 'right' }}>
-                Showing {(safePage - 1) * ITEMS_PER_PAGE + 1}–{Math.min(safePage * ITEMS_PER_PAGE, list.length)} of {list.length} users
+                Showing {(currentPage - 1) * ITEMS_PER_PAGE + 1}–{Math.min(currentPage * ITEMS_PER_PAGE, totalCount)} of {totalCount} users
               </p>
             )}
           </>

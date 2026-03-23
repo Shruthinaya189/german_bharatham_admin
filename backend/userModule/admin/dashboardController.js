@@ -1,67 +1,95 @@
 const Accommodation = require("../../accommodationModule/accomodation");
 const FoodGrocery = require("../../foodGroceryModule/admin/model/FoodGrocery");
-const Job = require("../../jobsModule/admin/model/Job");
+const Job = require("../../jobsModule/models/jobModel");
 const Service = require("../../servicesModule/admin/model/Service");
 const User = require("../user/models/User");
+const Category = require("../../categoryModule/Category");
+const GenericListing = require("../../categoryModule/GenericListing");
 
 // Get dashboard statistics
 exports.getDashboardStats = async (req, res) => {
   try {
-    // Count total listings from all categories
-    const [accommodationCount, foodCount, jobCount, serviceCount, userCount] = await Promise.all([
+    // Count totals with lightweight queries only.
+    const [
+      accommodationCount,
+      foodCount,
+      jobCount,
+      serviceCount,
+      totalUsersCount,
+      adminUsersCount,
+      customCategoryCount,
+      customListingCount,
+    ] = await Promise.all([
       Accommodation.countDocuments(),
       FoodGrocery.countDocuments(),
       Job.countDocuments(),
       Service.countDocuments(),
-      User.countDocuments({ role: "user" })
+      User.countDocuments(),
+      User.countDocuments({ role: { $in: ["admin", "Admin"] } }),
+      Category.countDocuments(),
+      GenericListing.countDocuments(),
     ]);
 
-    const totalListings = accommodationCount + foodCount + jobCount + serviceCount;
-    const totalCategories = 4; // Accommodation, Food, Services, Jobs
+    const userCount = Math.max(totalUsersCount - adminUsersCount, 0);
+
+    const totalListings = accommodationCount + foodCount + jobCount + serviceCount + customListingCount;
+    const totalCategories = 4 + customCategoryCount; // 4 built-in + custom categories
 
     // Get pending reviews count (items with status 'Pending')
     const pendingReviews = await Promise.all([
-      Accommodation.countDocuments({ status: 'Pending' }),
-      FoodGrocery.countDocuments({ status: 'Pending' }),
-      Job.countDocuments({ status: 'Pending' }),
-      Service.countDocuments({ status: 'Pending' })
+      Accommodation.countDocuments({ status: { $in: ['pending', 'Pending'] } }),
+      FoodGrocery.countDocuments({ status: { $in: ['pending', 'Pending'] } }),
+      Job.countDocuments({ status: { $in: ['pending', 'Pending'] } }),
+      Service.countDocuments({ status: { $in: ['pending', 'Pending'] } })
     ]);
     const totalPending = pendingReviews.reduce((sum, count) => sum + count, 0);
 
-    // Get recent listings (last 6 from all categories)
-    const [recentAccommodations, recentFood, recentJobs, recentServices] = await Promise.all([
+    // Get recent listings (last items per category)
+    const [recentAccommodations, recentFood, recentJobs, recentServices, recentCustomListings] = await Promise.all([
       Accommodation.find().sort({ createdAt: -1 }).limit(2).lean(),
       FoodGrocery.find().sort({ createdAt: -1 }).limit(2).lean(),
       Job.find().sort({ createdAt: -1 }).limit(2).lean(),
-      Service.find().sort({ createdAt: -1 }).limit(2).lean()
+      Service.find().sort({ createdAt: -1 }).limit(2).lean(),
+      GenericListing.find().sort({ createdAt: -1 }).limit(4).lean(),
     ]);
 
     // Format recent listings
     const recentListings = [
       ...recentAccommodations.map(item => ({
-        title: item.title,
+        title: item.title || 'Untitled',
         category: 'Accommodation',
         status: item.status || 'Active',
-        added: formatTimeAgo(item.createdAt)
+        createdAt: item.createdAt,
+        added: formatTimeAgo(item.createdAt),
       })),
       ...recentFood.map(item => ({
-        title: item.title,
+        title: item.title || 'Untitled',
         category: 'Food',
         status: item.status || 'Active',
-        added: formatTimeAgo(item.createdAt)
+        createdAt: item.createdAt,
+        added: formatTimeAgo(item.createdAt),
       })),
       ...recentJobs.map(item => ({
-        title: item.title,
+        title: item.title || 'Untitled',
         category: 'Job',
         status: item.status || 'Active',
-        added: formatTimeAgo(item.createdAt)
+        createdAt: item.createdAt,
+        added: formatTimeAgo(item.createdAt),
       })),
       ...recentServices.map(item => ({
-        title: item.title,
+        title: item.title || 'Untitled',
         category: 'Services',
         status: item.status || 'Active',
-        added: formatTimeAgo(item.createdAt)
-      }))
+        createdAt: item.createdAt,
+        added: formatTimeAgo(item.createdAt),
+      })),
+      ...recentCustomListings.map(item => ({
+        title: item.title || 'Untitled',
+        category: item.categoryName || 'Custom',
+        status: item.status || 'Active',
+        createdAt: item.createdAt,
+        added: formatTimeAgo(item.createdAt),
+      })),
     ];
 
     // Sort by creation date and take top 6
