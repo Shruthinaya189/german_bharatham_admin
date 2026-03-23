@@ -73,15 +73,57 @@ const FoodGrocery = () => {
     }
   };
 
-  // Handle edit
-  const handleEdit = (item) => {
-    setSelectedItem(item);
+  // Resolve image URL (prefix API_URL for relative paths)
+  const resolveSrc = (src) => {
+    if (!src) return null;
+    try {
+      if (typeof src === 'object') src = src.url || src.src || src.path || '';
+      if (!src) return null;
+      if (/^(https?:)?\/\//i.test(src) || src.startsWith('data:')) return src;
+      const base = String(API_URL).replace(/\/$/, '');
+      if (src.startsWith('/')) return base + src;
+      return base + '/' + src;
+    } catch (e) { return src; }
+  };
+
+  // Handle edit - fetch latest item before opening modal
+  const handleEdit = async (item) => {
+    try {
+      const token = localStorage.getItem('adminToken');
+      const res = await fetch(`${API_URL}/api/admin/foodgrocery/${item._id}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const fresh = await res.json();
+        setSelectedItem(fresh);
+      } else {
+        setSelectedItem(item);
+      }
+    } catch (err) {
+      console.error('Error fetching item for edit:', err);
+      setSelectedItem(item);
+    }
     setShowEditModal(true);
   };
 
-  // Handle view
-  const handleView = (item) => {
-    setSelectedItem(item);
+  // Handle view - fetch latest item before showing
+  const handleView = async (item) => {
+    try {
+      const token = localStorage.getItem('adminToken');
+      const res = await fetch(`${API_URL}/api/admin/foodgrocery/${item._id}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const fresh = await res.json();
+        // backend returns item directly for GET /:id
+        setSelectedItem(fresh);
+      } else {
+        setSelectedItem(item);
+      }
+    } catch (err) {
+      console.error('Error fetching item for view:', err);
+      setSelectedItem(item);
+    }
     setShowViewModal(true);
   };
 
@@ -264,7 +306,8 @@ const FoodGrocery = () => {
                       <td className="listing-title">
                         <div className="title-with-image">
                           {(() => {
-                            const img = item.image || item.companyLogo || item.media?.images?.[0] || item.images?.[0] || null;
+                            const raw = item.image || item.companyLogo || item.media?.images?.[0] || item.images?.[0] || null;
+                            const img = resolveSrc(raw);
                             return img ? (
                               <img src={img} alt={item.title || item.name} className="listing-thumbnail" />
                             ) : null;
