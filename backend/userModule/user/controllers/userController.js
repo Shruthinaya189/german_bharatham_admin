@@ -11,33 +11,11 @@ exports.getPublicUsers = async (req, res) => {
   }
 };
 
-// 👀 Get All Users (only role = user) - with pagination
+// 👀 Get All Users (only role = user)
 exports.getAllUsers = async (req, res) => {
   try {
-    // Parse pagination parameters
-    const page = Math.max(1, parseInt(req.query.page) || 1);
-    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 20));
-    const skip = (page - 1) * limit;
-
-    // Parallel count and data queries
-    const [users, totalCount] = await Promise.all([
-      User.find({ role: "user" })
-        .sort({ createdAt: -1 })
-        .skip(skip)
-        .limit(limit)
-        .lean() // Plain objects (faster)
-        .select('_id name email phone photo isActive createdAt'), // Only needed fields
-      User.countDocuments({ role: "user" })
-    ]);
-
-    res.json({
-      data: users,
-      count: users.length,
-      totalCount,
-      page,
-      limit,
-      totalPages: Math.ceil(totalCount / limit)
-    });
+    const users = await User.find({ role: "user" }).select("-password");
+    res.json(users);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

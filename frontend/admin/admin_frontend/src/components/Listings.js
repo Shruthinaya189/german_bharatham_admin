@@ -4,10 +4,10 @@ import AddListingModal from './AddListingModal';
 import API_URL from '../config';
 
 const APIS = {
-  Accommodation: { get: `${API_URL}/api/accommodation/admin`, patch: (id) => `${API_URL}/api/accommodation/admin/${id}/status`, del: (id) => `${API_URL}/api/accommodation/admin/${id}`, titleKey: 'name' },
+  Accommodation: { get: `${API_URL}/api/accommodation/admin`, patch: (id) => `${API_URL}/api/accommodation/admin/${id}/status`, del: (id) => `${API_URL}/api/accommodation/admin/${id}`, titleKey: 'title' },
   Food:          { get: `${API_URL}/api/admin/foodgrocery`,          patch: (id) => `${API_URL}/api/admin/foodgrocery/${id}/status`,          del: (id) => `${API_URL}/api/admin/foodgrocery/${id}`,          titleKey: 'title' },
   Jobs:          { get: `${API_URL}/api/jobs/admin`,          patch: (id) => `${API_URL}/api/jobs/admin/${id}/status`,          del: (id) => `${API_URL}/api/jobs/admin/${id}`,          titleKey: 'title' },
-  Services:      { get: `${API_URL}/api/services/admin`,      patch: (id) => `${API_URL}/api/services/admin/${id}/status`,      del: (id) => `${API_URL}/api/services/admin/${id}`,      titleKey: 'name' },
+  Services:      { get: `${API_URL}/api/services/admin`,      patch: (id) => `${API_URL}/api/services/admin/${id}/status`,      del: (id) => `${API_URL}/api/services/admin/${id}`,      titleKey: 'serviceName' },
 };
 
 const STATUS_COLORS = {
@@ -31,13 +31,6 @@ const Listings = () => {
 
   useEffect(() => { fetchAllListings(); }, []);
 
-  const fetchWithTimeout = (url, options, timeoutMs = 12000) => {
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), timeoutMs);
-    return fetch(url, { ...options, signal: controller.signal })
-      .finally(() => clearTimeout(timer));
-  };
-
   const fetchAllListings = async () => {
     setLoading(true);
     const token = localStorage.getItem('adminToken');
@@ -45,7 +38,7 @@ const Listings = () => {
     try {
       const results = await Promise.allSettled(
         Object.entries(APIS).map(([cat, conf]) =>
-          fetchWithTimeout(conf.get, { headers })
+          fetch(conf.get, { headers })
             .then(r => {
               if (r.status === 401 || r.status === 403) {
                 const err = new Error('Unauthorized');
@@ -59,14 +52,11 @@ const Listings = () => {
               }
               return r.json();
             })
-            .then(data => {
-              const rows = Array.isArray(data) ? data : (Array.isArray(data?.data) ? data.data : []);
-              return rows.map(item => ({
+            .then(data => (data.data || []).map(item => ({
               _id: item._id,
               title: item[conf.titleKey] || 'Untitled',
               category: cat,
               location: item.location || [item.city, item.area].filter(Boolean).join(', ') || 'N/A',
-              createdTs: item.createdAt ? new Date(item.createdAt).getTime() : 0,
               status: ((raw) => {
                 const s = String(raw || '').toLowerCase();
                 if (s === 'active') return 'active';
@@ -75,8 +65,7 @@ const Listings = () => {
                 return 'inactive';
               })(item.status),
               created: item.createdAt ? new Date(item.createdAt).toLocaleDateString('en-GB') : 'N/A',
-            }));
-            })
+            })))
         )
       );
       const hasUnauthorized = results.some(
@@ -87,7 +76,7 @@ const Listings = () => {
         return;
       }
       const all = results.flatMap(r => r.status === 'fulfilled' ? r.value : []);
-      all.sort((a, b) => b.createdTs - a.createdTs);
+      all.sort((a, b) => b.created.localeCompare(a.created));
       setListings(all);
     } catch (e) {
       console.error(e);

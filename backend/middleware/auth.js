@@ -1,14 +1,9 @@
 const jwt = require("jsonwebtoken");
 const User = require("../userModule/user/models/User"); // adjust path if needed
 
-// 🔐 Verify Token Middleware with Request-Level Caching
+// 🔐 Verify Token Middleware
 exports.protect = async (req, res, next) => {
   try {
-    // Check if user is already cached in this request (avoid duplicate lookups)
-    if (req.user) {
-      return next();
-    }
-
     let token;
 
     // Check Authorization header
@@ -26,17 +21,14 @@ exports.protect = async (req, res, next) => {
     // Verify token
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-    // Fetch fresh user from DB with index optimization (IMPORTANT)
-    // Using .lean() for read-only operations to reduce overhead
-    const user = await User.findById(decoded.id)
-      .select("-password")
-      .lean(); // Return plain object instead of Mongoose document
+    // Fetch fresh user from DB (IMPORTANT)
+    const user = await User.findById(decoded.id).select("-password");
 
     if (!user) {
       return res.status(401).json({ message: "User not found" });
     }
 
-    req.user = user; // attach user object
+    req.user = user; // attach full user object
     next();
   } catch (error) {
     return res.status(401).json({ message: "Token failed" });

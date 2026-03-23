@@ -11,38 +11,10 @@ const adminCheck = (req, res, next) => {
 // GET ALL
 router.get('/', adminCheck, async (req, res) => {
   try {
-    const page = Math.max(1, parseInt(req.query.page) || 1);
-    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 20));
-    const skip = (page - 1) * limit;
-
-    const statusRaw = String(req.query.status || '').trim().toLowerCase();
-    const filter = {};
-    if (statusRaw) {
-      if (statusRaw === 'active') filter.status = { $in: ['Active', 'active'] };
-      else if (statusRaw === 'pending') filter.status = { $in: ['Pending', 'pending'] };
-      else if (statusRaw === 'disabled' || statusRaw === 'inactive') {
-        filter.status = { $in: ['Inactive', 'inactive', 'disabled'] };
-      }
-    }
-
-    const [data, totalCount] = await Promise.all([
-      Job.find(filter)
-        .sort({ createdAt: -1 })
-        .skip(skip)
-        .limit(limit)
-        .lean()
-        .select('_id title companyName company companyLogo jobType location contact salary requirements benefits applyUrl status createdAt'),
-      Object.keys(filter).length === 0 ? Job.estimatedDocumentCount() : Job.countDocuments(filter)
-    ]);
-
-    res.json({
-      data,
-      count: data.length,
-      totalCount,
-      page,
-      limit,
-      totalPages: Math.ceil(totalCount / limit)
-    });
+    const { status } = req.query;
+    const filter = status ? { status } : {};
+    const data = await Job.find(filter).sort({ createdAt: -1 }).lean();
+    res.json({ data, count: data.length });
   } catch (e) { res.status(500).json({ message: e.message }); }
 });
 

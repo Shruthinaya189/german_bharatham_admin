@@ -17,7 +17,6 @@ const Dashboard = () => {
   const [categoryCounts, setCategoryCounts] = useState({ Accommodation: 0, Food: 0, Jobs: 0, Services: 0 });
   const [userCount, setUserCount]           = useState(0);
   const [categoryCount, setCategoryCount]   = useState(4);
-  const [pendingReviews, setPendingReviews] = useState(0);
   const [recentListings, setRecentListings] = useState([]);
   const [problemReports, setProblemReports] = useState([]);
   const [readReportIds, setReadReportIds] = useState(() => {
@@ -34,13 +33,6 @@ const Dashboard = () => {
   const handleUnauthorized = useCallback(() => {
     localStorage.removeItem('adminToken');
     window.location.reload();
-  }, []);
-
-  const fetchWithTimeout = useCallback((url, options = {}, timeoutMs = 10000) => {
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), timeoutMs);
-    return fetch(url, { ...options, signal: controller.signal })
-      .finally(() => clearTimeout(timer));
   }, []);
 
   const fetchProblemReports = useCallback(async () => {
@@ -93,149 +85,99 @@ const Dashboard = () => {
     const token   = localStorage.getItem('adminToken');
     const headers = { Authorization: `Bearer ${token}` };
 
-    const loadFromFallbackEndpoints = async () => {
-      const listingResults = await Promise.allSettled(
-        Object.entries(CATEGORY_APIS).map(([cat, url]) =>
-          fetchWithTimeout(url, { headers })
-            .then(r => {
-              if (r.status === 401 || r.status === 403) {
-                const err = new Error('Unauthorized');
-                err.code = 'UNAUTHORIZED';
-                throw err;
-              }
-              if (!r.ok) {
-                const err = new Error(`Request failed (${r.status})`);
-                err.code = 'HTTP_ERROR';
-                throw err;
-              }
-              return r.json();
-            })
-            .then(d => ({ cat, count: Number(d?.count) || 0, data: Array.isArray(d?.data) ? d.data : [] }))
-        )
-      );
+    // ── 1. Listing counts + data for built-in categories ───────────────────
+    const listingResults = await Promise.allSettled(
+      Object.entries(CATEGORY_APIS).map(([cat, url]) =>
+        fetch(url, { headers })
+          .then(r => {
+            if (r.status === 401 || r.status === 403) {
+              const err = new Error('Unauthorized');
+              err.code = 'UNAUTHORIZED';
+              throw err;
+            }
+            if (!r.ok) {
+              const err = new Error(`Request failed (${r.status})`);
+              err.code = 'HTTP_ERROR';
+              throw err;
+            }
+            return r.json();
+          })
+          .then(d => ({ cat, count: d.count || 0, data: d.data || [] }))
+      )
+    );
 
-      const hasUnauthorized = listingResults.some(
-        r => r.status === 'rejected' && r.reason?.code === 'UNAUTHORIZED'
-      );
-      if (hasUnauthorized) {
-        handleUnauthorized();
-        return;
-      }
-
-      const counts = { Accommodation: 0, Food: 0, Jobs: 0, Services: 0 };
-      const allItems = [];
-      listingResults.forEach((r) => {
-        if (r.status !== 'fulfilled') return;
-        const { cat, count, data } = r.value;
-        counts[cat] = count;
-        data.forEach((item) => {
-          allItems.push({
-            title: item.title || item.name || item.jobTitle || item.serviceName || 'Untitled',
-            category: cat,
-            status:
-              item.status === 'active' ||
-              item.status === 'Active' ||
-              item.adminControls?.isActive
-                ? 'Active'
-                : 'Inactive',
-            createdAt: item.createdAt,
-          });
-        });
-      });
-
-      let customCategoryCount = 0;
-      try {
-        const customCatsRes = await fetchWithTimeout(`${API_URL}/api/custom-categories`, { headers });
-        if (customCatsRes.status === 401 || customCatsRes.status === 403) {
-          handleUnauthorized();
-          return;
-        }
-        if (customCatsRes.ok) {
-          const customCats = await customCatsRes.json();
-          customCategoryCount = Array.isArray(customCats) ? customCats.length : 0;
-        }
-      } catch {}
-
-      let users = [];
-      try {
-        const usersRes = await fetchWithTimeout(`${API_URL}/api/user/all-users`, { headers });
-        if (usersRes.status === 401 || usersRes.status === 403) {
-          handleUnauthorized();
-          return;
-        }
-        if (usersRes.ok) {
-          const userData = await usersRes.json();
-          users = Array.isArray(userData) ? userData : (Array.isArray(userData?.data) ? userData.data : []);
-        }
-      } catch {}
-
-      allItems.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
-      setCategoryCounts(counts);
-      setTotalCount(Object.values(counts).reduce((sum, n) => sum + n, 0));
-      setCategoryCount(4 + customCategoryCount);
-      setUserCount(users.length);
-      setRecentListings(allItems.slice(0, 6));
-    };
-
-    try {
-      const statsRes = await fetchWithTimeout(`${API_URL}/api/admin/stats`, { headers });
-      if (statsRes.status === 401 || statsRes.status === 403) {
-        handleUnauthorized();
-        return;
-      }
-      if (statsRes.ok) {
-        const payload = await statsRes.json();
-        const stats = payload?.stats || {};
-        const categoryStats = Array.isArray(payload?.categoryStats) ? payload.categoryStats : [];
-        const counts = { Accommodation: 0, Food: 0, Jobs: 0, Services: 0 };
-
-        categoryStats.forEach((item) => {
-          if (!item?.name) return;
-          if (item.name === 'Accommodation') counts.Accommodation = Number(item.count) || 0;
-          if (item.name === 'Food') counts.Food = Number(item.count) || 0;
-          if (item.name === 'Jobs') counts.Jobs = Number(item.count) || 0;
-          if (item.name === 'Services') counts.Services = Number(item.count) || 0;
-        });
-
-        const recent = Array.isArray(payload?.recentListings)
-          ? payload.recentListings.map((item) => ({
-              title: item.title || 'Untitled',
-              category: item.category || 'Unknown',
-              status:
-                item.status === 'active' ||
-                item.status === 'Active' ||
-                item.adminControls?.isActive
-                  ? 'Active'
-                  : 'Inactive',
-              createdAt: item.createdAt,
-            }))
-          : [];
-
-        setCategoryCounts(counts);
-        setTotalCount(Number(stats.totalListings) || 0);
-        setCategoryCount(Number(stats.totalCategories) || 4);
-        setUserCount(Number(stats.totalUsers) || 0);
-        setPendingReviews(Number(stats.pendingReviews) || 0);
-        setRecentListings(recent);
-
-        const allZeros =
-          (Number(stats.totalListings) || 0) === 0 &&
-          (Number(stats.totalUsers) || 0) === 0 &&
-          counts.Accommodation === 0 &&
-          counts.Food === 0 &&
-          counts.Jobs === 0 &&
-          counts.Services === 0;
-
-        if (allZeros) {
-          await loadFromFallbackEndpoints();
-        }
-      } else {
-        await loadFromFallbackEndpoints();
-      }
-    } catch {
-      await loadFromFallbackEndpoints();
+    const hasUnauthorized = listingResults.some(
+      r => r.status === 'rejected' && r.reason?.code === 'UNAUTHORIZED'
+    );
+    if (hasUnauthorized) {
+      handleUnauthorized();
+      return;
     }
-  }, [fetchWithTimeout, handleUnauthorized]);
+
+    const counts   = { Accommodation: 0, Food: 0, Jobs: 0, Services: 0 };
+    const allItems = [];
+    listingResults.forEach(r => {
+      if (r.status !== 'fulfilled') return;
+      const { cat, count, data } = r.value;
+      counts[cat] = count;
+      data.forEach(item => allItems.push({
+        title:     item.title || item.name || item.jobTitle || item.serviceName || 'Untitled',
+        category:  cat,
+        status:    (item.status === 'active' || item.status === 'Active' || item.adminControls?.isActive) ? 'Active' : 'Inactive',
+        createdAt: item.createdAt,
+      }));
+    });
+
+    // ── 2. Custom category listings ──────────────────────────────────────────
+    try {
+      const catsRes = await fetch(`${API_URL}/api/custom-categories`, { headers });
+      if (catsRes.status === 401 || catsRes.status === 403) {
+        handleUnauthorized();
+        return;
+      }
+      if (catsRes.ok) {
+        const customCats = await catsRes.json();
+        // Fetch each category's listing count
+        const customResults = await Promise.allSettled(
+          customCats.map(c =>
+            fetch(`${API_URL}/api/custom-categories/${c._id}/listings`, { headers })
+              .then(r => r.json())
+              .then(d => ({ cat: c.name, count: d.count || 0, data: d.data || [] }))
+          )
+        );
+        customResults.forEach(r => {
+          if (r.status !== 'fulfilled') return;
+          const { cat, count, data } = r.value;
+          counts[cat] = count;
+          data.forEach(item => allItems.push({
+            title: item.title || 'Untitled', category: cat,
+            status: item.status === 'active' ? 'Active' : 'Inactive',
+            createdAt: item.createdAt,
+          }));
+        });
+        // Update category count (4 built-in + customs)
+        setCategoryCount(4 + customCats.length);
+      }
+    } catch {}
+
+    allItems.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+    setCategoryCounts(counts);
+    setTotalCount(Object.values(counts).reduce((s, c) => s + c, 0));
+    setRecentListings(allItems.slice(0, 6));
+
+    // ── 3. User count (customers only, no admins) ────────────────────────────
+    try {
+      const ur = await fetch(`${API_URL}/api/user/all-users`, { headers });
+      if (ur.status === 401 || ur.status === 403) {
+        handleUnauthorized();
+        return;
+      }
+      if (ur.ok) {
+        const ud = await ur.json();
+        setUserCount(Array.isArray(ud) ? ud.length : 0);
+      }
+    } catch {}
+  }, [handleUnauthorized]);
 
   useEffect(() => {
     fetchAll();
@@ -260,7 +202,7 @@ const Dashboard = () => {
     { label: 'Total Listings', value: totalCount,    icon: TrendingUp },
     { label: 'Categories',     value: categoryCount, icon: FolderOpen },
     { label: 'Total Users',    value: userCount,     icon: Users      },
-    { label: 'Pending Reviews',value: pendingReviews,icon: Clock      },
+    { label: 'Pending Reviews',value: 0,             icon: Clock      },
   ];
 
   const categoryStats = [

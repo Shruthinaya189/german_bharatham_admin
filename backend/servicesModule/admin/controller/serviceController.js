@@ -1,42 +1,10 @@
 const Service = require("../model/Service");
 
-// Get all services (with pagination)
+// Get all services
 exports.getAllServices = async (req, res) => {
   try {
-    // Parse pagination parameters
-    const page = Math.max(1, parseInt(req.query.page) || 1);
-    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 20));
-    const skip = (page - 1) * limit;
-    const statusRaw = String(req.query.status || '').trim().toLowerCase();
-
-    const filter = {};
-    if (statusRaw) {
-      if (statusRaw === 'active') filter.status = { $in: ['Active', 'active'] };
-      else if (statusRaw === 'pending') filter.status = { $in: ['Pending', 'pending'] };
-      else if (statusRaw === 'disabled' || statusRaw === 'inactive') {
-        filter.status = { $in: ['Inactive', 'inactive', 'disabled'] };
-      }
-    }
-
-    // Parallel count and data queries
-    const [items, totalCount] = await Promise.all([
-      Service.find(filter)
-        .sort({ createdAt: -1 })
-        .skip(skip)
-        .limit(limit)
-        .lean() // Plain objects (faster)
-        .select('-images -media'), // Exclude huge fields
-      Object.keys(filter).length === 0 ? Service.estimatedDocumentCount() : Service.countDocuments(filter)
-    ]);
-
-    res.json({ 
-      data: items, 
-      count: items.length,
-      totalCount,
-      page,
-      limit,
-      totalPages: Math.ceil(totalCount / limit)
-    });
+    const items = await Service.find().sort({ createdAt: -1 });
+    res.json({ data: items, count: items.length });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

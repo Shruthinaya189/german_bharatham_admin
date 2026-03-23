@@ -22,7 +22,7 @@ const ViewFoodGroceryModal = ({ item, onClose, onEdit }) => {
           {/* Image */}
           {item.image && (
             <div className="view-image">
-              <img src={item.image} alt={item.restaurantName || item.title || item.name} />
+              <img src={item.image} alt={item.title || item.name} />
             </div>
           )}
 
@@ -30,7 +30,7 @@ const ViewFoodGroceryModal = ({ item, onClose, onEdit }) => {
           <div className="view-section">
             <div className="view-header-info">
               <div>
-                <h1>{item.restaurantName || item.title || item.name}</h1>
+                <h1>{item.title || item.name}</h1>
                 <div className="badges">
                   <span className="category-badge">{item.subCategory || item.category}</span>
                   {item.type && <span className="type-badge">{item.type}</span>}

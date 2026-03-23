@@ -1,32 +1,10 @@
 const Job = require("../model/Job");
 
-// Get all jobs (with pagination)
+// Get all jobs
 exports.getAllJobs = async (req, res) => {
   try {
-    // Parse pagination parameters
-    const page = Math.max(1, parseInt(req.query.page) || 1);
-    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 20));
-    const skip = (page - 1) * limit;
-
-    // Parallel count and data queries
-    const [items, totalCount] = await Promise.all([
-      Job.find()
-        .sort({ createdAt: -1 })
-        .skip(skip)
-        .limit(limit)
-        .lean() // Plain objects (faster)
-        .select('_id title company salary location status createdAt'), // Only needed fields
-      Job.countDocuments()
-    ]);
-
-    res.json({ 
-      data: items, 
-      count: items.length,
-      totalCount,
-      page,
-      limit,
-      totalPages: Math.ceil(totalCount / limit)
-    });
+    const items = await Job.find().sort({ createdAt: -1 });
+    res.json({ data: items, count: items.length });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

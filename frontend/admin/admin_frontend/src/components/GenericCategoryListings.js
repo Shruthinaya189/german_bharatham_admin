@@ -2,7 +2,6 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Plus, Trash2, Edit, Eye, ArrowLeft } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import AddListingModal from './AddListingModal';
-import API_URL from '../config';
 
 const Badge = ({ label, active }) => (
   <span style={{
@@ -17,18 +16,7 @@ const Badge = ({ label, active }) => (
 const ViewModal = ({ item, category, fields, onClose }) => {
   const [imgIdx, setImgIdx] = useState(0);
   if (!item) return null;
-  const gallery = [];
-  if (Array.isArray(item.media?.images)) gallery.push(...item.media.images.filter(Boolean));
-  if (Array.isArray(item.images)) gallery.push(...item.images.filter(Boolean));
-  if (item.image) gallery.push(item.image);
-  if (item.companyLogo) {
-    gallery.push(
-      item.companyLogo.startsWith('data:') || item.companyLogo.startsWith('http')
-        ? item.companyLogo
-        : `${API_URL}${item.companyLogo}`
-    );
-  }
-  const images = Array.from(new Set(gallery));
+  const images = item.media?.images || item.images || [];
   return (
     <div className="modal-overlay">
       <div className="modal-content modal-large" style={{ maxHeight: '90vh', overflowY: 'auto' }}>
@@ -36,7 +24,6 @@ const ViewModal = ({ item, category, fields, onClose }) => {
           <h2 style={{ color: '#2d5a3d' }}>{item[fields.title] || 'Details'}</h2>
           <button className="close-btn" onClick={onClose}>✕</button>
         </div>
-        {/* Order: Name -> Photo -> Details */}
         {images.length > 0 && (
           <div style={{ marginBottom: 16 }}>
             <img src={images[imgIdx]} alt="main" style={{ width: '100%', maxHeight: 240, objectFit: 'cover', borderRadius: 8 }} />
@@ -127,7 +114,7 @@ const EditModal = ({ item, category, apiBase, onClose, onSuccess }) => {
     contactPhone: item.contactPhone || phoneValue,
     zipCode: zipCodeValue,
     postalCode: item.postalCode || zipCodeValue,
-    _images: item.media?.images || item.images || (item.image ? [item.image] : []),
+    _images: item.media?.images || item.images || [],
     amenitiesText: Array.isArray(item.amenities)
       ? item.amenities.join(', ')
       : (item.amenitiesText ?? ''),
@@ -154,20 +141,11 @@ const EditModal = ({ item, category, apiBase, onClose, onSuccess }) => {
       const token = localStorage.getItem('adminToken');
       const payload = { ...data };
 
-      // Never send immutable/system-managed fields in update payloads.
-      delete payload._id;
-      delete payload.createdAt;
-      delete payload.updatedAt;
-      delete payload.__v;
-
       if (category === 'Food') {
-        // Prioritize the editable restaurantName so user edits are persisted.
-        const resolvedTitle = (payload.restaurantName || payload.title || payload.name || '').toString().trim();
+        const resolvedTitle = (payload.title || payload.name || payload.restaurantName || '').toString().trim();
         payload.title = resolvedTitle;
         payload.name = resolvedTitle;
         payload.restaurantName = resolvedTitle;
-        // Food schema stores a canonical single image field.
-        payload.image = Array.isArray(data._images) && data._images.length > 0 ? data._images[0] : (payload.image || '');
         payload.phone = (payload.phone || payload.contactPhone || '').toString().trim();
         payload.contactPhone = payload.phone;
         payload.zipCode = (payload.zipCode || payload.postalCode || '').toString().trim();
@@ -251,7 +229,7 @@ const EditModal = ({ item, category, apiBase, onClose, onSuccess }) => {
         </div>
         <form onSubmit={handleSubmit} className="add-listing-form">
           {category === 'Food' && (<>
-            {field('Restaurant Name', 'restaurantName')}
+            {field('Name', 'name')} {field('Restaurant Name', 'restaurantName')}
             {field('City', 'city')} {field('Postal Code', 'postalCode')}
             {field('Area', 'area')} {field('Address', 'address')}
             {field('Contact Phone', 'contactPhone')} {field('Cuisine', 'cuisine')}
@@ -321,51 +299,35 @@ const GenericCategoryListings = ({ category, apiBase, icon, viewFields }) => {
   const [editItem, setEditItem] = useState(null);
   const [statusFilter, setStatusFilter] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
-  const [currentPage, setCurrentPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-  const [totalCount, setTotalCount] = useState(0);
-  const pageSize = 20; // Items per page
 
   const handleUnauthorized = () => {
     localStorage.removeItem('adminToken');
     window.location.reload();
   };
 
-  const fetchItems = useCallback(async (page = 1) => {
+  const fetchItems = useCallback(async () => {
     setLoading(true);
     try {
       const token = localStorage.getItem('adminToken');
-      // Build URL with pagination and optional filter
-      const params = new URLSearchParams();
-      params.append('page', page);
-      params.append('limit', pageSize);
-      if (statusFilter) params.append('status', statusFilter);
-      
-      const url = `${apiBase}?${params.toString()}`;
+      const url = statusFilter ? `${apiBase}?status=${statusFilter}` : apiBase;
       const res = await fetch(url, { headers: { 'Authorization': `Bearer ${token}` } });
       if (res.status === 401 || res.status === 403) {
         handleUnauthorized();
         return;
       }
-      if (res.ok) { 
-        const d = await res.json(); 
-        setItems(d.data || []);
-        setCurrentPage(page);
-        setTotalCount(d.totalCount || d.count || 0);
-        setTotalPages(d.totalPages || Math.ceil((d.totalCount || d.count || 0) / pageSize));
-      }
+      if (res.ok) { const d = await res.json(); setItems(d.data || []); }
     } catch (e) { console.error(e); }
     finally { setLoading(false); }
-  }, [apiBase, statusFilter, pageSize]);
+  }, [apiBase, statusFilter]);
 
-  useEffect(() => { fetchItems(1); }, [fetchItems]);
+  useEffect(() => { fetchItems(); }, [fetchItems]);
 
   const handleDelete = async (id, name) => {
     if (!window.confirm(`Delete "${name}"?`)) return;
     try {
       const token = localStorage.getItem('adminToken');
       const res = await fetch(`${apiBase}/${id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } });
-      if (res.ok) fetchItems(1); else alert('Failed to delete');
+      if (res.ok) fetchItems(); else alert('Failed to delete');
     } catch (e) { alert(e.message); }
   };
 
@@ -386,7 +348,7 @@ const GenericCategoryListings = ({ category, apiBase, icon, viewFields }) => {
           body: JSON.stringify({ status }),
         });
       }
-      fetchItems(currentPage);
+      fetchItems();
     } catch (e) { alert(e.message); }
   };
 
@@ -415,10 +377,6 @@ const GenericCategoryListings = ({ category, apiBase, icon, viewFields }) => {
       })
     : items;
 
-  const startPage = Math.max(1, currentPage - 2);
-  const endPage = Math.min(totalPages, startPage + 4);
-  const pageButtons = Array.from({ length: Math.max(0, endPage - startPage + 1) }, (_, i) => startPage + i);
-
   return (
     <div className="listings">
       <div className="listings-header">
@@ -444,7 +402,7 @@ const GenericCategoryListings = ({ category, apiBase, icon, viewFields }) => {
             <ArrowLeft size={16} /> Back to Categories
           </button>
           <h1>{icon} {category} Listings</h1>
-          <p>Total: {totalCount}</p>
+          <p>Total: {items.length}</p>
         </div>
         <div className="header-actions">
           <input
@@ -491,7 +449,7 @@ const GenericCategoryListings = ({ category, apiBase, icon, viewFields }) => {
                   <td>
                     {(() => {
                       const imgSrc = item.companyLogo
-                        ? (item.companyLogo.startsWith('data:') || item.companyLogo.startsWith('http') ? item.companyLogo : `${API_URL}${item.companyLogo}`)
+                        ? (item.companyLogo.startsWith('data:') || item.companyLogo.startsWith('http') ? item.companyLogo : `https://german-bharatham-backend.onrender.com${item.companyLogo}`)
                         : (item.media?.images?.[0] || item.images?.[0] || item.image || null);
                       if (imgSrc) {
                         return <img src={imgSrc} alt="" style={{ width: 56, height: 44, objectFit: 'cover', borderRadius: 6, border: '1px solid #e5e7eb' }} />;
@@ -545,125 +503,10 @@ const GenericCategoryListings = ({ category, apiBase, icon, viewFields }) => {
         </div>
       )}
 
-      {/* Pagination Controls */}
-      {totalPages > 1 && (
-        <div style={{
-          display: 'flex',
-          justifyContent: 'center',
-          alignItems: 'center',
-          gap: '8px',
-          marginTop: '24px',
-          padding: '16px',
-          background: '#f9fafb',
-          borderRadius: '8px'
-        }}>
-          <button
-            onClick={() => fetchItems(currentPage - 1)}
-            disabled={currentPage === 1}
-            style={{
-              padding: '8px 12px',
-              background: currentPage === 1 ? '#e5e7eb' : '#2d5a3d',
-              color: currentPage === 1 ? '#9ca3af' : '#fff',
-              border: 'none',
-              borderRadius: '4px',
-              cursor: currentPage === 1 ? 'default' : 'pointer',
-              fontSize: '14px',
-              fontWeight: '500'
-            }}
-          >
-            ← Previous
-          </button>
-          
-          <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
-            {startPage > 1 && (
-              <>
-                <button
-                  onClick={() => fetchItems(1)}
-                  style={{
-                    padding: '8px 12px',
-                    background: '#fff',
-                    color: '#2d5a3d',
-                    border: '1px solid #d1d5db',
-                    borderRadius: '4px',
-                    cursor: 'pointer',
-                    fontSize: '14px',
-                    fontWeight: '500'
-                  }}
-                >
-                  1
-                </button>
-                <span style={{ color: '#6b7280', fontSize: '14px' }}>...</span>
-              </>
-            )}
-
-            {pageButtons.map((pageNum) => (
-              <button
-                key={pageNum}
-                onClick={() => fetchItems(pageNum)}
-                style={{
-                  padding: '8px 12px',
-                  background: pageNum === currentPage ? '#2d5a3d' : '#fff',
-                  color: pageNum === currentPage ? '#fff' : '#2d5a3d',
-                  border: '1px solid #d1d5db',
-                  borderRadius: '4px',
-                  cursor: 'pointer',
-                  fontSize: '14px',
-                  fontWeight: pageNum === currentPage ? '600' : '500'
-                }}
-              >
-                {pageNum}
-              </button>
-            ))}
-
-            {endPage < totalPages && (
-              <>
-                <span style={{ color: '#6b7280', fontSize: '14px' }}>...</span>
-                <button
-                  onClick={() => fetchItems(totalPages)}
-                  style={{
-                    padding: '8px 12px',
-                    background: '#fff',
-                    color: '#2d5a3d',
-                    border: '1px solid #d1d5db',
-                    borderRadius: '4px',
-                    cursor: 'pointer',
-                    fontSize: '14px',
-                    fontWeight: '500'
-                  }}
-                >
-                  {totalPages}
-                </button>
-              </>
-            )}
-          </div>
-
-          <button
-            onClick={() => fetchItems(currentPage + 1)}
-            disabled={currentPage === totalPages}
-            style={{
-              padding: '8px 12px',
-              background: currentPage === totalPages ? '#e5e7eb' : '#2d5a3d',
-              color: currentPage === totalPages ? '#9ca3af' : '#fff',
-              border: 'none',
-              borderRadius: '4px',
-              cursor: currentPage === totalPages ? 'default' : 'pointer',
-              fontSize: '14px',
-              fontWeight: '500'
-            }}
-          >
-            Next →
-          </button>
-
-          <div style={{ marginLeft: '16px', color: '#6b7280', fontSize: '14px', fontWeight: '500' }}>
-            Page {currentPage} of {totalPages} ({totalCount} total)
-          </div>
-        </div>
-      )}
-
       {showAdd && (
         <AddListingModal
           onClose={() => setShowAdd(false)}
-          onSuccess={() => fetchItems(1)}
+          onSuccess={() => fetchItems()}
           defaultCategory={category}
           lockCategory={true}
         />
@@ -674,14 +517,14 @@ const GenericCategoryListings = ({ category, apiBase, icon, viewFields }) => {
       {editItem && category === 'Jobs' && (
         <AddListingModal
           onClose={() => setEditItem(null)}
-          onSuccess={() => { setEditItem(null); fetchItems(1); }}
+          onSuccess={() => { setEditItem(null); fetchItems(); }}
           defaultCategory="Jobs"
           lockCategory={true}
           editItem={editItem}
         />
       )}
       {editItem && category !== 'Jobs' && (
-        <EditModal item={editItem} category={category} apiBase={apiBase} onClose={() => setEditItem(null)} onSuccess={() => fetchItems(1)} />
+        <EditModal item={editItem} category={category} apiBase={apiBase} onClose={() => setEditItem(null)} onSuccess={fetchItems} />
       )}
     </div>
   );

@@ -1,10 +1,9 @@
 import React, { useState } from 'react';
 import { X, Upload, MapPin, Phone, Mail, Globe, Clock } from 'lucide-react';
-import API_URL from '../config';
 
 const EditFoodGroceryModal = ({ item, onClose, onSuccess }) => {
   const [formData, setFormData] = useState({
-    restaurantName: item.restaurantName || item.title || item.name || '',
+    title: item.title || item.name || '',
     subCategory: item.subCategory || item.category || 'Restaurant',
     type: item.type || '',
     address: item.address || '',
@@ -86,9 +85,7 @@ const EditFoodGroceryModal = ({ item, onClose, onSuccess }) => {
       const token = localStorage.getItem('adminToken');
       // Prepare data with location field
       const submitData = {
-        // Persist canonical title used by backend and keep restaurantName for compatibility.
-        title: formData.restaurantName,
-        restaurantName: formData.restaurantName,
+        title: formData.title,
         subCategory: formData.subCategory,
         type: formData.type,
         location: `${formData.city}, ${formData.address}`,
@@ -162,12 +159,12 @@ const EditFoodGroceryModal = ({ item, onClose, onSuccess }) => {
             
             <div className="form-row">
               <div className="form-group">
-                <label>Restaurant Name <span className="required">*</span></label>
+                <label>Name <span className="required">*</span></label>
                 <input
                   type="text"
-                  name="restaurantName"
+                  name="title"
                   placeholder="Restaurant or Grocery Store name"
-                  value={formData.restaurantName}
+                  value={formData.title}
                   onChange={handleChange}
                   required
                 />

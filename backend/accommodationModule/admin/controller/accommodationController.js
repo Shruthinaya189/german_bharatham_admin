@@ -21,33 +21,11 @@ async function geocode(address) {
   return {};
 }
 
-// Get all accommodations (with pagination)
+// Get all accommodations
 exports.getAllAccommodations = async (req, res) => {
   try {
-    // Parse pagination parameters
-    const page = Math.max(1, parseInt(req.query.page) || 1);
-    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 20));
-    const skip = (page - 1) * limit;
-
-    // Parallel count and data queries
-    const [items, totalCount] = await Promise.all([
-      Accommodation.find()
-        .sort({ createdAt: -1 })
-        .skip(skip)
-        .limit(limit)
-        .lean() // Plain objects (faster)
-        .select('_id name type city address status createdAt averageRating totalRatings'), // Only needed fields
-      Accommodation.countDocuments()
-    ]);
-
-    res.json({ 
-      data: items, 
-      count: items.length,
-      totalCount,
-      page,
-      limit,
-      totalPages: Math.ceil(totalCount / limit)
-    });
+    const items = await Accommodation.find().sort({ createdAt: -1 });
+    res.json({ data: items, count: items.length });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
