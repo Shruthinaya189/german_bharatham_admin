@@ -7,6 +7,7 @@ const Users = () => {
   const [sortBy, setSortBy]   = useState('newest');
   const [filterBy, setFilterBy] = useState('all');
   const [users, setUsers]     = useState([]);
+  const [totalCount, setTotalCount] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
   const BASE = API_URL;
 
@@ -25,14 +26,17 @@ const Users = () => {
     return null;
   };
   useEffect(() => {
-  fetchUsers();
-}, []);
+    fetchUsers();
+  }, [currentPage, filterBy]);
 
 const fetchUsers = async () => {
   try {
     const token = localStorage.getItem("adminToken");
 
-    const response = await fetch(`${BASE}/api/user/all-users`, {
+    const qs = new URLSearchParams();
+    qs.set('page', String(currentPage));
+    qs.set('limit', String(ITEMS_PER_PAGE));
+    const response = await fetch(`${BASE}/api/user/all-users?${qs.toString()}`, {
       headers: {
         Authorization: `Bearer ${token}`,
       },
@@ -45,8 +49,17 @@ const fetchUsers = async () => {
       return;
     }
 
-    setUsers(data);
-    setCurrentPage(1); // reset to first page on fresh fetch
+    // normalize paged or array responses
+    if (Array.isArray(data)) {
+      setUsers(data);
+      setTotalCount(data.length);
+    } else if (Array.isArray(data.data)) {
+      setUsers(data.data);
+      setTotalCount(data.count || data.total || 0);
+    } else {
+      setUsers([]);
+      setTotalCount(0);
+    }
 
   } catch (error) {
     console.error("Error fetching users:", error);
@@ -105,7 +118,7 @@ const fetchUsers = async () => {
 
       {/* ── derived list with filter + sort + pagination ── */}
       {(() => {
-        let list = [...users];
+        let list = Array.isArray(users) ? [...users] : [];
 
         // filter by status
         if (filterBy === 'active')   list = list.filter(u => u.isActive);
@@ -116,9 +129,9 @@ const fetchUsers = async () => {
         if (sortBy === 'oldest')      list.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
         if (sortBy === 'alphabetical') list.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
 
-        const totalPages  = Math.ceil(list.length / ITEMS_PER_PAGE);
+        const totalPages  = Math.max(1, Math.ceil((totalCount || list.length) / ITEMS_PER_PAGE));
         const safePage    = Math.min(currentPage, totalPages || 1);
-        const pageSlice   = list.slice((safePage - 1) * ITEMS_PER_PAGE, safePage * ITEMS_PER_PAGE);
+        const pageSlice   = list.slice(0, ITEMS_PER_PAGE);
 
         return (
           <>
@@ -187,9 +200,9 @@ const fetchUsers = async () => {
               </div>
             )}
 
-            {list.length > 0 && (
+            {totalCount > 0 && (
               <p style={{ fontSize: 13, color: '#6b7280', padding: '8px 0', textAlign: 'right' }}>
-                Showing {(safePage - 1) * ITEMS_PER_PAGE + 1}–{Math.min(safePage * ITEMS_PER_PAGE, list.length)} of {list.length} users
+                Showing {(safePage - 1) * ITEMS_PER_PAGE + 1}–{Math.min(safePage * ITEMS_PER_PAGE, totalCount)} of {totalCount} users
               </p>
             )}
           </>
