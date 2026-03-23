@@ -441,13 +441,21 @@ const FoodGrocery = () => {
                 console.debug('FoodGrocery onSuccess payload:', updated);
                 // Normalize updated item whether backend returns {data: [...]}, {item: ...} or item directly
                 let updatedItem = updated;
+                // handle common wrapper shapes
                 if (!updatedItem) updatedItem = null;
+                // { data: [...] }
                 else if (Array.isArray(updatedItem.data)) updatedItem = updatedItem.data[0];
                 else if (updatedItem.data) updatedItem = updatedItem.data;
+                // { item: {...} }
                 else if (updatedItem.item) updatedItem = updatedItem.item;
+                // { value: {...} } (some drivers)
+                else if (updatedItem.value) updatedItem = updatedItem.value;
+                // mongoose doc wrapper
+                else if (updatedItem._doc) updatedItem = updatedItem._doc;
 
-                if (updatedItem && updatedItem._id) {
-                  setListings(prev => prev.map(it => it._id === updatedItem._id ? updatedItem : it));
+                if (updatedItem && (updatedItem._id || updatedItem.id)) {
+                  const id = String(updatedItem._id || updatedItem.id);
+                  setListings(prev => prev.map(it => (String(it._id) === id ? { ...it, ...updatedItem } : it)));
                 }
               } catch (e) {
                 console.error('Error applying optimistic update:', e);
