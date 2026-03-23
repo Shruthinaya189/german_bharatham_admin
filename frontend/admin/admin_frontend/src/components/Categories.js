@@ -309,25 +309,10 @@ const Categories = () => {
               style={{ position: 'relative', cursor: cat.route ? 'pointer' : 'default' }}
               onClick={() => cat.route && navigate(cat.route)}
             >
-              {/* status toggle */}
-              <select
-                value={cat.status}
-                onClick={e => e.stopPropagation()}
-                onChange={e => { e.stopPropagation(); handleToggleStatus(cat.id, e.target.value, cat.isCustom); }}
-                style={{
-                  position: 'absolute', top: 16, right: 16,
-                  background: isActive ? '#d1fae5' : '#fee2e2',
-                  color: isActive ? '#065f46' : '#991b1b',
-                  fontSize: 12, fontWeight: 700, padding: '3px 12px', borderRadius: 20,
-                  border: 'none', cursor: 'pointer', outline: 'none',
-                }}
-              >
-                <option value="active">Active</option>
-                <option value="disabled">Disabled</option>
-              </select>
+              {/* status toggle removed per request (no Active/Disabled on cards) */}
 
               {/* header */}
-              <div className="category-header" style={{ paddingRight: 80 }}>
+              <div className="category-header">
                 <div className="category-icon-large">{cat.icon}</div>
                 <div className="category-meta">
                   <h3>{cat.name}</h3>

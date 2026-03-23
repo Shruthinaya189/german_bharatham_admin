@@ -8,13 +8,19 @@ const adminCheck = (req, res, next) => {
   next();
 };
 
-// GET ALL
+// GET ALL (supports pagination: ?page=1&limit=20)
 router.get('/', adminCheck, async (req, res) => {
   try {
     const { status } = req.query;
     const filter = status ? { status } : {};
-    const data = await Service.find(filter).sort({ createdAt: -1 }).lean();
-    res.json({ data, count: data.length });
+    const page = Math.max(1, parseInt(req.query.page) || 1);
+    const limit = Math.min(200, parseInt(req.query.limit) || 20);
+    const skip = (page - 1) * limit;
+
+    const totalCount = await Service.countDocuments(filter);
+    const data = await Service.find(filter).sort({ createdAt: -1 }).skip(skip).limit(limit).lean();
+
+    res.json({ data, count: (data || []).length, totalCount: totalCount || 0, page, limit });
   } catch (e) { res.status(500).json({ message: e.message }); }
 });
 

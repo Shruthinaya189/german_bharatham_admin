@@ -15,6 +15,7 @@ const FoodGrocery = () => {
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('All');
+  const [statusFilter, setStatusFilter] = useState('all');
   const [sortBy, setSortBy] = useState('newest');
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
@@ -31,7 +32,11 @@ const FoodGrocery = () => {
       });
       if (!response.ok) throw new Error('Failed to fetch listings');
       const data = await response.json();
-      setListings(data);
+      // Normalize backend responses (array or paged object)
+      if (Array.isArray(data)) setListings(data);
+      else if (Array.isArray(data.data)) setListings(data.data);
+      else if (Array.isArray(data.items)) setListings(data.items);
+      else setListings([]);
       setError(null);
     } catch (err) {
       setError(err.message);
@@ -102,6 +107,22 @@ const FoodGrocery = () => {
       filtered = filtered.filter(item => (item.subCategory || item.category) === categoryFilter);
     }
 
+    // Status filter
+    const normalizeStatus = (it) => {
+      const s = (it.status ?? (it.verified ? 'active' : undefined) ?? (it.adminControls?.isActive ? 'active' : undefined));
+      if (!s) return 'inactive';
+      const lower = String(s).toLowerCase();
+      if (lower === 'disabled') return 'inactive';
+      if (lower === 'pending') return 'pending';
+      if (lower === 'verified') return 'active';
+      if (lower === 'active') return 'active';
+      return lower;
+    };
+
+    if (statusFilter !== 'all') {
+      filtered = filtered.filter(item => normalizeStatus(item) === statusFilter);
+    }
+
     // Sort
     switch (sortBy) {
       case 'newest':
@@ -164,6 +185,16 @@ const FoodGrocery = () => {
           />
         </div>
         <div className="filter-controls">
+          <select
+            className="filter-select"
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+          >
+            <option value="all">All Status</option>
+            <option value="active">Active</option>
+            <option value="pending">Pending</option>
+            <option value="inactive">Inactive</option>
+          </select>
           <select 
             className="filter-select"
             value={sortBy}
@@ -232,13 +263,12 @@ const FoodGrocery = () => {
                     <tr key={item._id}>
                       <td className="listing-title">
                         <div className="title-with-image">
-                          {item.image && (
-                            <img 
-                              src={item.image} 
-                              alt={item.title || item.name} 
-                              className="listing-thumbnail"
-                            />
-                          )}
+                          {(() => {
+                            const img = item.image || item.companyLogo || item.media?.images?.[0] || item.images?.[0] || null;
+                            return img ? (
+                              <img src={img} alt={item.title || item.name} className="listing-thumbnail" />
+                            ) : null;
+                          })()}
                           <span>{item.title || item.name}</span>
                         </div>
                       </td>
@@ -360,9 +390,15 @@ const FoodGrocery = () => {
             setShowEditModal(false);
             setSelectedItem(null);
           }}
-          onSuccess={() => {
+          onSuccess={(updated) => {
+            // close modal
             setShowEditModal(false);
             setSelectedItem(null);
+            // optimistically update current listings if possible
+            if (updated && updated._id) {
+              setListings(prev => prev.map(it => it._id === updated._id ? (Array.isArray(updated.data) ? updated.data[0] : updated) : it));
+            }
+            // refresh from server to ensure canonical state
             fetchListings();
           }}
         />

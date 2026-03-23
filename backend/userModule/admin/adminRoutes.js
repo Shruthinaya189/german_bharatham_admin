@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
-const { adminLogin, adminDashboard } = require("./adminController");
-const { getCategoryStats } = require("./dashboardController");
+const { adminLogin } = require("./adminController");
+const { getCategoryStats, getDashboardStats } = require("./dashboardController");
 const { protect, adminOnly } = require("../../middleware/auth");
 
 router.post("/login", (req, res, next) => {
@@ -11,7 +11,7 @@ router.post("/login", (req, res, next) => {
 }, adminLogin);
 
 // 🔐 Protected + Admin Only
-router.get("/dashboard", protect, adminOnly, adminDashboard);
+router.get("/dashboard", protect, adminOnly, getDashboardStats);
 router.get("/category-stats", protect, adminOnly, getCategoryStats);
 
 module.exports = router;

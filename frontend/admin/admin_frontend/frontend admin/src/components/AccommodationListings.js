@@ -108,7 +108,7 @@ const AccommodationListings = () => {
             <ArrowLeft size={16} /> Back to Categories
           </button>
           <h1>Accommodation Listings</h1>
-          <p>Total: {stats.count} | Active: {stats.activeCount}</p>
+          <p>Total: {stats.count}</p>
         </div>
         <div className="header-actions">
           <button 

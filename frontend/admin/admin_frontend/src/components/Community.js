@@ -19,8 +19,14 @@ const Community = () => {
   const fetchPosts = async () => {
     try {
       const response = await fetch(`${BASE}/api/community`);
-      const data = await response.json();
-      setPosts(data);
+      const payload = await response.json();
+      // API may return { data: [...], count, ... } or an array directly.
+      const list = Array.isArray(payload)
+        ? payload
+        : Array.isArray(payload?.data)
+          ? payload.data
+          : [];
+      setPosts(list);
     } catch (error) {
       console.error("Error fetching posts:", error);
     }

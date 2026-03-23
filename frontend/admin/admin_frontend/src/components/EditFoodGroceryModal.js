@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import API_URL from '../config';
 import { X, Upload, MapPin, Phone, Mail, Globe, Clock } from 'lucide-react';
 
 const EditFoodGroceryModal = ({ item, onClose, onSuccess }) => {
@@ -127,7 +128,8 @@ const EditFoodGroceryModal = ({ item, onClose, onSuccess }) => {
 
       const data = await response.json();
       console.log('Updated listing:', data);
-      onSuccess();
+      // pass updated item back to parent so it can update immediately
+      onSuccess && onSuccess(data);
     } catch (err) {
       setError(err.message);
       console.error('Error updating listing:', err);

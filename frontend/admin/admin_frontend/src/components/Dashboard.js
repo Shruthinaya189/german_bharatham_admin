@@ -4,18 +4,12 @@ import { useNavigate } from 'react-router-dom';
 import AddListingModal from './AddListingModal';
 import API_URL from '../config';
 
-const CATEGORY_APIS = {
-  Accommodation: `${API_URL}/api/accommodation/admin`,
-  Food:          `${API_URL}/api/admin/foodgrocery`,
-  Jobs:          `${API_URL}/api/jobs/admin`,
-  Services:      `${API_URL}/api/services/admin`,
-};
-
 const Dashboard = () => {
   const [showAddModal, setShowAddModal]     = useState(false);
   const [totalCount, setTotalCount]         = useState(0);
   const [categoryCounts, setCategoryCounts] = useState({ Accommodation: 0, Food: 0, Jobs: 0, Services: 0 });
   const [userCount, setUserCount]           = useState(0);
+  const [pendingReviews, setPendingReviews] = useState(0);
   const [categoryCount, setCategoryCount]   = useState(4);
   const [recentListings, setRecentListings] = useState([]);
   const [problemReports, setProblemReports] = useState([]);
@@ -85,99 +79,26 @@ const Dashboard = () => {
     const token   = localStorage.getItem('adminToken');
     const headers = { Authorization: `Bearer ${token}` };
 
-    // ── 1. Listing counts + data for built-in categories ───────────────────
-    const listingResults = await Promise.allSettled(
-      Object.entries(CATEGORY_APIS).map(([cat, url]) =>
-        fetch(url, { headers })
-          .then(r => {
-            if (r.status === 401 || r.status === 403) {
-              const err = new Error('Unauthorized');
-              err.code = 'UNAUTHORIZED';
-              throw err;
-            }
-            if (!r.ok) {
-              const err = new Error(`Request failed (${r.status})`);
-              err.code = 'HTTP_ERROR';
-              throw err;
-            }
-            return r.json();
-          })
-          .then(d => ({ cat, count: d.count || 0, data: d.data || [] }))
-      )
-    );
-
-    const hasUnauthorized = listingResults.some(
-      r => r.status === 'rejected' && r.reason?.code === 'UNAUTHORIZED'
-    );
-    if (hasUnauthorized) {
-      handleUnauthorized();
-      return;
-    }
-
-    const counts   = { Accommodation: 0, Food: 0, Jobs: 0, Services: 0 };
-    const allItems = [];
-    listingResults.forEach(r => {
-      if (r.status !== 'fulfilled') return;
-      const { cat, count, data } = r.value;
-      counts[cat] = count;
-      data.forEach(item => allItems.push({
-        title:     item.title || item.name || item.jobTitle || item.serviceName || 'Untitled',
-        category:  cat,
-        status:    (item.status === 'active' || item.status === 'Active' || item.adminControls?.isActive) ? 'Active' : 'Inactive',
-        createdAt: item.createdAt,
-      }));
-    });
-
-    // ── 2. Custom category listings ──────────────────────────────────────────
+    // Prefer single dashboard endpoint that returns aggregated stats (faster)
     try {
-      const catsRes = await fetch(`${API_URL}/api/custom-categories`, { headers });
-      if (catsRes.status === 401 || catsRes.status === 403) {
-        handleUnauthorized();
-        return;
-      }
-      if (catsRes.ok) {
-        const customCats = await catsRes.json();
-        // Fetch each category's listing count
-        const customResults = await Promise.allSettled(
-          customCats.map(c =>
-            fetch(`${API_URL}/api/custom-categories/${c._id}/listings`, { headers })
-              .then(r => r.json())
-              .then(d => ({ cat: c.name, count: d.count || 0, data: d.data || [] }))
-          )
-        );
-        customResults.forEach(r => {
-          if (r.status !== 'fulfilled') return;
-          const { cat, count, data } = r.value;
-          counts[cat] = count;
-          data.forEach(item => allItems.push({
-            title: item.title || 'Untitled', category: cat,
-            status: item.status === 'active' ? 'Active' : 'Inactive',
-            createdAt: item.createdAt,
-          }));
-        });
-        // Update category count (4 built-in + customs)
-        setCategoryCount(4 + customCats.length);
-      }
-    } catch {}
+      const res = await fetch(`${API_URL}/api/admin/dashboard`, { headers });
+      if (res.status === 401 || res.status === 403) { handleUnauthorized(); return; }
+      if (res.ok) {
+        const d = await res.json();
+        const s = d.stats || {};
+        setTotalCount(s.totalListings || 0);
+        setPendingReviews(s.pendingReviews || 0);
+        setUserCount(s.totalUsers || 0);
 
-    allItems.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
-    setCategoryCounts(counts);
-    setTotalCount(Object.values(counts).reduce((s, c) => s + c, 0));
-    setRecentListings(allItems.slice(0, 6));
-
-    // ── 3. User count (customers only, no admins) ────────────────────────────
-    try {
-      const ur = await fetch(`${API_URL}/api/user/all-users`, { headers });
-      if (ur.status === 401 || ur.status === 403) {
-        handleUnauthorized();
-        return;
+        // map category stats
+        const catCounts = { Accommodation: 0, Food: 0, Jobs: 0, Services: 0 };
+        (d.categoryStats || []).forEach(c => { if (c && c.name) catCounts[c.name] = c.count || 0; });
+        setCategoryCounts(catCounts);
+        setRecentListings(d.recentListings || []);
+        setCategoryCount(s.totalCategories || 4);
       }
-      if (ur.ok) {
-        const ud = await ur.json();
-        setUserCount(Array.isArray(ud) ? ud.length : 0);
-      }
-    } catch {}
-  }, [handleUnauthorized]);
+    } catch (e) { console.error('fetch dashboard error', e); }
+    }, [handleUnauthorized]);
 
   useEffect(() => {
     fetchAll();
@@ -202,7 +123,7 @@ const Dashboard = () => {
     { label: 'Total Listings', value: totalCount,    icon: TrendingUp },
     { label: 'Categories',     value: categoryCount, icon: FolderOpen },
     { label: 'Total Users',    value: userCount,     icon: Users      },
-    { label: 'Pending Reviews',value: 0,             icon: Clock      },
+    { label: 'Pending Reviews',value: pendingReviews, icon: Clock      },
   ];
 
   const categoryStats = [

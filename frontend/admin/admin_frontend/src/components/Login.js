@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Eye, EyeOff } from 'lucide-react';
 import API_URL from '../config';
 
@@ -6,6 +7,8 @@ const Login = ({ onLogin }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+
+  const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
   e.preventDefault();
@@ -28,13 +31,14 @@ const Login = ({ onLogin }) => {
 
     // Store token
     // Login success
-localStorage.setItem("adminToken", data.token);
+    localStorage.setItem("adminToken", data.token);
 
     // Optionally fetch protected admin data right after login
     await fetchProtectedData();
 
-    // Login success
+    // Notify app and navigate to dashboard
     onLogin();
+    navigate('/dashboard');
   } catch (error) {
     console.error("Login error:", error);
     alert("Failed to fetch");

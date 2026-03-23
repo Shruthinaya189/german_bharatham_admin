@@ -1,10 +1,39 @@
-import React from 'react';
-import { X, MapPin, Phone, Mail, Globe, Clock, DollarSign, Star, Edit } from 'lucide-react';
+import React, { useState } from 'react';
+import { X, MapPin, Phone, Clock, DollarSign, Star, Edit } from 'lucide-react';
+import API_URL from '../config';
 
 const ViewFoodGroceryModal = ({ item, onClose, onEdit }) => {
+  const [mainIdx, setMainIdx] = useState(0);
+
+  if (!item) return null;
+
+  const rawImages = item.media?.images || item.images || (item.image ? [item.image] : []) || (item.companyLogo ? [item.companyLogo] : []);
+  const resolveSrc = (src) => {
+    if (!src) return null;
+    // handle objects like { url: '...' }
+    if (typeof src === 'object') src = src.url || src.src || src.path || '';
+    if (!src) return null;
+    if (/^(https?:)?\/\//i.test(src) || src.startsWith('data:')) return src;
+    // relative path -> prefix with API_URL (strip trailing slash)
+    const base = String(API_URL).replace(/\/$/, '');
+    if (src.startsWith('/')) return base + src;
+    return base + '/' + src;
+  };
+
+  let images = (Array.isArray(rawImages) ? rawImages.map(resolveSrc).filter(Boolean) : []);
+  // fallback: if resolveSrc failed but raw strings exist, use raw strings
+  if (images.length === 0 && Array.isArray(rawImages) && rawImages.length > 0) {
+    images = rawImages.map(r => (typeof r === 'string' ? r : (r && (r.url || r.src || r.path || '')))).filter(Boolean);
+  }
+
+  
+
+  // debug info for runtime inspection
+  try { console.debug('ViewFoodGroceryModal images', { id: item._id, rawImages, images, imageField: item.image, companyLogo: item.companyLogo }); } catch (e) {}
+
   return (
     <div className="modal-overlay">
-      <div className="modal-content view-modal">
+      <div className="modal-content modal-large" style={{ maxHeight: '90vh', overflowY: 'auto' }}>
         <div className="modal-header">
           <h2>Listing Details</h2>
           <div className="header-actions">
@@ -19,10 +48,36 @@ const ViewFoodGroceryModal = ({ item, onClose, onEdit }) => {
         </div>
 
         <div className="view-content">
-          {/* Image */}
-          {item.image && (
-            <div className="view-image">
-              <img src={item.image} alt={item.title || item.name} />
+          {/* Image gallery */}
+          {images && images.length > 0 && (
+            <div style={{ marginBottom: 20 }}>
+              <img
+                src={images[mainIdx]}
+                alt={item.title || item.name}
+                style={{ width: '100%', maxHeight: 260, objectFit: 'cover', borderRadius: 8 }}
+                onError={(e) => {
+                  try {
+                    const current = e.target.src || '';
+                    const base = String(API_URL).replace(/\/$/, '');
+                    // if current starts with base, try without base
+                    if (current.startsWith(base)) {
+                      e.target.src = current.replace(base, '');
+                    } else {
+                      // otherwise try prefixing with base
+                      e.target.src = base + (current.startsWith('/') ? '' : '/') + current;
+                    }
+                  } catch (ex) { /* ignore */ }
+                }}
+              />
+              {images.length > 1 && (
+                <div style={{ display: 'flex', gap: 6, marginTop: 8, flexWrap: 'wrap' }}>
+                  {images.map((img, i) => (
+                    <img key={i} src={img} alt={`thumb-${i}`} onClick={() => setMainIdx(i)}
+                      style={{ width: 60, height: 48, objectFit: 'cover', borderRadius: 4, cursor: 'pointer',
+                        border: i === mainIdx ? '2px solid #6b9976' : '2px solid #e5e7eb' }} />
+                  ))}
+                </div>
+              )}
             </div>
           )}
 

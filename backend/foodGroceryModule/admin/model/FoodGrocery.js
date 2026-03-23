@@ -47,6 +47,10 @@ const foodGrocerySchema = new mongoose.Schema(
   }
 );
 
+// Indexes for faster admin queries
+foodGrocerySchema.index({ status: 1, createdAt: -1 });
+foodGrocerySchema.index({ city: 1 });
+
 module.exports =
   mongoose.models.FoodGrocery ||
   mongoose.model("FoodGrocery", foodGrocerySchema);

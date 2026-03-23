@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Plus, Edit, Trash2, ArrowLeft, Eye } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import AddAccommodationModal from './AddAccommodationModal';
@@ -23,22 +23,24 @@ const AccommodationListings = () => {
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({ count: 0, activeCount: 0 });
   const [selectedAccommodation, setSelectedAccommodation] = useState(null);
+  const [page, setPage] = useState(1);
+  const [limit] = useState(10);
+  const [totalCount, setTotalCount] = useState(0);
   const [statusFilter, setStatusFilter] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
 
-  useEffect(() => { fetchAccommodations(); }, []);
-
-  const fetchAccommodations = async () => {
+  const fetchAccommodations = useCallback(async (p = 1) => {
     setLoading(true);
     try {
       const token = localStorage.getItem('adminToken');
-      const response = await fetch(API, {
+      const response = await fetch(`${API}?page=${p}&limit=${limit}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (response.ok) {
         const result = await response.json();
         setAccommodations(result.data || []);
         setStats({ count: result.count || 0, activeCount: result.activeCount || 0 });
+        setTotalCount(result.totalCount || 0);
       } else {
         alert('Failed to fetch accommodations');
       }
@@ -48,7 +50,9 @@ const AccommodationListings = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [limit]);
+
+  useEffect(() => { fetchAccommodations(page); }, [page, fetchAccommodations]);
 
   const handleDelete = async (id, title) => {
     if (!window.confirm(`Delete "${title}"?`)) return;
@@ -129,7 +133,7 @@ const AccommodationListings = () => {
             <ArrowLeft size={16} /> Back to Categories
           </button>
           <h1>🏠 Accommodation Listings</h1>
-          <p>Total: {stats.count} | Active: {stats.activeCount}</p>
+          <p>Showing {stats.count} of {totalCount || stats.count}</p>
         </div>
         <div className="header-actions" style={{ display:'flex', gap:10, alignItems:'center' }}>
           <input
@@ -153,6 +157,21 @@ const AccommodationListings = () => {
             <Plus size={20} /> New Accommodation
           </button>
         </div>
+      </div>
+
+      {/* Pagination controls */}
+      <div style={{ display:'flex', justifyContent:'flex-end', gap:8, alignItems:'center', padding:'8px 0' }}>
+        <button
+          onClick={() => setPage(p => Math.max(1, p - 1))}
+          disabled={page === 1}
+          style={{ padding: '6px 10px', borderRadius:6, cursor: page===1 ? 'not-allowed' : 'pointer' }}
+        >Prev</button>
+        <div style={{ fontSize:14, color:'#374151' }}>Page {page} • {totalCount} items</div>
+        <button
+          onClick={() => setPage(p => p + 1)}
+          disabled={page * limit >= totalCount}
+          style={{ padding: '6px 10px', borderRadius:6, cursor: page * limit >= totalCount ? 'not-allowed' : 'pointer' }}
+        >Next</button>
       </div>
 
       {loading ? (

@@ -3,28 +3,38 @@ const router = express.Router();
 const Accommodation = require("./accomodation");
 const { notifyListingActivated } = require('../userModule/user/services/notificationService');
 
-// GET ALL (with stats)
+// GET ALL (with stats) with optional pagination: ?page=1&limit=20
 router.get("/", async (req, res) => {
   try {
     if (req.user.role !== "admin") {
       return res.status(403).json({ message: "Admin access required" });
     }
+    // Pagination params
+    const page = Math.max(1, parseInt(req.query.page) || 1);
+    const limit = Math.min(100, parseInt(req.query.limit) || 20);
+    const skip = (page - 1) * limit;
 
-    // Only fetch from MongoDB, no in-memory data
-    const accommodations = await Accommodation.find()
-      .select('-__v')
-      .sort({ createdAt: -1 })
-      .lean();
-    
-    const count = await Accommodation.countDocuments();
+    // Get total counts (lightweight)
+    const totalCount = await Accommodation.countDocuments();
     const activeCount = await Accommodation.countDocuments({ 
       title: { $exists: true, $ne: null },
       city: { $exists: true, $ne: null }
     });
 
+    // Fetch paginated data
+    const accommodations = await Accommodation.find()
+      .select('-__v')
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit)
+      .lean();
+
     res.status(200).json({
       data: accommodations || [],
-      count: count || 0,
+      count: (accommodations || []).length,
+      totalCount: totalCount || 0,
+      page,
+      limit,
       activeCount: activeCount || 0
     });
   } catch (error) {

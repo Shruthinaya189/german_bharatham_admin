@@ -3,6 +3,7 @@ const FoodGrocery = require("../../foodGroceryModule/admin/model/FoodGrocery");
 const Job = require("../../jobsModule/admin/model/Job");
 const Service = require("../../servicesModule/admin/model/Service");
 const User = require("../user/models/User");
+const GenericListing = require("../../categoryModule/GenericListing");
 
 // Get dashboard statistics
 exports.getDashboardStats = async (req, res) => {
@@ -19,21 +20,26 @@ exports.getDashboardStats = async (req, res) => {
     const totalListings = accommodationCount + foodCount + jobCount + serviceCount;
     const totalCategories = 4; // Accommodation, Food, Services, Jobs
 
-    // Get pending reviews count (items with status 'Pending')
-    const pendingReviews = await Promise.all([
-      Accommodation.countDocuments({ status: 'Pending' }),
-      FoodGrocery.countDocuments({ status: 'Pending' }),
-      Job.countDocuments({ status: 'Pending' }),
-      Service.countDocuments({ status: 'Pending' })
-    ]);
+        // Get pending reviews count.
+        // Be more inclusive: match any status containing "pending" (case-insensitive),
+        // and also treat documents with missing/null status as pending (data-cleanup safe-guard).
+        const pendingFilter = { $or: [ { status: { $regex: /pending/i } }, { status: { $exists: false } }, { status: null } ] };
+        const pendingReviews = await Promise.all([
+      Accommodation.countDocuments(pendingFilter),
+      FoodGrocery.countDocuments(pendingFilter),
+      Job.countDocuments(pendingFilter),
+      Service.countDocuments(pendingFilter),
+      GenericListing.countDocuments(pendingFilter)
+        ]);
     const totalPending = pendingReviews.reduce((sum, count) => sum + count, 0);
 
     // Get recent listings (last 6 from all categories)
-    const [recentAccommodations, recentFood, recentJobs, recentServices] = await Promise.all([
+    const [recentAccommodations, recentFood, recentJobs, recentServices, recentCustomListings] = await Promise.all([
       Accommodation.find().sort({ createdAt: -1 }).limit(2).lean(),
       FoodGrocery.find().sort({ createdAt: -1 }).limit(2).lean(),
       Job.find().sort({ createdAt: -1 }).limit(2).lean(),
-      Service.find().sort({ createdAt: -1 }).limit(2).lean()
+      Service.find().sort({ createdAt: -1 }).limit(2).lean(),
+      GenericListing.find().sort({ createdAt: -1 }).limit(4).lean()
     ]);
 
     // Format recent listings
@@ -60,6 +66,14 @@ exports.getDashboardStats = async (req, res) => {
         title: item.title,
         category: 'Services',
         status: item.status || 'Active',
+        createdAt: item.createdAt,
+        added: formatTimeAgo(item.createdAt)
+      })),
+      ...recentCustomListings.map(item => ({
+        title: item.title || 'Untitled',
+        category: item.categoryName || item.category || 'Custom',
+        status: item.status || 'Active',
+        createdAt: item.createdAt,
         added: formatTimeAgo(item.createdAt)
       }))
     ];

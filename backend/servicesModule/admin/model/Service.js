@@ -128,4 +128,8 @@ serviceSchema.pre("validate", function syncServiceFields() {
 
 });
 
+// Indexes for faster admin queries
+serviceSchema.index({ status: 1, createdAt: -1 });
+serviceSchema.index({ providerName: 1, city: 1 });
+
 module.exports = mongoose.models.Service || mongoose.model("Service", serviceSchema);

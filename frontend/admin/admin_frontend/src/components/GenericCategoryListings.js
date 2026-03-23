@@ -295,6 +295,9 @@ const GenericCategoryListings = ({ category, apiBase, icon, viewFields }) => {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showAdd, setShowAdd] = useState(false);
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(20);
+  const [totalCount, setTotalCount] = useState(0);
   const [viewItem, setViewItem] = useState(null);
   const [editItem, setEditItem] = useState(null);
   const [statusFilter, setStatusFilter] = useState('');
@@ -309,16 +312,27 @@ const GenericCategoryListings = ({ category, apiBase, icon, viewFields }) => {
     setLoading(true);
     try {
       const token = localStorage.getItem('adminToken');
-      const url = statusFilter ? `${apiBase}?status=${statusFilter}` : apiBase;
+      let url = apiBase;
+      const params = new URLSearchParams();
+      if (statusFilter) params.set('status', statusFilter);
+      if (page) params.set('page', page);
+      if (limit) params.set('limit', limit);
+      const qs = params.toString();
+      if (qs) url = `${apiBase}?${qs}`;
+
       const res = await fetch(url, { headers: { 'Authorization': `Bearer ${token}` } });
       if (res.status === 401 || res.status === 403) {
         handleUnauthorized();
         return;
       }
-      if (res.ok) { const d = await res.json(); setItems(d.data || []); }
+      if (res.ok) {
+        const d = await res.json();
+        setItems(d.data || []);
+        setTotalCount(d.totalCount || (d.count || 0));
+      }
     } catch (e) { console.error(e); }
     finally { setLoading(false); }
-  }, [apiBase, statusFilter]);
+  }, [apiBase, statusFilter, page, limit]);
 
   useEffect(() => { fetchItems(); }, [fetchItems]);
 
@@ -402,7 +416,7 @@ const GenericCategoryListings = ({ category, apiBase, icon, viewFields }) => {
             <ArrowLeft size={16} /> Back to Categories
           </button>
           <h1>{icon} {category} Listings</h1>
-          <p>Total: {items.length}</p>
+          <p>Total: {totalCount}</p>
         </div>
         <div className="header-actions">
           <input
@@ -421,6 +435,11 @@ const GenericCategoryListings = ({ category, apiBase, icon, viewFields }) => {
           <button className="add-listing-btn" onClick={() => setShowAdd(true)}>
             <Plus size={18} /> New {category}
           </button>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginLeft: 12 }}>
+            <button className="pagination-btn" disabled={page <= 1} onClick={() => setPage(p => Math.max(1, p - 1))}>Prev</button>
+            <div style={{ minWidth: 120, textAlign: 'center', fontSize: 13 }}>Page {page} • {Math.max(1, Math.ceil((totalCount||0)/limit))}</div>
+            <button className="pagination-btn" disabled={page * limit >= (totalCount || 0)} onClick={() => setPage(p => p + 1)}>Next</button>
+          </div>
         </div>
       </div>
 

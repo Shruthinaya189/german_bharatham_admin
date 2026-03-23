@@ -49,13 +49,19 @@ router.delete('/:id', adminCheck, async (req, res) => {
 
 // ── LISTINGS within a category ───────────────────────────────────────────────
 
-// GET all listings for a category
+// GET all listings for a category (supports pagination: ?page=1&limit=20)
 router.get('/:id/listings', adminCheck, async (req, res) => {
   try {
     const filter = { categoryId: req.params.id };
     if (req.query.status) filter.status = req.query.status;
-    const listings = await GenericListing.find(filter).sort({ createdAt: -1 });
-    res.json({ data: listings, count: listings.length });
+    const page = Math.max(1, parseInt(req.query.page) || 1);
+    const limit = Math.min(200, parseInt(req.query.limit) || 20);
+    const skip = (page - 1) * limit;
+
+    const totalCount = await GenericListing.countDocuments(filter);
+    const listings = await GenericListing.find(filter).sort({ createdAt: -1 }).skip(skip).limit(limit).lean();
+
+    res.json({ data: listings, count: (listings || []).length, totalCount: totalCount || 0, page, limit });
   } catch (e) { res.status(500).json({ message: e.message }); }
 });
 

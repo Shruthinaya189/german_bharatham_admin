@@ -121,4 +121,8 @@ accommodationSchema.set('toJSON', {
   transform: (doc, ret) => stripNulls(ret)
 });
 
+// Indexes to speed up admin listing queries and pending counts
+accommodationSchema.index({ status: 1, createdAt: -1 });
+accommodationSchema.index({ 'adminControls.isActive': 1, createdAt: -1 });
+
 module.exports = mongoose.model("Accommodation", accommodationSchema);

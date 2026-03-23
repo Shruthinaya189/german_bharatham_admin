@@ -13,3 +13,6 @@ const GenericListingSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 module.exports = mongoose.model('GenericListing', GenericListingSchema);
+
+// Indexes to improve admin queries for status and createdAt sorting
+GenericListingSchema.index({ status: 1, createdAt: -1 });

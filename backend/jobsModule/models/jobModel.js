@@ -33,5 +33,9 @@ const jobSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+// Indexes to speed up admin listing queries
+jobSchema.index({ status: 1, createdAt: -1 });
+jobSchema.index({ companyName: 1 });
+
 // Collection name: jobs
 module.exports = mongoose.models.Job || mongoose.model("Job", jobSchema);
