@@ -10,7 +10,7 @@ exports.getPublicUsers = async (req, res) => {
     const filter = { role: "user", isActive: true };
     const [total, users] = await Promise.all([
       User.countDocuments(filter),
-      User.find(filter).select("name email phone photo role isActive createdAt").skip(skip).limit(limit)
+      User.find(filter).select("name email phone photo role isActive createdAt location preferredCity").skip(skip).limit(limit)
     ]);
     const totalPages = Math.ceil(total / limit);
     res.json({ data: users, count: total, page, limit, totalPages });

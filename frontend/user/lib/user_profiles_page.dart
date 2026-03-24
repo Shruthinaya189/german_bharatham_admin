@@ -13,6 +13,9 @@ import 'user_session.dart';
 class PublicUserProfile {
   final String id;
   final String name;
+  final String? city;
+  final String? preferredCity;
+  final String? location;
   final String? email;
   final String? phone;
   final String? photoBase64;
@@ -20,6 +23,9 @@ class PublicUserProfile {
   PublicUserProfile({
     required this.id,
     required this.name,
+    this.city,
+    this.preferredCity,
+    this.location,
     this.email,
     this.phone,
     this.photoBase64,
@@ -29,6 +35,9 @@ class PublicUserProfile {
     return PublicUserProfile(
       id: (json['_id'] ?? json['id'] ?? '').toString(),
       name: (json['name'] ?? 'User').toString(),
+      city: json['preferredCity']?.toString() ?? json['location']?.toString() ?? '',
+      preferredCity: json['preferredCity']?.toString(),
+      location: json['location']?.toString(),
       email: json['email']?.toString(),
       phone: json['phone']?.toString(),
       photoBase64: json['photo']?.toString(),
@@ -593,45 +602,14 @@ class _UserProfilesPageState extends State<UserProfilesPage>
                     ),
                   ),
                   const SizedBox(height: 8),
-                  if ((user.phone ?? '').trim().isNotEmpty)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 6),
-                      child: Row(
-                        children: [
-                          Image.asset(
-                            'assets/images/call.png',
-                            width: 16,
-                            height: 16,
-                            color: Colors.white,
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              user.phone!.trim(),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  if ((user.email ?? '').trim().isNotEmpty)
+                  if ((user.city ?? '').trim().isNotEmpty)
                     Row(
                       children: [
-                        Image.asset(
-                          'assets/images/msg.png',
-                          width: 16,
-                          height: 16,
-                          color: Colors.white,
-                        ),
+                        Icon(Icons.location_on, color: Colors.white, size: 16),
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(
-                            user.email!.trim(),
+                            user.city!.trim(),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: const TextStyle(

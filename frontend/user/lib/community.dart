@@ -111,7 +111,8 @@ class _CommunityPageState extends State<CommunityPage> {
       );
 
       if (response.statusCode == 200) {
-        final List jsonData = json.decode(response.body);
+        final decoded = json.decode(response.body);
+        final List jsonData = decoded is List ? decoded : (decoded['data'] ?? []) as List;
 
         final fetchedGuides =
             jsonData.map((e) => CommunityPost.fromJson(e)).toList();
