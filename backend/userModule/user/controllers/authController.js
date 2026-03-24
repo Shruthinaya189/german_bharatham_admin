@@ -3,6 +3,53 @@ const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
 const { sendEmail } = require("../../../services/mailer");
+const EmailVerification = require("../models/EmailVerification");
+// SEND EMAIL VERIFICATION CODE
+exports.sendVerificationCode = async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email) return res.status(400).json({ message: "Email is required" });
+    // Generate 6-digit code
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    const expiresAt = new Date(Date.now() + 60 * 1000); // 1 minute from now
+    // Upsert code for email
+    await EmailVerification.findOneAndUpdate(
+      { email },
+      { code, expiresAt },
+      { upsert: true, new: true }
+    );
+    // Send email
+    await sendEmail({
+      to: email,
+      subject: "Your Verification Code",
+      text: `Your verification code is: ${code}. It is valid for 1 minute.`,
+    });
+    res.json({ message: "Verification code sent" });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// VERIFY EMAIL CODE
+exports.verifyEmailCode = async (req, res) => {
+  try {
+    const { email, code } = req.body;
+    if (!email || !code) return res.status(400).json({ message: "Email and code are required" });
+    const record = await EmailVerification.findOne({ email });
+    if (!record || record.code !== code) {
+      return res.status(400).json({ message: "Invalid verification code" });
+    }
+    if (record.expiresAt < new Date()) {
+      return res.status(400).json({ message: "Verification code expired" });
+    }
+    // Mark as verified (delete record)
+    await EmailVerification.deleteOne({ email });
+    // Set a flag in memory or DB if needed (for demo, just return success)
+    res.json({ message: "Email verified" });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
 const axios = require("axios");
 
 let googleAuthLib;
@@ -259,14 +306,18 @@ const getAppBaseUrl = (req) => {
 // REGISTER
 exports.register = async (req, res) => {
   try {
-    const { name, email, phone, password } = req.body;
-
+    const { name, email, phone, password, verificationCode } = req.body;
+    // Check if email is verified (code must match and not expired)
+    const record = await EmailVerification.findOne({ email });
+    if (!record || record.code !== verificationCode || record.expiresAt < new Date()) {
+      return res.status(400).json({ message: "Email not valid or verification code expired" });
+    }
+    // Remove verification record after use
+    await EmailVerification.deleteOne({ email });
     const existingUser = await User.findOne({ email });
     if (existingUser)
       return res.status(400).json({ message: "User already exists" });
-
     const hashedPassword = await bcrypt.hash(password, 10);
-
     const user = await User.create({
       name,
       email,
@@ -274,7 +325,6 @@ exports.register = async (req, res) => {
       password: hashedPassword,
       role: "user",
     });
-
     res.status(201).json({
       token: generateToken(user),
       user: sanitizeUser(user),

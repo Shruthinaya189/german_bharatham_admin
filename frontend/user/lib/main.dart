@@ -1159,11 +1159,9 @@ class _SignupPageState extends State<SignupPage> {
                 ),
               ),
               const SizedBox(height: 18),
-              const Text('Get Started now',
-                  style: TextStyle(fontSize: 25, fontWeight: FontWeight.w800)),
+              const Text('Get Started now',style: TextStyle(fontSize: 25, fontWeight: FontWeight.w800),),
               const SizedBox(height: 8),
-              Text('Create an account or log in to explore the app',
-                  style: TextStyle(fontSize: 22,color: Colors.grey.shade700)),
+              Text('Create an account or log in to explore the app',style: TextStyle(fontSize: 22,color: Colors.grey.shade700)),
               const SizedBox(height: 18),
 
               Container(
@@ -1294,17 +1292,6 @@ class _SignupPageState extends State<SignupPage> {
       decoration: InputDecoration(
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
       ),
-    );
-  }
-}
-
-class HomeScreen extends StatelessWidget {
-  const HomeScreen({super.key});
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Home')),
-      body: const Center(child: Text('Home Screen - replace with your app content')),
     );
   }
 }
@@ -1574,3 +1561,103 @@ class _SplashScreenState extends State<SplashScreen>
     );
   }
 }
+
+// --- Email Verification Page ---
+class EmailCodePage extends StatefulWidget {
+  final String email;
+  const EmailCodePage({required this.email, Key? key}) : super(key: key);
+  @override
+  State<EmailCodePage> createState() => _EmailCodePageState();
+}
+
+class _EmailCodePageState extends State<EmailCodePage> {
+  final TextEditingController _codeController = TextEditingController();
+  bool _verifying = false;
+  String? _error;
+
+  @override
+  void dispose() {
+    _codeController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _verifyCode() async {
+    setState(() {
+      _verifying = true;
+      _error = null;
+    });
+    final response = await http.post(
+      Uri.parse(ApiConfig.baseUrl + '/api/user/verify-email'),
+      headers: {"Content-Type": "application/json"},
+      body: jsonEncode({"email": widget.email, "code": _codeController.text.trim()}),
+    );
+    setState(() => _verifying = false);
+    if (response.statusCode == 200) {
+      // Success: go to location permission page
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const LocationPermissionPage()),
+      );
+    } else {
+      // Failure: go back to signup with error
+      Navigator.pop(context);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Email is not valid or code expired')),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Verify Email')),
+      body: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          children: [
+            Text('A code was sent to ${widget.email}'),
+            TextField(
+              controller: _codeController,
+              decoration: const InputDecoration(labelText: 'Verification Code'),
+            ),
+            const SizedBox(height: 20),
+            if (_error != null)
+              Text(_error!, style: const TextStyle(color: Colors.red)),
+            ElevatedButton(
+              onPressed: _verifying ? null : _verifyCode,
+              child: _verifying ? const CircularProgressIndicator() : const Text('Verify'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// --- Send verification code and navigate ---
+Future<void> sendVerificationCodeAndNavigate(BuildContext context, String email) async {
+  final response = await http.post(
+    Uri.parse(ApiConfig.baseUrl + '/api/user/send-verification-code'),
+    headers: {"Content-Type": "application/json"},
+    body: jsonEncode({"email": email}),
+  );
+  if (response.statusCode == 200) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => EmailCodePage(email: email)),
+    );
+  } else {
+    // Show error (e.g., email already exists)
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Failed to send code: ${response.body}')),
+    );
+  }
+}
+
+// --- Replace the signup button's onPressed in SignupPage ---
+// Find: onPressed: registerUser,
+// Replace with:
+// onPressed: () {
+//   final email = _emailController.text.trim();
+//   sendVerificationCodeAndNavigate(context, email);
+// },

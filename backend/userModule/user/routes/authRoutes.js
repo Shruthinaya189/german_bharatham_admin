@@ -1,9 +1,14 @@
-const { protect, adminOnly } = require("../../../middleware/auth");
-const userController = require("../controllers/userController");
+
 const express = require("express");
 const router = express.Router();
+const { protect, adminOnly } = require("../../../middleware/auth");
+const userController = require("../controllers/userController");
 const controller = require("../controllers/authController");
 const notificationController = require("../controllers/notificationController");
+
+// Email verification endpoints
+router.post("/send-verification-code", controller.sendVerificationCode);
+router.post("/verify-email", controller.verifyEmailCode);
 
 router.post("/register", controller.register);
 router.post("/login", controller.login);
