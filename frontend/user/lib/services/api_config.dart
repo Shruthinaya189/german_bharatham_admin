@@ -1,6 +1,9 @@
 import 'package:flutter/foundation.dart' show kReleaseMode;
 
 class ApiConfig {
+      // OTP-based signup endpoints
+      static String get sendOtpEndpoint => '$baseUrl/api/user/send-otp';
+      static String get verifyOtpEndpoint => '$baseUrl/api/user/verify-otp';
     static String get paymentHistoryEndpoint => '$baseUrl/api/subscriptions/user/payment-history';
   // Production backend (Render)
   static const String _prodBaseUrl = 'https://german-bharatham-backend.onrender.com';

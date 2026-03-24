@@ -3,61 +3,6 @@ const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
 const { sendEmail } = require("../../../services/mailer");
-const EmailVerification = require("../models/EmailVerification");
-// SEND EMAIL VERIFICATION CODE
-exports.sendVerificationCode = async (req, res) => {
-  try {
-    const { email } = req.body;
-    if (!email) return res.status(400).json({ message: "Email is required" });
-    // Generate 6-digit code
-    const code = Math.floor(100000 + Math.random() * 900000).toString();
-    const expiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes from now
-    // Log OTP for debugging (remove in production if needed)
-    console.log("Generated OTP for", email, ":", code);
-    // Upsert code for email
-    await EmailVerification.findOneAndUpdate(
-      { email },
-      { code, expiresAt },
-      { upsert: true, new: true }
-    );
-    // Send email
-    await sendEmail({
-      to: email,
-      subject: "Your Verification Code",
-      text: `Your verification code is: ${code}. It is valid for 5 minutes.`,
-    });
-    res.json({ message: "Verification code sent" });
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-};
-
-// VERIFY EMAIL CODE
-exports.verifyEmailCode = async (req, res) => {
-  try {
-    const { email, code } = req.body;
-    if (!email || !code) return res.status(400).json({ message: "Email and code are required" });
-    // Log email received from frontend for debugging
-    console.log("Email from frontend:", email);
-    const record = await EmailVerification.findOne({ email });
-    if (!record || record.code.toString() !== code.toString()) {
-      return res.status(400).json({ message: "Invalid verification code" });
-    }
-    // Ensure expiry check uses Date objects
-    if (new Date(record.expiresAt) < new Date()) {
-      return res.status(400).json({ message: "Verification code expired" });
-    }
-    // Mark as verified (delete record)
-    await EmailVerification.deleteOne({ email });
-    // Find user and generate token
-    const user = await User.findOne({ email });
-    if (!user) return res.status(404).json({ message: "User not found" });
-    const token = generateToken(user);
-    res.json({ user: sanitizeUser(user), token });
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-};
 const axios = require("axios");
 
 let googleAuthLib;
@@ -339,7 +284,46 @@ exports.register = async (req, res) => {
 };
 
 // VERIFY EMAIL CODE
-// NOTE: For deployment, ensure your MongoDB connection string (MONGO_URI) is correct and consistent across environments (local, staging, production) to avoid OTP mismatch issues.
+const EmailVerification = require('../models/EmailVerification');
+exports.verifyEmail = async (req, res) => {
+  try {
+    const { email, code } = req.body;
+    if (!email || !code) {
+      return res.status(400).json({ message: 'Email and code are required.' });
+    }
+
+    const record = await EmailVerification.findOne({ email: email.toLowerCase().trim() });
+    if (!record) {
+      return res.status(400).json({ message: 'Invalid code or expired.' });
+    }
+
+    if (record.code !== code) {
+      return res.status(400).json({ message: 'Invalid code or expired.' });
+    }
+
+    if (record.expiresAt < new Date()) {
+      return res.status(400).json({ message: 'Invalid code or expired.' });
+    }
+
+    // Mark user as verified, create session, etc.
+    const user = await User.findOneAndUpdate(
+      { email: email.toLowerCase().trim() },
+      { $set: { isVerified: true } },
+      { new: true }
+    );
+
+    // Optionally delete the verification record
+    await EmailVerification.deleteOne({ email: email.toLowerCase().trim() });
+
+    // Return user and token as before
+    return res.status(200).json({
+      token: generateToken(user),
+      user: sanitizeUser(user),
+    });
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
+  }
+};
 // GET PROFILE
 exports.getProfile = async (req, res) => {
   try {

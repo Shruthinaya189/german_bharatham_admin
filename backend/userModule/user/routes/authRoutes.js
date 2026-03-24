@@ -6,15 +6,13 @@ const userController = require("../controllers/userController");
 const controller = require("../controllers/authController");
 const notificationController = require("../controllers/notificationController");
 
-// Email verification endpoints
-router.post("/send-verification-code", controller.sendVerificationCode);
-router.post("/verify-email", controller.verifyEmailCode);
 
 router.post("/register", controller.register);
 router.post("/login", controller.login);
 router.post("/social-login", controller.socialLogin);
 router.post("/forgot-password", controller.forgotPassword);
 router.post("/reset-password", controller.resetPassword);
+router.post("/verify-email", controller.verifyEmail);
 router.get("/profile", protect, controller.getProfile);
 router.put("/profile", protect, controller.updateProfile);
 router.put("/change-password", protect, controller.changePassword);
