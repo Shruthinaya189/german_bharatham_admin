@@ -12,6 +12,8 @@ exports.sendVerificationCode = async (req, res) => {
     // Generate 6-digit code
     const code = Math.floor(100000 + Math.random() * 900000).toString();
     const expiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes from now
+    // Log OTP for debugging (remove in production if needed)
+    console.log("Generated OTP for", email, ":", code);
     // Upsert code for email
     await EmailVerification.findOneAndUpdate(
       { email },
@@ -35,11 +37,14 @@ exports.verifyEmailCode = async (req, res) => {
   try {
     const { email, code } = req.body;
     if (!email || !code) return res.status(400).json({ message: "Email and code are required" });
+    // Log email received from frontend for debugging
+    console.log("Email from frontend:", email);
     const record = await EmailVerification.findOne({ email });
-    if (!record || record.code !== code) {
+    if (!record || record.code.toString() !== code.toString()) {
       return res.status(400).json({ message: "Invalid verification code" });
     }
-    if (record.expiresAt < new Date()) {
+    // Ensure expiry check uses Date objects
+    if (new Date(record.expiresAt) < new Date()) {
       return res.status(400).json({ message: "Verification code expired" });
     }
     // Mark as verified (delete record)
@@ -310,6 +315,8 @@ const getAppBaseUrl = (req) => {
 exports.register = async (req, res) => {
   try {
     const { name, email, phone, password } = req.body;
+    // Log email received from frontend for debugging
+    console.log("Email from frontend:", email);
     // Only check if user already exists
     const existingUser = await User.findOne({ email });
     if (existingUser)
@@ -331,6 +338,8 @@ exports.register = async (req, res) => {
   }
 };
 
+// VERIFY EMAIL CODE
+// NOTE: For deployment, ensure your MongoDB connection string (MONGO_URI) is correct and consistent across environments (local, staging, production) to avoid OTP mismatch issues.
 // GET PROFILE
 exports.getProfile = async (req, res) => {
   try {
@@ -526,6 +535,8 @@ exports.forgotPassword = async (req, res) => {
     const emailRaw = String(req.body.email || "").trim().toLowerCase();
     if (!emailRaw) return res.status(400).json({ message: "Email is required" });
 
+    // Log email received from frontend for debugging
+    console.log("Email from frontend:", emailRaw);
     const user = await User.findOne({ email: emailRaw });
 
     // Always respond success to avoid leaking which emails exist.
