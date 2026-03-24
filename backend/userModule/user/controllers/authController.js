@@ -309,14 +309,8 @@ const getAppBaseUrl = (req) => {
 // REGISTER
 exports.register = async (req, res) => {
   try {
-    const { name, email, phone, password, verificationCode } = req.body;
-    // Check if email is verified (code must match and not expired)
-    const record = await EmailVerification.findOne({ email });
-    if (!record || record.code !== verificationCode || record.expiresAt < new Date()) {
-      return res.status(400).json({ message: "Email not valid or verification code expired" });
-    }
-    // Remove verification record after use
-    await EmailVerification.deleteOne({ email });
+    const { name, email, phone, password } = req.body;
+    // Only check if user already exists
     const existingUser = await User.findOne({ email });
     if (existingUser)
       return res.status(400).json({ message: "User already exists" });
