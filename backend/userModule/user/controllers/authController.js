@@ -44,8 +44,11 @@ exports.verifyEmailCode = async (req, res) => {
     }
     // Mark as verified (delete record)
     await EmailVerification.deleteOne({ email });
-    // Set a flag in memory or DB if needed (for demo, just return success)
-    res.json({ message: "Email verified" });
+    // Find user and generate token
+    const user = await User.findOne({ email });
+    if (!user) return res.status(404).json({ message: "User not found" });
+    const token = generateToken(user);
+    res.json({ user: sanitizeUser(user), token });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

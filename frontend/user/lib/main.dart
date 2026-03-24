@@ -948,9 +948,16 @@ class _AuthPageState extends State<AuthPage> {
                 width: double.infinity,
                 height: 52,
                 child: ElevatedButton(
-                  onPressed: loginUser,
-                  style: ElevatedButton.styleFrom(backgroundColor: primaryGreen, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))),
-                  child: const Text('Login', style: TextStyle(fontSize: 17,color: Colors.white, fontWeight: FontWeight.w600)),
+                  onPressed: () {
+                    final email = _emailController.text.trim();
+                    sendVerificationCodeAndNavigate(context, email);
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: primaryGreen,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  ),
+                  child: const Text('Sign up',
+                      style: TextStyle(fontSize: 16,color: Colors.white, fontWeight: FontWeight.w600)),
                 ),
               ),
 
@@ -1261,7 +1268,10 @@ class _SignupPageState extends State<SignupPage> {
                 width: double.infinity,
                 height: 52,
                 child: ElevatedButton(
-                  onPressed: registerUser,
+                  onPressed: () {
+                    final email = _emailController.text.trim();
+                    sendVerificationCodeAndNavigate(context, email);
+                  },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: primaryGreen,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
@@ -1574,9 +1584,36 @@ class _EmailCodePageState extends State<EmailCodePage> {
   final TextEditingController _codeController = TextEditingController();
   bool _verifying = false;
   String? _error;
+  int _secondsLeft = 60;
+  Timer? _timer;
+  bool _resent = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _startTimer();
+  }
+
+  void _startTimer() {
+    _timer?.cancel();
+    setState(() {
+      _secondsLeft = 60;
+      _resent = false;
+    });
+    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (_secondsLeft > 0) {
+        setState(() {
+          _secondsLeft--;
+        });
+      } else {
+        timer.cancel();
+      }
+    });
+  }
 
   @override
   void dispose() {
+    _timer?.cancel();
     _codeController.dispose();
     super.dispose();
   }
@@ -1593,39 +1630,129 @@ class _EmailCodePageState extends State<EmailCodePage> {
     );
     setState(() => _verifying = false);
     if (response.statusCode == 200) {
-      // Success: go to location permission page
+      // Save user session from response
+      try {
+        final data = jsonDecode(response.body);
+        final user = data['user'];
+        await UserSession.instance.save(
+          userId: user['_id'].toString(),
+          token: data['token'].toString(),
+          name: user['name'].toString(),
+          email: user['email'].toString(),
+          phone: user['phone']?.toString(),
+          photoBase64: user['photo']?.toString(),
+        );
+        SavedManager.instance.switchUser(user['_id'].toString());
+      } catch (e) {
+        debugPrint('Session save error: $e');
+      }
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (_) => const LocationPermissionPage()),
       );
     } else {
-      // Failure: go back to signup with error
-      Navigator.pop(context);
+      setState(() {
+        _error = 'Invalid code or expired.';
+      });
+    }
+  }
+
+  Future<void> _resendCode() async {
+    setState(() {
+      _verifying = true;
+      _error = null;
+    });
+    final response = await http.post(
+      Uri.parse(ApiConfig.baseUrl + '/api/user/send-verification-code'),
+      headers: {"Content-Type": "application/json"},
+      body: jsonEncode({"email": widget.email}),
+    );
+    setState(() {
+      _verifying = false;
+      _resent = true;
+    });
+    if (response.statusCode == 200) {
+      _startTimer();
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Email is not valid or code expired')),
+        const SnackBar(content: Text('OTP resent!')),
       );
+    } else {
+      setState(() {
+        _error = 'Failed to resend OTP.';
+      });
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    const Color primaryGreen = Color(0xFF4E7F6D);
     return Scaffold(
-      appBar: AppBar(title: const Text('Verify Email')),
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: primaryGreen),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+        title: const Text('Verify Email', style: TextStyle(color: primaryGreen, fontWeight: FontWeight.w700)),
+        centerTitle: true,
+      ),
+      backgroundColor: Colors.white,
       body: Padding(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('A code was sent to ${widget.email}'),
+            Text('A verification code was sent to', style: TextStyle(fontSize: 16, color: Colors.grey[700])),
+            const SizedBox(height: 4),
+            Text(widget.email, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 28),
+            Text('Enter OTP', style: TextStyle(fontSize: 15, color: Colors.grey[800], fontWeight: FontWeight.w600)),
+            const SizedBox(height: 8),
             TextField(
               controller: _codeController,
-              decoration: const InputDecoration(labelText: 'Verification Code'),
+              keyboardType: TextInputType.number,
+              maxLength: 6,
+              decoration: InputDecoration(
+                counterText: '',
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                hintText: 'Enter 6-digit code',
+                filled: true,
+                fillColor: Colors.grey[100],
+              ),
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 18),
             if (_error != null)
-              Text(_error!, style: const TextStyle(color: Colors.red)),
-            ElevatedButton(
-              onPressed: _verifying ? null : _verifyCode,
-              child: _verifying ? const CircularProgressIndicator() : const Text('Verify'),
+              Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: Text(_error!, style: const TextStyle(color: Colors.red, fontSize: 14)),
+              ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                if (_secondsLeft > 0)
+                  Text('$_secondsLeft seconds left', style: const TextStyle(color: Colors.grey)),
+                if (_secondsLeft == 0)
+                  TextButton(
+                    onPressed: _verifying ? null : _resendCode,
+                    child: const Text('Resend OTP', style: TextStyle(color: primaryGreen, fontWeight: FontWeight.w600)),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 18),
+            SizedBox(
+              width: double.infinity,
+              height: 52,
+              child: ElevatedButton(
+                onPressed: (_secondsLeft > 0 && !_verifying) ? _verifyCode : null,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: primaryGreen,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                ),
+                child: _verifying
+                    ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                    : const Text('Verify', style: TextStyle(fontSize: 16, color: Colors.white, fontWeight: FontWeight.w600)),
+              ),
             ),
           ],
         ),
