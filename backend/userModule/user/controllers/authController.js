@@ -11,7 +11,7 @@ exports.sendVerificationCode = async (req, res) => {
     if (!email) return res.status(400).json({ message: "Email is required" });
     // Generate 6-digit code
     const code = Math.floor(100000 + Math.random() * 900000).toString();
-    const expiresAt = new Date(Date.now() + 60 * 1000); // 1 minute from now
+    const expiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes from now
     // Upsert code for email
     await EmailVerification.findOneAndUpdate(
       { email },
@@ -22,7 +22,7 @@ exports.sendVerificationCode = async (req, res) => {
     await sendEmail({
       to: email,
       subject: "Your Verification Code",
-      text: `Your verification code is: ${code}. It is valid for 1 minute.`,
+      text: `Your verification code is: ${code}. It is valid for 5 minutes.`,
     });
     res.json({ message: "Verification code sent" });
   } catch (error) {
