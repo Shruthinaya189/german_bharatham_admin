@@ -439,11 +439,24 @@ exports.login = async (req, res) => {
     const now = new Date();
     if (!user.firstLoginAt) user.firstLoginAt = now;
     user.lastLoginAt = now;
-    await user.save();
+    try {
+      await user.save();
+      console.log('[LOGIN] Updated user login times:', {
+        userId: user._id,
+        firstLoginAt: user.firstLoginAt,
+        lastLoginAt: user.lastLoginAt
+      });
+    } catch (err) {
+      console.error('[LOGIN] Error saving user login times:', err);
+    }
 
     res.json({
       token: generateToken(user),
       user: sanitizeUser(user),
+      debugLoginTimes: {
+        firstLoginAt: user.firstLoginAt,
+        lastLoginAt: user.lastLoginAt
+      }
     });
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -486,11 +499,24 @@ exports.socialLogin = async (req, res) => {
     const now = new Date();
     if (!user.firstLoginAt) user.firstLoginAt = now;
     user.lastLoginAt = now;
-    await user.save();
+    try {
+      await user.save();
+      console.log('[SOCIAL LOGIN] Updated user login times:', {
+        userId: user._id,
+        firstLoginAt: user.firstLoginAt,
+        lastLoginAt: user.lastLoginAt
+      });
+    } catch (err) {
+      console.error('[SOCIAL LOGIN] Error saving user login times:', err);
+    }
 
     return res.status(200).json({
       token: generateToken(user),
       user: sanitizeUser(user),
+      debugLoginTimes: {
+        firstLoginAt: user.firstLoginAt,
+        lastLoginAt: user.lastLoginAt
+      }
     });
   } catch (error) {
     const status = error && error.statusCode ? Number(error.statusCode) : 500;
