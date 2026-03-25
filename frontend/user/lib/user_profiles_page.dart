@@ -276,17 +276,6 @@ class _UserProfilesPageState extends State<UserProfilesPage>
                                     child: _carousel(),
                                   ),
                   ),
-                  if (!isLoading && errorMessage == null && _hasActiveUser)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 12),
-                      child: Text(
-                        '${currentIndex + 1} / ${users.length}',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
                   if (widget.showNextButton)
                     SizedBox(
                       width: double.infinity,
@@ -487,8 +476,6 @@ class _UserProfilesPageState extends State<UserProfilesPage>
                                       scale: _pulseNewTopCard ? 0.97 : 1.0,
                                       child: _profileCard(
                                         user: users[currentIndex],
-                                        positionLabel:
-                                            '${currentIndex + 1}/${users.length}',
                                         liked: LikedUserManager.instance
                                             .isLiked(users[currentIndex].id),
                                         onLikePressed: () =>
@@ -502,8 +489,6 @@ class _UserProfilesPageState extends State<UserProfilesPage>
                                 scale: (1 - (depth * 0.03)).clamp(0.92, 1.0),
                                 child: _profileCard(
                                   user: users[currentIndex + depth],
-                                  positionLabel:
-                                      '${currentIndex + depth + 1}/${users.length}',
                                   liked: LikedUserManager.instance
                                       .isLiked(users[currentIndex + depth].id),
                                   onLikePressed: null,
@@ -522,7 +507,6 @@ class _UserProfilesPageState extends State<UserProfilesPage>
 
   Widget _profileCard({
     required PublicUserProfile user,
-    required String positionLabel,
     required bool liked,
     required VoidCallback? onLikePressed,
   }) {
@@ -557,28 +541,6 @@ class _UserProfilesPageState extends State<UserProfilesPage>
                       Colors.black.withValues(alpha: 0.55),
                     ],
                     stops: const [0.0, 0.55, 1.0],
-                  ),
-                ),
-              ),
-            ),
-            Positioned(
-              top: 12,
-              right: 12,
-              child: Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                decoration: BoxDecoration(
-                  color: Colors.black.withValues(alpha: 0.35),
-                  borderRadius: BorderRadius.circular(999),
-                  border: Border.all(
-                    color: Colors.white.withValues(alpha: 0.25),
-                  ),
-                ),
-                child: Text(
-                  positionLabel,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w600,
                   ),
                 ),
               ),

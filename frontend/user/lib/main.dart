@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/foundation.dart' show kDebugMode, kIsWeb;
+import 'package:country_code_picker/country_code_picker.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:google_sign_in/google_sign_in.dart';
@@ -591,10 +592,6 @@ class _AuthPageState extends State<AuthPage> {
         phone: user['phone']?.toString(),
         photoBase64: user['photo']?.toString(),
       );
-      // Ensure session is reloaded from storage so all pages see the latest token
-      await UserSession.instance.load();
-      debugPrint('[loginUser] After save/load: token = '
-          '${UserSession.instance.token}, userId = ${UserSession.instance.userId}');
       await _persistCredentialsAfterLoginSuccess();
       TextInput.finishAutofillContext(shouldSave: true);
       final uid = user['_id'].toString();
@@ -952,18 +949,24 @@ class _AuthPageState extends State<AuthPage> {
                 width: double.infinity,
                 height: 52,
                 child: ElevatedButton(
-                  onPressed: () {
-                    Navigator.pushReplacement(
-                      context,
-                      MaterialPageRoute(builder: (_) => const LocationPermissionPage()),
-                    );
-                  },
+                  onPressed: _isLogin
+                      ? loginUser
+                      : () {
+                          final email = _emailController.text.trim();
+                          sendVerificationCodeAndNavigate(context, email);
+                        },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: primaryGreen,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                   ),
-                  child: const Text('Log in',
-                      style: TextStyle(fontSize: 16,color: Colors.white, fontWeight: FontWeight.w600)),
+                  child: Text(
+                    _isLogin ? 'Login' : 'Sign up',
+                    style: const TextStyle(
+                      fontSize: 16,
+                      color: Colors.white,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
                 ),
               ),
 
@@ -985,14 +988,11 @@ class _AuthPageState extends State<AuthPage> {
 ),
               const SizedBox(height: 12),
               Row(
-               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-               children: [
-                _socialCircle('assets/images/google.png', onTap: _loginWithGoogle),
-                // Visible but disabled (not enabled / no auth flow).
-                _socialCircle('assets/images/communication.png'),
-                _socialCircle('assets/images/social.png'),
-              ],
-            ),
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  _socialCircle('assets/images/google.png', onTap: _loginWithGoogle),
+                ],
+              ),
             const SizedBox(height: 30),
             ],
           ),
@@ -1027,59 +1027,13 @@ class _AuthPageState extends State<AuthPage> {
 // ===== ADD SIGNUP PAGE HERE =====
 
 class SignupPage extends StatefulWidget {
-  final String? email;
-  SignupPage({Key? key, this.email}) : super(key: key);
+  SignupPage({Key? key}) : super(key: key);
 
   @override
   State<SignupPage> createState() => _SignupPageState();
 }
 
 class _SignupPageState extends State<SignupPage> {
-  /// Register user after OTP verification and auto-login
-  Future<void> registerUserAfterOtp(String email) async {
-    final password = _passwordController.text.trim();
-    final response = await http.post(
-      Uri.parse(ApiConfig.registerEndpoint),
-      headers: {"Content-Type": "application/json"},
-      body: jsonEncode({
-        "name": _nameController.text.trim(),
-        "email": email,
-        "phone": _phoneController.text.trim(),
-        "password": password,
-      }),
-    );
-
-    if (response.statusCode == 201) {
-      final data = jsonDecode(response.body);
-      final user = data['user'];
-      await UserSession.instance.save(
-        userId: user['_id'].toString(),
-        token: data['token'].toString(),
-        name: user['name'].toString(),
-        email: user['email'].toString(),
-        phone: user['phone']?.toString(),
-        photoBase64: user['photo']?.toString(),
-      );
-      SavedManager.instance.switchUser(user['_id'].toString());
-      if (mounted) {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => const LocationPermissionPage()),
-        );
-      }
-    } else {
-      debugPrint('Registration failed: ${response.body}');
-      // Optionally show error to user
-    }
-  }
-  @override
-  void initState() {
-    super.initState();
-    // If email is provided (from OTP), prefill the email field
-    if (widget.email != null && widget.email!.isNotEmpty) {
-      _emailController.text = widget.email!;
-    }
-  }
 
   // 🔹 Toggle (Login / Signup)
   bool _isLogin = false;
@@ -1093,6 +1047,7 @@ class _SignupPageState extends State<SignupPage> {
   // 🔹 Password visibility
   bool _obscure = true;
   String? _passwordError;
+  String _selectedDialCode = '+91';
 
   // 🔹 Theme color
   final Color primaryGreen = const Color(0xFF4F7F67);
@@ -1148,7 +1103,7 @@ class _SignupPageState extends State<SignupPage> {
       body: jsonEncode({
         "name": _nameController.text.trim(),
         "email": _emailController.text.trim(),
-        "phone": _phoneController.text.trim(),
+        "phone": '$_selectedDialCode${_phoneController.text.trim()}',
         "password": password,
       }),
     );
@@ -1195,6 +1150,40 @@ class _SignupPageState extends State<SignupPage> {
       _passwordError = "Network error. Please check your connection and try again.";
     });
   }
+}
+
+void _startSignupVerification() {
+  final name = _nameController.text.trim();
+  final email = _emailController.text.trim();
+  final phone = _phoneController.text.trim();
+  final password = _passwordController.text.trim();
+
+  if (name.isEmpty || email.isEmpty || phone.isEmpty || password.isEmpty) {
+    setState(() {
+      _passwordError = 'Please fill all fields';
+    });
+    return;
+  }
+
+  final error = validatePassword(password);
+  if (error != null) {
+    setState(() {
+      _passwordError = error;
+    });
+    return;
+  }
+
+  setState(() {
+    _passwordError = null;
+  });
+
+  sendVerificationCodeAndNavigate(
+    context,
+    email,
+    name: name,
+    phone: '$_selectedDialCode$phone',
+    password: password,
+  );
 }
   @override
   Widget build(BuildContext context) {
@@ -1277,12 +1266,23 @@ class _SignupPageState extends State<SignupPage> {
               Row(
                 children: [
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 14),
                     decoration: BoxDecoration(
                       border: Border.all(color: Colors.grey),
-                      borderRadius: BorderRadius.circular(5),
+                      borderRadius: BorderRadius.circular(8),
                     ),
-                    child: const Text('🇮🇳 +91'),
+                    child: CountryCodePicker(
+                      onChanged: (code) {
+                        setState(() {
+                          _selectedDialCode = code.dialCode ?? '+91';
+                        });
+                      },
+                      initialSelection: 'IN',
+                      favorite: const ['+91', 'DE', 'US', 'GB'],
+                      showCountryOnly: false,
+                      showOnlyCountryWhenClosed: false,
+                      alignLeft: false,
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+                    ),
                   ),
                   const SizedBox(width: 8),
                   Expanded(child: _inputField(_phoneController, keyboard: TextInputType.phone)),
@@ -1320,19 +1320,7 @@ class _SignupPageState extends State<SignupPage> {
                 width: double.infinity,
                 height: 52,
                 child: ElevatedButton(
-                  onPressed: () {
-                    final email = _emailController.text.trim();
-                    final name = _nameController.text.trim();
-                    final phone = _phoneController.text.trim();
-                    final password = _passwordController.text.trim();
-                    sendVerificationCodeAndNavigate(
-                      context,
-                      email: email,
-                      name: name,
-                      phone: phone,
-                      password: password,
-                    );
-                  },
+                  onPressed: _startSignupVerification,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: primaryGreen,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
@@ -1636,14 +1624,15 @@ class _SplashScreenState extends State<SplashScreen>
 // --- Email Verification Page ---
 class EmailCodePage extends StatefulWidget {
   final String email;
-  final String name;
-  final String phone;
-  final String password;
+  final String? name;
+  final String? phone;
+  final String? password;
+
   const EmailCodePage({
     required this.email,
-    required this.name,
-    required this.phone,
-    required this.password,
+    this.name,
+    this.phone,
+    this.password,
     Key? key,
   }) : super(key: key);
   @override
@@ -1701,38 +1690,90 @@ class _EmailCodePageState extends State<EmailCodePage> {
     );
     setState(() => _verifying = false);
     if (response.statusCode == 200) {
-      // OTP verified, now register the user and go to location page
-      final regResponse = await http.post(
-        Uri.parse(ApiConfig.registerEndpoint),
-        headers: {"Content-Type": "application/json"},
-        body: jsonEncode({
-          "name": widget.name,
-          "email": widget.email,
-          "phone": widget.phone,
-          "password": widget.password,
-        }),
-      );
-      if (regResponse.statusCode == 201) {
-        final data = jsonDecode(regResponse.body);
-        final user = data['user'];
-        await UserSession.instance.save(
-          userId: user['_id'].toString(),
-          token: data['token'].toString(),
-          name: user['name'].toString(),
-          email: user['email'].toString(),
-          phone: user['phone']?.toString(),
-          photoBase64: user['photo']?.toString(),
-        );
-        SavedManager.instance.switchUser(user['_id'].toString());
-        if (mounted) {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (_) => const LocationPermissionPage()),
+      try {
+        final hasSignupPayload =
+            (widget.name ?? '').trim().isNotEmpty &&
+            (widget.phone ?? '').trim().isNotEmpty &&
+            (widget.password ?? '').trim().isNotEmpty;
+
+        if (hasSignupPayload) {
+          final registerResponse = await http.post(
+            Uri.parse(ApiConfig.registerEndpoint),
+            headers: {"Content-Type": "application/json"},
+            body: jsonEncode({
+              "name": widget.name!.trim(),
+              "email": widget.email.trim(),
+              "phone": widget.phone!.trim(),
+              "password": widget.password!.trim(),
+            }),
           );
+
+          if (registerResponse.statusCode != 201) {
+            String message = 'Registration failed after verification.';
+            try {
+              final decoded = jsonDecode(registerResponse.body);
+              if (decoded is Map<String, dynamic> && decoded['message'] != null) {
+                message = decoded['message'].toString();
+              }
+            } catch (_) {}
+            setState(() {
+              _error = message;
+            });
+            return;
+          }
+
+          final data = jsonDecode(registerResponse.body);
+          final user = data['user'];
+          await UserSession.instance.save(
+            userId: user['_id'].toString(),
+            token: data['token'].toString(),
+            name: user['name'].toString(),
+            email: user['email'].toString(),
+            phone: user['phone']?.toString(),
+            photoBase64: user['photo']?.toString(),
+          );
+
+          final uid = user['_id'].toString();
+          SavedManager.instance.switchUser(uid);
+          await Future.wait([
+            SavedFoodManager.instance.switchUser(uid),
+            SavedJobManager.instance.switchUser(uid),
+            SavedServiceManager.instance.switchUser(uid),
+            SavedGuidesManager.instance.switchUser(uid),
+          ]);
+        } else {
+          final data = jsonDecode(response.body);
+          final token = data['token'];
+          final user = data['user'];
+          if (token != null && user != null) {
+            await UserSession.instance.save(
+              userId: user['_id'].toString(),
+              token: token.toString(),
+              name: user['name'].toString(),
+              email: user['email'].toString(),
+              phone: user['phone']?.toString(),
+              photoBase64: user['photo']?.toString(),
+            );
+
+            final uid = user['_id'].toString();
+            SavedManager.instance.switchUser(uid);
+            await Future.wait([
+              SavedFoodManager.instance.switchUser(uid),
+              SavedJobManager.instance.switchUser(uid),
+              SavedServiceManager.instance.switchUser(uid),
+              SavedGuidesManager.instance.switchUser(uid),
+            ]);
+          }
         }
-      } else {
+
+        if (!mounted) return;
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const LocationPermissionPage()),
+        );
+      } catch (e) {
         setState(() {
-          _error = 'Registration failed: \\n' + regResponse.body;
+          _error = 'Verification succeeded, but login failed. Please login manually.';
         });
       }
     } else {
@@ -1848,11 +1889,12 @@ class _EmailCodePageState extends State<EmailCodePage> {
 }
 
 // --- Send verification code and navigate ---
-Future<void> sendVerificationCodeAndNavigate(BuildContext context, {
-  required String email,
-  required String name,
-  required String phone,
-  required String password,
+Future<void> sendVerificationCodeAndNavigate(
+  BuildContext context,
+  String email, {
+  String? name,
+  String? phone,
+  String? password,
 }) async {
   final response = await http.post(
     Uri.parse(ApiConfig.baseUrl + '/api/user/send-verification-code'),

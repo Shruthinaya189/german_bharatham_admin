@@ -16,7 +16,34 @@ const Badge = ({ label, active }) => (
 const ViewModal = ({ item, category, fields, onClose }) => {
   const [imgIdx, setImgIdx] = useState(0);
   if (!item) return null;
-  const images = item.media?.images || item.images || [];
+  const resolvedImages = [];
+
+  const addImage = (src) => {
+    if (!src || typeof src !== 'string') return;
+    if (!src.trim()) return;
+    resolvedImages.push(src);
+  };
+
+  addImage(item.companyLogo);
+
+  if (Array.isArray(item.media?.images)) {
+    item.media.images.forEach(addImage);
+  }
+
+  if (Array.isArray(item.images)) {
+    item.images.forEach(addImage);
+  }
+
+  addImage(item.image);
+
+  const images = resolvedImages
+    .filter(Boolean)
+    .map((src) => {
+      if (src.startsWith('data:') || src.startsWith('http')) {
+        return src;
+      }
+      return `https://german-bharatham-backend.onrender.com${src}`;
+    });
   return (
     <div className="modal-overlay">
       <div className="modal-content modal-large" style={{ maxHeight: '90vh', overflowY: 'auto' }}>
@@ -26,12 +53,32 @@ const ViewModal = ({ item, category, fields, onClose }) => {
         </div>
         {images.length > 0 && (
           <div style={{ marginBottom: 16 }}>
-            <img src={images[imgIdx]} alt="main" style={{ width: '100%', maxHeight: 240, objectFit: 'cover', borderRadius: 8 }} />
+            <img
+              src={images[imgIdx]}
+              alt="main"
+              style={{
+                width: '100%',
+                maxHeight: 260,
+                objectFit: category === 'Jobs' ? 'contain' : 'cover',
+                borderRadius: 8,
+                background: '#f8fafc',
+                padding: category === 'Jobs' ? 8 : 0,
+              }}
+            />
             {images.length > 1 && (
               <div style={{ display: 'flex', gap: 6, marginTop: 6, flexWrap: 'wrap' }}>
                 {images.map((img, i) => (
                   <img key={i} src={img} alt="" onClick={() => setImgIdx(i)}
-                    style={{ width: 60, height: 48, objectFit: 'cover', borderRadius: 4, cursor: 'pointer', border: i === imgIdx ? '2px solid #6b9976' : '2px solid transparent' }} />
+                    style={{
+                      width: 60,
+                      height: 48,
+                      objectFit: category === 'Jobs' ? 'contain' : 'cover',
+                      borderRadius: 4,
+                      cursor: 'pointer',
+                      background: '#f8fafc',
+                      padding: category === 'Jobs' ? 3 : 0,
+                      border: i === imgIdx ? '2px solid #6b9976' : '2px solid transparent',
+                    }} />
                 ))}
               </div>
             )}
@@ -349,10 +396,13 @@ const GenericCategoryListings = ({ category, apiBase, icon, viewFields }) => {
   const patchStatus = async (id, status) => {
     try {
       const token = localStorage.getItem('adminToken');
+      const outboundStatus = category === 'Jobs'
+        ? (status === 'active' ? 'Active' : status === 'pending' ? 'Pending' : 'Inactive')
+        : status;
       const res = await fetch(`${apiBase}/${id}/status`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-        body: JSON.stringify({ status }),
+        body: JSON.stringify({ status: outboundStatus }),
       });
 
       // Some modules (e.g., Services) don't implement /:id/status; fall back to PUT partial update.
@@ -360,7 +410,7 @@ const GenericCategoryListings = ({ category, apiBase, icon, viewFields }) => {
         await fetch(`${apiBase}/${id}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-          body: JSON.stringify({ status }),
+          body: JSON.stringify({ status: outboundStatus }),
         });
       }
       fetchItems();

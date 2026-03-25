@@ -1,9 +1,9 @@
 ﻿import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:share_plus/share_plus.dart';
 import 'models/job_model.dart';
 import 'services/api_config.dart';
+import 'saved_job_manager.dart';
 import 'widgets/star_rating_widget.dart';
 import 'widgets/rating_dialog.dart';
 import 'services/rating_service.dart';
@@ -25,10 +25,12 @@ class JobDetailsPage extends StatefulWidget {
 
 class _JobDetailsPageState extends State<JobDetailsPage> {
   RatingStats? _ratingStats;
+  late bool isSaved;
 
   @override
   void initState() {
     super.initState();
+    isSaved = SavedJobManager.instance.isSaved(widget.item.id);
     _loadRatingStats();
   }
 
@@ -58,21 +60,25 @@ class _JobDetailsPageState extends State<JobDetailsPage> {
       ),
     );
   }
-  void _shareItem() {
-    final String shareText = [
-      widget.item.title,
-      widget.item.company,
-      '',
-      widget.item.description ?? 'Check out this job!',
-      '',
-      'Location: ${_locationLine(widget.item)}',
-      'Type: ${widget.item.jobType}',
-      if (widget.item.salary != null && widget.item.salary!.trim().isNotEmpty)
-        'Salary: ${widget.item.salary}',
-      if (widget.item.phone != null && widget.item.phone!.trim().isNotEmpty)
-        'Phone: ${widget.item.phone}',
-    ].join('\n');
-    Share.share(shareText);
+  Future<void> _toggleSave() async {
+    final nowSaved = await SavedJobManager.instance.toggle(widget.item);
+    if (!mounted) return;
+
+    setState(() {
+      isSaved = nowSaved;
+    });
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(nowSaved ? 'Saved to bookmarks' : 'Removed from bookmarks'),
+        duration: const Duration(seconds: 1),
+        backgroundColor: const Color(0xFF4E7F6D),
+      ),
+    );
+
+    if (widget.onRefresh != null) {
+      widget.onRefresh!();
+    }
   }
 
   Future<void> _makePhoneCall() async {
@@ -155,17 +161,17 @@ class _JobDetailsPageState extends State<JobDetailsPage> {
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
                       IconButton(
-                        onPressed: _shareItem,
+                        onPressed: _toggleSave,
                         icon: Image.asset(
-                          'assets/images/share.png',
+                          'assets/images/bookmark.png',
                           height: 22,
                           width: 22,
-                          color: Colors.black,
+                          color: isSaved ? const Color(0xFF4E7F6D) : Colors.black,
                         ),
                         iconSize: 22,
                         padding: EdgeInsets.zero,
                         constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
-                        tooltip: 'Share',
+                        tooltip: 'Save',
                       ),
                       Text(
                         _postedAgo(widget.item.createdAt),
@@ -298,12 +304,16 @@ class _PillWrap extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final expandedItems = items
+        .expand((value) => value.split(RegExp(r'[,;\n]')))
+        .map((raw) => raw.trim())
+        .where((e) => e.isNotEmpty)
+        .toList();
+
     return Wrap(
       spacing: 10,
       runSpacing: 10,
-      children: items
-          .map((raw) => raw.trim())
-          .where((e) => e.isNotEmpty)
+      children: expandedItems
           .map(
             (text) => Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),

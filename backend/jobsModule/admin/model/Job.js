@@ -31,7 +31,11 @@ const jobSchema = new mongoose.Schema(
       5: { type: Number, default: 0 }
     },
     lastRatedAt: { type: Date },
-    status: { type: String, enum: ['Active', 'Pending', 'Inactive'], default: 'Pending' },
+    status: {
+      type: String,
+      enum: ['Active', 'Pending', 'Inactive', 'active', 'pending', 'inactive', 'disabled'],
+      default: 'Pending',
+    },
     featured: { type: Boolean, default: false },
     expiresAt: { type: Date },
   },
@@ -40,6 +44,15 @@ const jobSchema = new mongoose.Schema(
     collection: "jobs"
   }
 );
+
+jobSchema.pre('validate', function() {
+  if (this.status != null) {
+    const raw = String(this.status).trim().toLowerCase();
+    if (raw === 'active') this.status = 'Active';
+    else if (raw === 'pending') this.status = 'Pending';
+    else if (raw === 'inactive' || raw === 'disabled') this.status = 'Inactive';
+  }
+});
 
 module.exports =
   mongoose.models.Job ||

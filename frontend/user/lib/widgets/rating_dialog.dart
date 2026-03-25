@@ -7,6 +7,7 @@ class RatingDialog extends StatefulWidget {
   final String entityId;
   final String entityType;
   final String entityName;
+  final int initialRating;
   final Function? onRatingSubmitted;
 
   const RatingDialog({
@@ -14,6 +15,7 @@ class RatingDialog extends StatefulWidget {
     required this.entityId,
     required this.entityType,
     required this.entityName,
+    this.initialRating = 0,
     this.onRatingSubmitted,
   });
 
@@ -23,13 +25,12 @@ class RatingDialog extends StatefulWidget {
 
 class _RatingDialogState extends State<RatingDialog> {
   int _selectedRating = 0;
-  final TextEditingController _reviewController = TextEditingController();
   bool _isSubmitting = false;
 
   @override
-  void dispose() {
-    _reviewController.dispose();
-    super.dispose();
+  void initState() {
+    super.initState();
+    _selectedRating = widget.initialRating;
   }
 
   Future<void> _submitRating() async {
@@ -52,7 +53,6 @@ class _RatingDialogState extends State<RatingDialog> {
         entityId: widget.entityId,
         entityType: widget.entityType,
         rating: _selectedRating,
-        review: _reviewController.text.trim(),
       );
 
       if (!mounted) return;
@@ -113,14 +113,17 @@ class _RatingDialogState extends State<RatingDialog> {
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 24),
-              InteractiveStarRating(
-                initialRating: _selectedRating,
-                onRatingChanged: (rating) {
-                  setState(() {
-                    _selectedRating = rating;
-                  });
-                },
-                size: 48,
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                child: InteractiveStarRating(
+                  initialRating: _selectedRating,
+                  onRatingChanged: (rating) {
+                    setState(() {
+                      _selectedRating = rating;
+                    });
+                  },
+                  size: 40,
+                ),
               ),
               const SizedBox(height: 20),
               if (_selectedRating > 0)
@@ -132,25 +135,6 @@ class _RatingDialogState extends State<RatingDialog> {
                     color: const Color(0xFF4E7F6D),
                   ),
                 ),
-              const SizedBox(height: 24),
-              TextField(
-                controller: _reviewController,
-                maxLines: 4,
-                maxLength: 500,
-                decoration: InputDecoration(
-                  hintText: 'Write your review (optional)',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(
-                      color: Color(0xFF4E7F6D),
-                      width: 2,
-                    ),
-                  ),
-                ),
-              ),
               const SizedBox(height: 20),
               Row(
                 children: [

@@ -472,11 +472,11 @@ const JobsForm = ({ data, set }) => {
         <h4 style={{ fontSize: 16, fontWeight: 700, color: '#2d5a3d', marginBottom: 12 }}>Requirements & Benefits</h4>
         <div className="form-group">
           <label>Requirements</label>
-          <textarea value={data.requirements} onChange={e => set(p => ({...p, requirements: e.target.value}))} rows={3} placeholder="Required skills" />
+          <textarea value={data.requirements} onChange={e => set(p => ({...p, requirements: e.target.value}))} rows={3} placeholder="Enter required skills and qualifications (comma-separated)" />
         </div>
         <div className="form-group">
           <label>Benefits</label>
-          <textarea value={data.benefits} onChange={e => set(p => ({...p, benefits: e.target.value}))} rows={3} placeholder="Benefits" />
+          <textarea value={data.benefits} onChange={e => set(p => ({...p, benefits: e.target.value}))} rows={3} placeholder="Enter job benefits (comma-separated)" />
         </div>
       </div>
 
@@ -601,11 +601,18 @@ const ServicesForm = ({ data, set }) => {
 const DEFAULTS = {
   Accommodation: { title:'', propertyType:'apartment', city:'', area:'', postalCode:'', address:'', contactPhone:'', description:'', coldRent:'', warmRent:'', deposit:'', sizeSqm:'', bedrooms:'', bathrooms:'', amenities:[], images:[], status:'pending' },
   Food: { title:'', subCategory:'Restaurant', type:'', city:'', state:'', zipCode:'', address:'', phone:'', email:'', website:'', description:'', priceRange:'$$', openingHours:'', cuisine:[], specialties:[], deliveryAvailable:false, takeoutAvailable:false, dineInAvailable:false, cateringAvailable:false, image:'', status:'pending', featured:false, verified:true },
-  Jobs: { title:'', location:'', contact:'', description:'', salary:'', status:'pending', companyName:'', companyLogo:'', type:'Full Time', requirements:'', benefits:'', applyUrl:'' },
+  Jobs: { title:'', location:'', contact:'', description:'', salary:'', status:'Pending', companyName:'', companyLogo:'', type:'Full Time', requirements:'', benefits:'', applyUrl:'' },
   Services: { serviceName:'', providerName:'', serviceType:'', city:'', area:'', postalCode:'', address:'', contactPhone:'', whatsapp:'', email:'', website:'', latitude:'', longitude:'', description:'', priceRange:'', amenitiesText:'', images:[], status:'pending' },
 };
 
 const CATEGORY_LABELS = ['Accommodation', 'Food', 'Jobs', 'Services'];
+const normalizeStatus = (value, fallback = 'Pending') => {
+  const raw = String(value || '').trim().toLowerCase();
+  if (raw === 'active') return 'Active';
+  if (raw === 'pending') return 'Pending';
+  if (raw === 'inactive' || raw === 'disabled') return 'Inactive';
+  return fallback;
+};
 
 const validate = (category, data) => {
   if (category === 'Accommodation') {
@@ -633,6 +640,7 @@ const validate = (category, data) => {
   if (category === 'Jobs') {
     if (!data.title?.trim()) return 'Title is required';
     if (!data.location?.trim()) return 'Location is required';
+    if (!data.companyName?.trim()) return 'Company Name is required';
     if (!data.type?.trim()) return 'Type is required';
     if (!data.status?.trim()) return 'Status is required';
   }
@@ -705,15 +713,23 @@ const buildPayload = (category, data) => {
     };
   }
   if (category === 'Jobs') {
+    const location = data.location?.trim() || '';
+    const company = data.companyName?.trim() || '';
+    const status = normalizeStatus(data.status, 'Pending');
+
     return {
       title: data.title?.trim(),
-      location: data.location?.trim(),
+      location,
+      city: location,
       contact: data.contact?.trim() || null,
+      phone: data.contact?.trim() || null,
       description: data.description?.trim() || null,
       salary: data.salary?.trim() || null,
-      status: data.status ? (data.status.charAt(0).toUpperCase() + data.status.slice(1).toLowerCase()) : 'Active',
-      companyName: data.companyName?.trim() || null,
+      status,
+      company,
+      companyName: company || null,
       companyLogo: data.companyLogo || null,
+      jobType: data.type || 'Full Time',
       type: data.type || 'Full Time',
       requirements: data.requirements?.trim() || null,
       benefits: data.benefits?.trim() || null,
@@ -770,12 +786,13 @@ const API_MAP = {
   Services: `${API_URL}/api/services/admin`,
 };
 
+const LOCAL_JOBS_API = 'http://127.0.0.1:5000/api/jobs/admin';
+
 const mapItemToFormData = (category, item) => {
   if (!item) return DEFAULTS[category];
 
   if (category === 'Jobs') {
-    const rawStatus = String(item.status || 'pending').toLowerCase();
-    const status = rawStatus === 'active' ? 'active' : rawStatus === 'inactive' ? 'disabled' : rawStatus;
+    const status = normalizeStatus(item.status, 'Pending');
 
     return {
       ...DEFAULTS.Jobs,
@@ -822,23 +839,92 @@ const AddListingModal = ({ onClose, onSuccess, defaultCategory, lockCategory, ed
     try {
       const token = localStorage.getItem('adminToken');
 
-      const payload = {
-        ...buildPayload(category, formData),
-        ...(editItem ? {} : { status: 'pending' }),
+      const payload = buildPayload(category, formData);
+      if (category === 'Jobs') {
+        payload.status = editItem
+          ? normalizeStatus(payload.status || formData.status, 'Pending')
+          : 'Pending';
+      }
+
+      const method = editItem ? 'PUT' : 'POST';
+      const primaryUrl = editItem ? `${API_MAP[category]}/${editItem._id}` : API_MAP[category];
+      const fallbackUrl = editItem ? `${LOCAL_JOBS_API}/${editItem._id}` : LOCAL_JOBS_API;
+
+      const sendRequest = async (url, requestPayload) => {
+        try {
+          const response = await fetch(url, {
+            method,
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+            body: JSON.stringify(requestPayload),
+          });
+
+          const raw = await response.text();
+          let body = null;
+          try {
+            body = raw ? JSON.parse(raw) : null;
+          } catch (_) {
+            body = raw ? { message: raw } : null;
+          }
+
+          return {
+            ok: response.ok,
+            status: response.status,
+            message: (body?.message || '').toString(),
+          };
+        } catch (error) {
+          return {
+            ok: false,
+            status: 0,
+            message: error?.message || 'Network error',
+          };
+        }
       };
 
-      const res = await fetch(editItem ? `${API_MAP[category]}/${editItem._id}` : API_MAP[category], {
-        method: editItem ? 'PUT' : 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-        body: JSON.stringify(payload),
-      });
-      if (res.ok) {
+      let result = await sendRequest(primaryUrl, payload);
+      let bestErrorMessage = result.message;
+
+      if (!result.ok && category === 'Jobs') {
+        const isPendingEnumError =
+          result.message.includes('status') &&
+          result.message.includes('pending') &&
+          result.message.includes('valid enum value');
+
+        if (isPendingEnumError) {
+          // Retry 1: explicit canonical Pending
+          result = await sendRequest(primaryUrl, { ...payload, status: 'Pending' });
+          if (result.message) bestErrorMessage = result.message;
+
+          // Retry 2: omit status and let backend default apply
+          if (!result.ok) {
+            const { status, ...withoutStatus } = payload;
+            result = await sendRequest(primaryUrl, withoutStatus);
+            if (result.message) bestErrorMessage = result.message;
+          }
+
+          // Retry 3: local fallback backend (if remote still rejects)
+          if (!result.ok) {
+            const { status, ...withoutStatus } = payload;
+            const fallbackResult = await sendRequest(fallbackUrl, withoutStatus);
+            if (fallbackResult.ok) {
+              result = fallbackResult;
+            } else if (
+              fallbackResult.message &&
+              !fallbackResult.message.toLowerCase().includes('failed to fetch') &&
+              !fallbackResult.message.toLowerCase().includes('network error')
+            ) {
+              result = fallbackResult;
+              bestErrorMessage = fallbackResult.message;
+            }
+          }
+        }
+      }
+
+      if (result.ok) {
         alert(editItem ? `${category} listing updated successfully.` : `${category} listing submitted for review (Pending).`);
         onSuccess && onSuccess(category);
         onClose();
       } else {
-        const err2 = await res.json();
-        alert('Error: ' + err2.message);
+        alert('Error: ' + (bestErrorMessage || result.message || 'Request failed'));
       }
     } catch (ex) {
       alert('Error connecting to server: ' + ex.message);
@@ -881,16 +967,30 @@ const AddListingModal = ({ onClose, onSuccess, defaultCategory, lockCategory, ed
           <div className="form-group" style={{ marginTop: 8 }}>
             <label>Status</label>
             {editItem ? (
-              <select value={formData.status || 'pending'} onChange={e => setFormData(p => ({ ...p, status: e.target.value }))}>
-                <option value="active">Active</option>
-                <option value="pending">Pending</option>
-                <option value="disabled">Inactive</option>
-              </select>
+              category === 'Jobs' ? (
+                <select value={normalizeStatus(formData.status, 'Pending')} onChange={e => setFormData(p => ({ ...p, status: e.target.value }))}>
+                  <option value="Active">Active</option>
+                  <option value="Pending">Pending</option>
+                  <option value="Inactive">Inactive</option>
+                </select>
+              ) : (
+                <select value={formData.status || 'pending'} onChange={e => setFormData(p => ({ ...p, status: e.target.value }))}>
+                  <option value="active">Active</option>
+                  <option value="pending">Pending</option>
+                  <option value="disabled">Inactive</option>
+                </select>
+              )
             ) : (
               <>
-                <select value={'pending'} disabled>
-                  <option value="pending">Pending</option>
-                </select>
+                {category === 'Jobs' ? (
+                  <select value={'Pending'} disabled>
+                    <option value="Pending">Pending</option>
+                  </select>
+                ) : (
+                  <select value={'pending'} disabled>
+                    <option value="pending">Pending</option>
+                  </select>
+                )}
                 <div style={{ fontSize: 12, color: '#6b7280', marginTop: 6 }}>
                   New listings are reviewed in Content Moderation before going live.
                 </div>

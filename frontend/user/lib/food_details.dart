@@ -6,7 +6,6 @@ import 'package:http/http.dart' as http;
 import 'package:latlong2/latlong.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:share_plus/share_plus.dart';
 import 'models/food_grocery_model.dart';
 import 'saved_food_manager.dart';
 import 'widgets/star_rating_widget.dart';
@@ -31,21 +30,32 @@ class FoodDetailPage extends StatefulWidget {
 class _FoodDetailPageState extends State<FoodDetailPage> {
   late bool isSaved;
   RatingStats? _ratingStats;
+  Rating? _userRating;
 
   @override
   void initState() {
     super.initState();
     isSaved = SavedFoodManager.instance.isSaved(widget.item.id);
-    _loadRatingStats();
+    _loadRatingData();
   }
 
-  Future<void> _loadRatingStats() async {
-    final stats = await RatingService.getEntityRatingStats(
+  Future<void> _loadRatingData() async {
+    final statsFuture = RatingService.getEntityRatingStats(
       entityId: widget.item.id,
       entityType: 'foodgrocery',
     );
+    final userRatingFuture = RatingService.getUserRating(
+      entityId: widget.item.id,
+      entityType: 'foodgrocery',
+    );
+
+    final stats = await statsFuture;
+    final userRating = await userRatingFuture;
+
+    if (!mounted) return;
     setState(() {
       _ratingStats = stats;
+      _userRating = userRating;
     });
   }
 
@@ -56,8 +66,9 @@ class _FoodDetailPageState extends State<FoodDetailPage> {
         entityId: widget.item.id,
         entityType: 'foodgrocery',
         entityName: widget.item.title,
+        initialRating: _userRating?.rating ?? 0,
         onRatingSubmitted: () {
-          _loadRatingStats();
+          _loadRatingData();
           if (widget.onRefresh != null) {
             widget.onRefresh!();
           }
@@ -84,28 +95,6 @@ class _FoodDetailPageState extends State<FoodDetailPage> {
     
     if (widget.onRefresh != null) {
       widget.onRefresh!();
-    }
-  }
-
-  Future<void> _shareRestaurant() async {
-    final String shareText = '''
-${widget.item.title}
-${widget.item.address}
-Rating: ${widget.item.averageRating > 0 ? widget.item.averageRating.toStringAsFixed(1) : '4.5'} ⭐
-${widget.item.phone != null && widget.item.phone!.isNotEmpty ? 'Phone: ${widget.item.phone}' : ''}
-''';
-    
-    try {
-      await Share.share(shareText, subject: widget.item.title);
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Could not share'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
     }
   }
 
@@ -157,21 +146,12 @@ ${widget.item.phone != null && widget.item.phone!.isNotEmpty ? 'Phone: ${widget.
                 ),
                 Positioned(
                   top: 12,
-                  right: 60,
+                  right: 12,
                   child: _circleIcon(
                     iconAsset: 'assets/images/bookmark.png',
                     iconColor:
                         isSaved ? const Color(0xFF4E7F6D) : Colors.black,
                     onTap: _toggleSave,
-                  ),
-                ),
-                Positioned(
-                  top: 12,
-                  right: 12,
-                  child: _circleIcon(
-                    iconAsset: 'assets/images/share.png',
-                    iconColor: Colors.black,
-                    onTap: _shareRestaurant,
                   ),
                 ),
               ],
@@ -226,6 +206,20 @@ ${widget.item.phone != null && widget.item.phone!.isNotEmpty ? 'Phone: ${widget.
                                   maxLines: 1,
                                 ),
                               ),
+                              if (_userRating != null) ...[
+                                const SizedBox(width: 4),
+                                IconButton(
+                                  onPressed: _showRatingDialog,
+                                  icon: const Icon(
+                                    Icons.edit,
+                                    size: 18,
+                                    color: Color(0xFF4E7F6D),
+                                  ),
+                                  tooltip: 'Edit rating',
+                                  padding: EdgeInsets.zero,
+                                  constraints: const BoxConstraints(),
+                                ),
+                              ],
                             ],
                           ),
                         ),

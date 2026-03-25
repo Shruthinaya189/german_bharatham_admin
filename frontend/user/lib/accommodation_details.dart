@@ -8,11 +8,11 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:http/http.dart' as http;
 import 'package:latlong2/latlong.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:share_plus/share_plus.dart';
 import 'widgets/star_rating_widget.dart';
 import 'widgets/rating_dialog.dart';
 import 'services/rating_service.dart';
 import 'models/rating_model.dart';
+import 'saved_manager.dart';
 
 class AccommodationDetailPage extends StatefulWidget {
   final dynamic item;
@@ -31,21 +31,36 @@ class AccommodationDetailPage extends StatefulWidget {
 
 class _AccommodationDetailPageState extends State<AccommodationDetailPage> {
   RatingStats? _ratingStats;
+  Rating? _userRating;
+  bool _isSaved = false;
 
   @override
   void initState() {
     super.initState();
-    _loadRatingStats();
+    try {
+      _isSaved = SavedManager.instance.isSaved((widget.item.id ?? '').toString());
+    } catch (_) {
+      _isSaved = false;
+    }
+    _loadRatingData();
   }
 
-  Future<void> _loadRatingStats() async {
-    final stats = await RatingService.getEntityRatingStats(
-      entityId: widget.item.id,
+  Future<void> _loadRatingData() async {
+    final statsFuture = RatingService.getEntityRatingStats(
+      entityId: widget.item.id.toString(),
       entityType: 'accommodation',
     );
+    final userRatingFuture = RatingService.getUserRating(
+      entityId: widget.item.id.toString(),
+      entityType: 'accommodation',
+    );
+
+    final stats = await statsFuture;
+    final userRating = await userRatingFuture;
     if (mounted) {
       setState(() {
         _ratingStats = stats;
+        _userRating = userRating;
       });
     }
   }
@@ -54,11 +69,12 @@ class _AccommodationDetailPageState extends State<AccommodationDetailPage> {
     showDialog(
       context: context,
       builder: (context) => RatingDialog(
-        entityId: widget.item.id,
+        entityId: widget.item.id.toString(),
         entityType: 'accommodation',
         entityName: widget.item.title,
+        initialRating: _userRating?.rating ?? 0,
         onRatingSubmitted: () {
-          _loadRatingStats();
+          _loadRatingData();
           if (widget.onRefresh != null) {
             widget.onRefresh!();
           }
@@ -90,8 +106,9 @@ class _AccommodationDetailPageState extends State<AccommodationDetailPage> {
                   top: 12,
                   right: 12,
                   child: _circleIcon(
-                    icon: 'assets/images/share.png',
-                    onTap: () => _shareAccommodation(),
+                    icon: 'assets/images/bookmark.png',
+                    iconColor: _isSaved ? const Color(0xFF4E7F6D) : Colors.black,
+                    onTap: _toggleSave,
                   ),
                 ),
               ],
@@ -137,6 +154,20 @@ class _AccommodationDetailPageState extends State<AccommodationDetailPage> {
                             color: Colors.black87,
                           ),
                         ),
+                        if (_userRating != null) ...[
+                          const SizedBox(width: 4),
+                          IconButton(
+                            onPressed: _showRatingDialog,
+                            icon: const Icon(
+                              Icons.edit,
+                              size: 18,
+                              color: Color(0xFF4E7F6D),
+                            ),
+                            tooltip: 'Edit rating',
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(),
+                          ),
+                        ],
                       ],
                     ),
 
@@ -433,7 +464,7 @@ class _AccommodationDetailPageState extends State<AccommodationDetailPage> {
     return null;
   }
 
-  Widget _circleIcon({required String icon, VoidCallback? onTap}) {
+  Widget _circleIcon({required String icon, Color? iconColor, VoidCallback? onTap}) {
     return InkWell(
       onTap: onTap,
       child: Container(
@@ -442,7 +473,7 @@ class _AccommodationDetailPageState extends State<AccommodationDetailPage> {
           color: Colors.white,
           shape: BoxShape.circle,
         ),
-        child: Image.asset(icon, width: 18, height: 18),
+        child: Image.asset(icon, width: 18, height: 18, color: iconColor),
       ),
     );
   }
@@ -530,6 +561,34 @@ class _AccommodationDetailPageState extends State<AccommodationDetailPage> {
     );
   }
 
+  void _toggleSave() {
+    try {
+      final nowSaved = SavedManager.instance.toggle(widget.item);
+      if (!mounted) return;
+      setState(() {
+        _isSaved = nowSaved;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(nowSaved ? 'Saved to bookmarks' : 'Removed from bookmarks'),
+          duration: const Duration(seconds: 1),
+          backgroundColor: const Color(0xFF4E7F6D),
+        ),
+      );
+      if (widget.onRefresh != null) {
+        widget.onRefresh!();
+      }
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Could not update bookmark'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
   Future<void> _makePhoneCall(BuildContext context, String? phoneNumber) async {
     if (phoneNumber == null || phoneNumber.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -588,16 +647,6 @@ class _AccommodationDetailPageState extends State<AccommodationDetailPage> {
     }
   }
 
-  Future<void> _shareAccommodation() async {
-    final String shareText =
-        '''
-${widget.item.title}
-${widget.item.location}
-Price: €${widget.item.price} per month
-${widget.item.contactPhone != null && widget.item.contactPhone!.isNotEmpty ? 'Contact: ${widget.item.contactPhone}' : ''}
-''';
-    await Share.share(shareText, subject: widget.item.title);
-  }
 }
 
 /// MAP WIDGET with user-location support
