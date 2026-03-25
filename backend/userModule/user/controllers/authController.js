@@ -341,20 +341,10 @@ exports.verifyEmail = async (req, res) => {
       return res.status(400).json({ message: 'Invalid code or expired.' });
     }
 
-    // Mark user as verified, create session, etc.
-    const user = await User.findOneAndUpdate(
-      { email: lookupEmail },
-      { $set: { isVerified: true } },
-      { new: true }
-    );
-
-    // Optionally delete the verification record
+    // Only check OTP code and expiry. Do not require user to exist yet.
     await EmailVerification.deleteOne({ email: lookupEmail });
-
-    // Return user and token as before
     return res.status(200).json({
-      token: generateToken(user),
-      user: sanitizeUser(user),
+      message: 'OTP verified successfully. Proceed to registration.'
     });
   } catch (error) {
     console.error('[verifyEmail] Exception', error);
