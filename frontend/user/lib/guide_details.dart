@@ -1,15 +1,49 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:share_plus/share_plus.dart';
+import 'saved_guides_manager.dart';
 import 'models/community_model.dart';
 
-class GuideDetailsPage extends StatelessWidget {
+class GuideDetailsPage extends StatefulWidget {
   final CommunityPost guide;
+
 
   const GuideDetailsPage({
     super.key,
     required this.guide,
   });
+
+  @override
+  State<GuideDetailsPage> createState() => _GuideDetailsPageState();
+}
+
+class _GuideDetailsPageState extends State<GuideDetailsPage> {
+  bool _isSaved = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkSaved();
+  }
+
+  Future<void> _checkSaved() async {
+    final saved = await SavedGuidesManager.instance.isSaved(widget.guide.id);
+    if (mounted) {
+      setState(() {
+        _isSaved = saved;
+      });
+    }
+  }
+
+  Future<void> _toggleSave() async {
+    await SavedGuidesManager.instance.toggle(widget.guide);
+    await _checkSaved();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(_isSaved ? 'Removed from Saved' : 'Saved!'),
+        duration: const Duration(seconds: 1),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -67,7 +101,7 @@ class GuideDetailsPage extends StatelessWidget {
                           borderRadius: BorderRadius.circular(25),
                         ),
                         child: Text(
-                          guide.category,
+                          widget.guide.category,
                           style: const TextStyle(
                             color: Color(0xFF3B8F6A),
                             fontSize: 12.5,
@@ -77,16 +111,17 @@ class GuideDetailsPage extends StatelessWidget {
                       ),
                       const Spacer(),
                       IconButton(
-                        onPressed: () {
-                          Share.share(
-                            "${guide.title}\n\n${guide.description}\n\nOfficial Website: ${guide.officialWebsites}",
-                          );
-                        },
+                        onPressed: _toggleSave,
                         icon: Image.asset(
-                          'assets/images/share.png',
+                          _isSaved
+                              ? 'assets/images/bookmark.png'
+                              : 'assets/images/bookmark.png',
+                          // Use a different icon for saved/unsaved if available
                           height: 22,
                           width: 22,
+                          color: _isSaved ? Colors.green : Colors.black,
                         ),
+                        tooltip: _isSaved ? 'Remove from Saved' : 'Save',
                       ),
                     ],
                   ),
@@ -94,7 +129,7 @@ class GuideDetailsPage extends StatelessWidget {
                   const SizedBox(height: 12),
 
                   Text(
-                    guide.title,
+                    widget.guide.title,
                     style: const TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.w700,
@@ -104,7 +139,7 @@ class GuideDetailsPage extends StatelessWidget {
                   const SizedBox(height: 6),
 
                   Text(
-                    "${guide.author} • ${guide.date} • 5 min read",
+                    "${widget.guide.author} • ${widget.guide.date} • 5 min read",
                     style: const TextStyle(
                       fontSize: 13.5,
                       color: Colors.grey,
@@ -114,7 +149,7 @@ class GuideDetailsPage extends StatelessWidget {
                   const SizedBox(height: 12),
 
                   Text(
-                    guide.description,
+                    widget.guide.description,
                     style: const TextStyle(
                       fontSize: 15,
                       height: 1.6,
@@ -133,7 +168,7 @@ class GuideDetailsPage extends StatelessWidget {
 
                   const SizedBox(height: 12),
 
-                  ..._buildKeyPoints(guide.keyPoints),
+                  ..._buildKeyPoints(widget.guide.keyPoints),
 
                   const SizedBox(height: 18),
 
@@ -149,7 +184,7 @@ class GuideDetailsPage extends StatelessWidget {
 
                   _resourceButton(
                     context: context,
-                    url: guide.officialWebsites,
+                    url: widget.guide.officialWebsites,
                     image: Image.asset(
                       'assets/images/link.png',
                       width: 20,
@@ -163,7 +198,7 @@ class GuideDetailsPage extends StatelessWidget {
 
                   _resourceButton(
                     context: context,
-                    url: guide.communityDiscussions,
+                    url: widget.guide.communityDiscussions,
                     image: Image.asset(
                       'assets/images/link.png',
                       width: 20,

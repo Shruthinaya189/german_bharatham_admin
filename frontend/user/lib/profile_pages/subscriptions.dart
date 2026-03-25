@@ -274,19 +274,24 @@ class _SubscriptionsPageState extends State<SubscriptionsPage> {
       await _loadPlans();
       if (!mounted) return;
       final activated = await _waitForActivation();
-      // Only navigate to profiles page when this SubscriptionsPage was opened
-      // with autoNavigateOnActivation=true (e.g., from the location flow).
-      if (activated && widget.autoNavigateOnActivation) {
-          Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const UserProfilesPage()));
-        } else if (widget.autoNavigateOnActivation) {
-          // If not activated and coming from popup, exit the app
+      if (activated) {
+        if (!mounted) return;
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const ProfilePage()),
+        );
+        return;
+      }
+
+      if (widget.autoNavigateOnActivation) {
+        // Not activated → exit
+        try {
+          SystemNavigator.pop();
+        } catch (_) {
           try {
-            SystemNavigator.pop();
-          } catch (_) {
-            try {
-              exit(0);
-            } catch (_) {}
-          }
+            exit(0);
+          } catch (_) {}
+        }
       }
 
     } catch (e) {
@@ -433,19 +438,20 @@ class _SubscriptionsPageState extends State<SubscriptionsPage> {
 
     return WillPopScope(
       onWillPop: () async {
-        // If subscription became active, navigate to profiles page.
+        await _loadPlans(); // ✅ refresh latest status
+
         final user = _subscriptionStatus?['user'];
-final status = user is Map ? user['subscriptionStatus']?.toString() : null;
+        final status = user is Map ? user['subscriptionStatus']?.toString() : null;
 
-if (status == 'active' || status == 'trial') {
-  Navigator.pushReplacement(
-    context,
-    MaterialPageRoute(builder: (_) => const ProfilePage()),
-  );
-  return false;
-}
+        if (status == 'active' || status == 'trial') {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (_) => const ProfilePage()),
+          );
+          return false;
+        }
 
-        // Not active — exit the app as per desired behaviour.
+        // ❌ Not active → exit app
         try {
           SystemNavigator.pop();
         } catch (_) {
@@ -453,11 +459,11 @@ if (status == 'active' || status == 'trial') {
             exit(0);
           } catch (_) {}
         }
+
         return false;
       },
       child: content,
     );
-
   }
 
 }
