@@ -320,31 +320,36 @@ exports.verifyEmail = async (req, res) => {
   try {
     const { email, code } = req.body;
     if (!email || !code) {
+      console.log('[verifyEmail] Missing email or code', { email, code });
       return res.status(400).json({ message: 'Email and code are required.' });
     }
 
-    const record = await EmailVerification.findOne({ email: email.toLowerCase().trim() });
+    const lookupEmail = email.toLowerCase().trim();
+    const record = await EmailVerification.findOne({ email: lookupEmail });
     if (!record) {
+      console.log('[verifyEmail] No record found for email', { lookupEmail });
       return res.status(400).json({ message: 'Invalid code or expired.' });
     }
 
     if (record.code !== code) {
+      console.log('[verifyEmail] Code mismatch', { lookupEmail, entered: code, stored: record.code });
       return res.status(400).json({ message: 'Invalid code or expired.' });
     }
 
     if (record.expiresAt < new Date()) {
+      console.log('[verifyEmail] Code expired', { lookupEmail, expiresAt: record.expiresAt, now: new Date() });
       return res.status(400).json({ message: 'Invalid code or expired.' });
     }
 
     // Mark user as verified, create session, etc.
     const user = await User.findOneAndUpdate(
-      { email: email.toLowerCase().trim() },
+      { email: lookupEmail },
       { $set: { isVerified: true } },
       { new: true }
     );
 
     // Optionally delete the verification record
-    await EmailVerification.deleteOne({ email: email.toLowerCase().trim() });
+    await EmailVerification.deleteOne({ email: lookupEmail });
 
     // Return user and token as before
     return res.status(200).json({
@@ -352,6 +357,7 @@ exports.verifyEmail = async (req, res) => {
       user: sanitizeUser(user),
     });
   } catch (error) {
+    console.error('[verifyEmail] Exception', error);
     return res.status(500).json({ message: error.message });
   }
 };

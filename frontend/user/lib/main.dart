@@ -1623,10 +1623,11 @@ class _EmailCodePageState extends State<EmailCodePage> {
       _verifying = true;
       _error = null;
     });
+    final email = widget.email.trim().toLowerCase();
     final response = await http.post(
       Uri.parse(ApiConfig.baseUrl + '/api/user/verify-email'),
       headers: {"Content-Type": "application/json"},
-      body: jsonEncode({"email": widget.email, "code": _codeController.text.trim()}),
+      body: jsonEncode({"email": email, "code": _codeController.text.trim()}),
     );
     setState(() => _verifying = false);
     if (response.statusCode == 200) {
@@ -1662,10 +1663,11 @@ class _EmailCodePageState extends State<EmailCodePage> {
       _verifying = true;
       _error = null;
     });
+    final email = widget.email.trim().toLowerCase();
     final response = await http.post(
       Uri.parse(ApiConfig.baseUrl + '/api/user/send-verification-code'),
       headers: {"Content-Type": "application/json"},
-      body: jsonEncode({"email": widget.email}),
+      body: jsonEncode({"email": email}),
     );
     setState(() {
       _verifying = false;
