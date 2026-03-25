@@ -591,6 +591,10 @@ class _AuthPageState extends State<AuthPage> {
         phone: user['phone']?.toString(),
         photoBase64: user['photo']?.toString(),
       );
+      // Ensure session is reloaded from storage so all pages see the latest token
+      await UserSession.instance.load();
+      debugPrint('[loginUser] After save/load: token = '
+          '${UserSession.instance.token}, userId = ${UserSession.instance.userId}');
       await _persistCredentialsAfterLoginSuccess();
       TextInput.finishAutofillContext(shouldSave: true);
       final uid = user['_id'].toString();
@@ -949,14 +953,16 @@ class _AuthPageState extends State<AuthPage> {
                 height: 52,
                 child: ElevatedButton(
                   onPressed: () {
-                    final email = _emailController.text.trim();
-                    sendVerificationCodeAndNavigate(context, email);
+                    Navigator.pushReplacement(
+                      context,
+                      MaterialPageRoute(builder: (_) => const LocationPermissionPage()),
+                    );
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: primaryGreen,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                   ),
-                  child: const Text('Sign up',
+                  child: const Text('Log in',
                       style: TextStyle(fontSize: 16,color: Colors.white, fontWeight: FontWeight.w600)),
                 ),
               ),
@@ -1021,13 +1027,59 @@ class _AuthPageState extends State<AuthPage> {
 // ===== ADD SIGNUP PAGE HERE =====
 
 class SignupPage extends StatefulWidget {
-  SignupPage({Key? key}) : super(key: key);
+  final String? email;
+  SignupPage({Key? key, this.email}) : super(key: key);
 
   @override
   State<SignupPage> createState() => _SignupPageState();
 }
 
 class _SignupPageState extends State<SignupPage> {
+  /// Register user after OTP verification and auto-login
+  Future<void> registerUserAfterOtp(String email) async {
+    final password = _passwordController.text.trim();
+    final response = await http.post(
+      Uri.parse(ApiConfig.registerEndpoint),
+      headers: {"Content-Type": "application/json"},
+      body: jsonEncode({
+        "name": _nameController.text.trim(),
+        "email": email,
+        "phone": _phoneController.text.trim(),
+        "password": password,
+      }),
+    );
+
+    if (response.statusCode == 201) {
+      final data = jsonDecode(response.body);
+      final user = data['user'];
+      await UserSession.instance.save(
+        userId: user['_id'].toString(),
+        token: data['token'].toString(),
+        name: user['name'].toString(),
+        email: user['email'].toString(),
+        phone: user['phone']?.toString(),
+        photoBase64: user['photo']?.toString(),
+      );
+      SavedManager.instance.switchUser(user['_id'].toString());
+      if (mounted) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const LocationPermissionPage()),
+        );
+      }
+    } else {
+      debugPrint('Registration failed: ${response.body}');
+      // Optionally show error to user
+    }
+  }
+  @override
+  void initState() {
+    super.initState();
+    // If email is provided (from OTP), prefill the email field
+    if (widget.email != null && widget.email!.isNotEmpty) {
+      _emailController.text = widget.email!;
+    }
+  }
 
   // 🔹 Toggle (Login / Signup)
   bool _isLogin = false;
@@ -1270,7 +1322,16 @@ class _SignupPageState extends State<SignupPage> {
                 child: ElevatedButton(
                   onPressed: () {
                     final email = _emailController.text.trim();
-                    sendVerificationCodeAndNavigate(context, email);
+                    final name = _nameController.text.trim();
+                    final phone = _phoneController.text.trim();
+                    final password = _passwordController.text.trim();
+                    sendVerificationCodeAndNavigate(
+                      context,
+                      email: email,
+                      name: name,
+                      phone: phone,
+                      password: password,
+                    );
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: primaryGreen,
@@ -1575,7 +1636,16 @@ class _SplashScreenState extends State<SplashScreen>
 // --- Email Verification Page ---
 class EmailCodePage extends StatefulWidget {
   final String email;
-  const EmailCodePage({required this.email, Key? key}) : super(key: key);
+  final String name;
+  final String phone;
+  final String password;
+  const EmailCodePage({
+    required this.email,
+    required this.name,
+    required this.phone,
+    required this.password,
+    Key? key,
+  }) : super(key: key);
   @override
   State<EmailCodePage> createState() => _EmailCodePageState();
 }
@@ -1631,9 +1701,19 @@ class _EmailCodePageState extends State<EmailCodePage> {
     );
     setState(() => _verifying = false);
     if (response.statusCode == 200) {
-      // Save user session from response
-      try {
-        final data = jsonDecode(response.body);
+      // OTP verified, now register the user and go to location page
+      final regResponse = await http.post(
+        Uri.parse(ApiConfig.registerEndpoint),
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode({
+          "name": widget.name,
+          "email": widget.email,
+          "phone": widget.phone,
+          "password": widget.password,
+        }),
+      );
+      if (regResponse.statusCode == 201) {
+        final data = jsonDecode(regResponse.body);
         final user = data['user'];
         await UserSession.instance.save(
           userId: user['_id'].toString(),
@@ -1644,13 +1724,17 @@ class _EmailCodePageState extends State<EmailCodePage> {
           photoBase64: user['photo']?.toString(),
         );
         SavedManager.instance.switchUser(user['_id'].toString());
-      } catch (e) {
-        debugPrint('Session save error: $e');
+        if (mounted) {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (_) => const LocationPermissionPage()),
+          );
+        }
+      } else {
+        setState(() {
+          _error = 'Registration failed: \\n' + regResponse.body;
+        });
       }
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (_) => const LocationPermissionPage()),
-      );
     } else {
       setState(() {
         _error = 'Invalid code or expired.';
@@ -1764,7 +1848,12 @@ class _EmailCodePageState extends State<EmailCodePage> {
 }
 
 // --- Send verification code and navigate ---
-Future<void> sendVerificationCodeAndNavigate(BuildContext context, String email) async {
+Future<void> sendVerificationCodeAndNavigate(BuildContext context, {
+  required String email,
+  required String name,
+  required String phone,
+  required String password,
+}) async {
   final response = await http.post(
     Uri.parse(ApiConfig.baseUrl + '/api/user/send-verification-code'),
     headers: {"Content-Type": "application/json"},
@@ -1773,7 +1862,14 @@ Future<void> sendVerificationCodeAndNavigate(BuildContext context, String email)
   if (response.statusCode == 200) {
     Navigator.push(
       context,
-      MaterialPageRoute(builder: (_) => EmailCodePage(email: email)),
+      MaterialPageRoute(
+        builder: (_) => EmailCodePage(
+          email: email,
+          name: name,
+          phone: phone,
+          password: password,
+        ),
+      ),
     );
   } else {
     // Show error (e.g., email already exists)

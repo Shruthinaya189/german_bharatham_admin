@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import '../services/api_config.dart';
 import '../user_session.dart';
+import 'open_subscriptions_page.dart';
 import '../profile_pages/subscriptions.dart';
 import '../home.dart';
 
@@ -94,7 +95,7 @@ Future<void> checkSubscriptionAndNotify(BuildContext context, {int forceRedirect
               TextButton(
                 onPressed: () {
                   scaffold.hideCurrentMaterialBanner();
-                  Navigator.of(context).push(MaterialPageRoute(builder: (_) => const SubscriptionsPage()));
+                  openSubscriptionsPage(context);
                 },
                 child: const Text('Manage'),
               ),
@@ -141,11 +142,7 @@ Future<void> checkSubscriptionAndNotify(BuildContext context, {int forceRedirect
                 onPressed: () {
                   acted = true;
                   Navigator.of(ctx).pop();
-                  try {
-                    Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (_) => const SubscriptionsPage()));
-                  } catch (_) {
-                    Navigator.of(context).push(MaterialPageRoute(builder: (_) => const SubscriptionsPage()));
-                  }
+                  openSubscriptionsPage(context);
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: HomePage.primaryGreen,

@@ -19,6 +19,7 @@ import 'notification_manager.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 import 'services/api_config.dart';
+import 'utils/open_subscriptions_page.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -127,14 +128,8 @@ class _HomePageState extends State<HomePage> {
             ),
             ElevatedButton(
               onPressed: () {
-                Navigator.pop(context);
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) =>
-                        const SubscriptionsPage(autoNavigateOnActivation: true),
-                  ),
-                );
+                // Replace direct SubscriptionsPage navigation with utility
+                openSubscriptionsPage(context, autoNavigateOnActivation: true);
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: HomePage.primaryGreen,

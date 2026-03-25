@@ -25,6 +25,7 @@ import 'saved_guides_manager.dart';
 import 'saved_service_manager.dart';
 import 'main.dart';
 import 'user_profiles_page.dart';
+import 'utils/open_subscriptions_page.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -195,10 +196,10 @@ class _ProfilePageState extends State<ProfilePage>
                 "Personal Information",
                 const PersonalInformationPage(),
               ),
-              _menuItem(
-                'assets/images/time.png',
-                "Subscriptions",
-                const SubscriptionsPage(),
+              ListTile(
+                leading: Image.asset('assets/images/time.png', width: 22, height: 22, color: primaryGreen),
+                title: Text("Subscriptions", style: const TextStyle(fontSize: 14)),
+                onTap: () => openSubscriptionsPage(context),
               ),
               _menuItem(
                 'assets/images/bookmark.png',

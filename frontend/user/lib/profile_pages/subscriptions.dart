@@ -38,7 +38,14 @@ class _SubscriptionsPageState extends State<SubscriptionsPage> {
   @override
   void initState() {
     super.initState();
-    _loadPlans();
+    _ensureSessionAndLoadPlans();
+  }
+
+  Future<void> _ensureSessionAndLoadPlans() async {
+    await UserSession.instance.load();
+    debugPrint('[SubscriptionsPage] After load: token = '
+      '${UserSession.instance.token}, userId = ${UserSession.instance.userId}');
+    await _loadPlans();
   }
 
   @override
@@ -60,7 +67,7 @@ class _SubscriptionsPageState extends State<SubscriptionsPage> {
     try {
 
       final token = UserSession.instance.token;
-
+      debugPrint('[SubscriptionsPage] _loadPlans: token = $token, userId = ${UserSession.instance.userId}');
       if (token == null) {
         setState(() {
           _error = "Not logged in";
