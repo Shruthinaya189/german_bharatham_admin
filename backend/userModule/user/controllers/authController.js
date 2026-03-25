@@ -285,6 +285,37 @@ exports.register = async (req, res) => {
 
 // VERIFY EMAIL CODE
 const EmailVerification = require('../models/EmailVerification');
+// SEND VERIFICATION CODE
+exports.sendVerificationCode = async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email) {
+      return res.status(400).json({ message: 'Email is required.' });
+    }
+
+    // Generate a 6-digit code
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+
+    // Upsert the verification code
+    await EmailVerification.findOneAndUpdate(
+      { email: email.toLowerCase().trim() },
+      { code, expiresAt },
+      { upsert: true, new: true }
+    );
+
+    // Send the code via email
+    await sendEmail({
+      to: email,
+      subject: 'Your Verification Code',
+      text: `Your verification code is: ${code}`
+    });
+
+    return res.status(200).json({ message: 'Verification code sent.' });
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
+  }
+};
 exports.verifyEmail = async (req, res) => {
   try {
     const { email, code } = req.body;

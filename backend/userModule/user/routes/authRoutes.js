@@ -8,6 +8,7 @@ const notificationController = require("../controllers/notificationController");
 
 
 router.post("/register", controller.register);
+router.post("/send-verification-code", controller.sendVerificationCode);
 router.post("/login", controller.login);
 router.post("/social-login", controller.socialLogin);
 router.post("/forgot-password", controller.forgotPassword);
