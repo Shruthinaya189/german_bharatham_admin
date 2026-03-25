@@ -6,8 +6,8 @@ import 'package:geolocator/geolocator.dart';
 import 'package:http/http.dart' as http;
 import 'package:latlong2/latlong.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:share_plus/share_plus.dart';
 import 'models/service_model.dart';
+import 'saved_service_manager.dart';
 import 'services/rating_service.dart';
 import 'models/rating_model.dart';
 import 'widgets/rating_dialog.dart';
@@ -98,25 +98,37 @@ class ServiceDetailsPage extends StatefulWidget {
 
 class _ServiceDetailsPageState extends State<ServiceDetailsPage> {
   RatingStats? _ratingStats;
+  Rating? _userRating;
+  late bool _isSaved;
   late final String _displayImage;
 
   @override
   void initState() {
     super.initState();
+    _isSaved = SavedServiceManager.instance.isSaved(widget.item.id);
     _displayImage = widget.item.images.isNotEmpty
         ? widget.item.images.first
         : (widget.item.image ?? '');
-    _loadRatingStats();
+    _loadRatingData();
   }
 
-  Future<void> _loadRatingStats() async {
-    final stats = await RatingService.getEntityRatingStats(
+  Future<void> _loadRatingData() async {
+    final statsFuture = RatingService.getEntityRatingStats(
       entityId: widget.item.id,
       entityType: 'service',
     );
+    final userRatingFuture = RatingService.getUserRating(
+      entityId: widget.item.id,
+      entityType: 'service',
+    );
+
+    final stats = await statsFuture;
+    final userRating = await userRatingFuture;
+
     if (!mounted) return;
     setState(() {
       _ratingStats = stats;
+      _userRating = userRating;
     });
   }
 
@@ -129,28 +141,29 @@ class _ServiceDetailsPageState extends State<ServiceDetailsPage> {
         entityId: widget.item.id,
         entityType: 'service',
         entityName: widget.item.title,
+        initialRating: _userRating?.rating ?? 0,
         onRatingSubmitted: () async {
-          await _loadRatingStats();
+          await _loadRatingData();
           widget.onRefresh?.call();
         },
       ),
     );
   }
 
-  void _shareItem() {
-    final String shareText =
-        '''
-${widget.item.title}
-${widget.item.provider ?? ''}
+  Future<void> _toggleSave() async {
+    final nowSaved = await SavedServiceManager.instance.toggle(widget.item);
+    if (!mounted) return;
+    setState(() => _isSaved = nowSaved);
 
-${widget.item.description ?? 'Check out this service!'}
-
-📍 ${widget.item.address ?? widget.item.city}
-${widget.item.phone != null ? '📞 ${widget.item.phone}' : ''}
-${widget.item.whatsapp != null ? '💬 WhatsApp: ${widget.item.whatsapp}' : ''}
-${widget.item.priceRange != null ? '💰 ${widget.item.priceRange}' : ''}
-''';
-    Share.share(shareText);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          nowSaved ? 'Saved to bookmarks' : 'Removed from bookmarks',
+        ),
+        duration: const Duration(seconds: 1),
+        backgroundColor: const Color(0xFF4E7F6D),
+      ),
+    );
   }
 
   Future<void> _makePhoneCall() async {
@@ -421,12 +434,15 @@ ${widget.item.priceRange != null ? '💰 ${widget.item.priceRange}' : ''}
                                       ),
                                     ),
                                     InkWell(
-                                      onTap: _shareItem,
+                                      onTap: _toggleSave,
                                       child: Image.asset(
-                                        'assets/images/share.png',
-                                        height: 20,
-                                        width: 20,
-                                        color: Colors.black,
+                                        'assets/images/bookmark.png',
+                                        height: 22,
+                                        width: 22,
+                                        color:
+                                            _isSaved
+                                                ? const Color(0xFF4E7F6D)
+                                                : Colors.grey,
                                       ),
                                     ),
                                   ],
@@ -470,6 +486,20 @@ ${widget.item.priceRange != null ? '💰 ${widget.item.priceRange}' : ''}
                                         color: Colors.black87,
                                       ),
                                     ),
+                                    if (_userRating != null) ...[
+                                      const SizedBox(width: 6),
+                                      IconButton(
+                                        onPressed: _showRatingDialog,
+                                        icon: const Icon(
+                                          Icons.edit,
+                                          size: 18,
+                                          color: Color(0xFF4E7F6D),
+                                        ),
+                                        tooltip: 'Edit rating',
+                                        padding: EdgeInsets.zero,
+                                        constraints: const BoxConstraints(),
+                                      ),
+                                    ],
                                   ],
                                 ),
                               ],
