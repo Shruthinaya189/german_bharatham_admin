@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Plus, Edit, Trash2, ArrowLeft, Eye } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
+import SkeletonLoader from './SkeletonLoader';
 import API_URL from '../config';
 
 const BASE = API_URL;
@@ -213,7 +214,7 @@ const CustomCategoryListings = () => {
       </div>
 
       {loading ? (
-        <div style={{ textAlign: 'center', padding: 40 }}>Loading…</div>
+        <SkeletonLoader rows={5} columns={6} type="table" />
       ) : items.length === 0 ? (
         <div style={{ textAlign: 'center', padding: 40 }}>No listings found.</div>
       ) : (

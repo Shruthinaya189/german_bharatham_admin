@@ -4,7 +4,7 @@ const User = require("../models/User");
 exports.getPublicUsers = async (req, res) => {
   try {
     const page = Math.max(1, parseInt(req.query.page) || 1);
-    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 20));
+    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 1));
     const skip = (page - 1) * limit;
 
     const filter = { role: "user", isActive: true };
@@ -23,7 +23,7 @@ exports.getPublicUsers = async (req, res) => {
 exports.getAllUsers = async (req, res) => {
   try {
     const page = Math.max(1, parseInt(req.query.page) || 1);
-    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 20));
+    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 1));
     const skip = (page - 1) * limit;
 
     const filter = { role: "user" };

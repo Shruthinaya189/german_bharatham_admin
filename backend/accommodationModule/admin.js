@@ -11,7 +11,7 @@ router.get("/", async (req, res) => {
     }
     // Pagination params
     const page = Math.max(1, parseInt(req.query.page) || 1);
-    const limit = Math.min(100, parseInt(req.query.limit) || 20);
+    const limit = Math.min(100, parseInt(req.query.limit) || 1);
     const skip = (page - 1) * limit;
 
     // Get total counts (lightweight)

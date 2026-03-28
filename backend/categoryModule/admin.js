@@ -55,7 +55,7 @@ router.get('/:id/listings', adminCheck, async (req, res) => {
     const filter = { categoryId: req.params.id };
     if (req.query.status) filter.status = req.query.status;
     const page = Math.max(1, parseInt(req.query.page) || 1);
-    const limit = Math.min(200, parseInt(req.query.limit) || 20);
+    const limit = Math.min(200, parseInt(req.query.limit) || 1);
     const skip = (page - 1) * limit;
 
     const totalCount = await GenericListing.countDocuments(filter);
