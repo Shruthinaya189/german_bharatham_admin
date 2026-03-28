@@ -3,12 +3,17 @@ const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 
 exports.adminLogin = async (req, res) => {
+  const start = Date.now();
+  console.log(`🚀 [START] adminLogin called at ${new Date().toISOString()}`);
   try {
     const { email, password } = req.body;
     const normalizedEmail = (email || "").trim().toLowerCase();
 
     // 1️⃣ Check if user exists
+    console.log(`🔍 [DB QUERY] finding admin user with email: ${normalizedEmail}`);
+    const queryStart = Date.now();
     const user = await User.findOne({ email: normalizedEmail });
+    console.log(`✅ [DB RESULT] findOne returned ${user ? 1 : 0} documents in ${Date.now() - queryStart}ms`);
 
     if (!user) {
       return res.status(400).json({ message: "Invalid credentials" });
@@ -38,20 +43,24 @@ exports.adminLogin = async (req, res) => {
       { expiresIn: "1d" }
     );
 
+    console.log(`📤 [RESPONSE] sending 200 response with token after ${Date.now() - start}ms`);
     res.json({
       message: "Admin login successful",
       token,
     });
     console.log("Logging in user:", user.email);
-console.log("User role:", user.role);
+    console.log("User role:", user.role);
 
   } catch (error) {
-    console.error(error);
+    console.error(`❌ [ERROR] adminLogin failed: ${error.message} after ${Date.now() - start}ms`);
     res.status(500).json({ message: "Server error" });
   }
 };
 
 exports.adminDashboard = async (req, res) => {
+  const start = Date.now();
+  console.log(`🚀 [START] adminDashboard called at ${new Date().toISOString()}`);
+  console.log(`📤 [RESPONSE] sending 200 response after ${Date.now() - start}ms`);
   res.json({
     message: "Welcome Admin Dashboard",
   });

@@ -18,9 +18,8 @@ const Community = () => {
 
   const fetchPosts = async () => {
     try {
-      const response = await fetch(`${BASE}/api/community`);
+      const response = await fetch(`${BASE}/api/community?limit=100&page=1`);
       const payload = await response.json();
-      // API may return { data: [...], count, ... } or an array directly.
       const list = Array.isArray(payload)
         ? payload
         : Array.isArray(payload?.data)
