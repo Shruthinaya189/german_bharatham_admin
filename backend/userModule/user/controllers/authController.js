@@ -258,20 +258,15 @@ const getAppBaseUrl = (req) => {
 
 // REGISTER
 exports.register = async (req, res) => {
-  const start = Date.now();
-  console.log(`🚀 [START] register called at ${new Date().toISOString()}`);
   try {
     const { name, email, phone, password } = req.body;
-    console.log(`🔍 [DB QUERY] checking for existing user with email: ${email}`);
-    const queryStart = Date.now();
+    // Log email received from frontend for debugging
+    console.log("Email from frontend:", email);
     // Only check if user already exists
     const existingUser = await User.findOne({ email });
-    console.log(`✅ [DB RESULT] findOne returned ${existingUser ? 1 : 0} documents in ${Date.now() - queryStart}ms`);
     if (existingUser)
       return res.status(400).json({ message: "User already exists" });
     const hashedPassword = await bcrypt.hash(password, 10);
-    console.log(`🔍 [DB QUERY] creating new user with email: ${email}`);
-    const createStart = Date.now();
     const user = await User.create({
       name,
       email,
@@ -279,14 +274,11 @@ exports.register = async (req, res) => {
       password: hashedPassword,
       role: "user",
     });
-    console.log(`✅ [DB RESULT] User created successfully in ${Date.now() - createStart}ms`);
-    console.log(`📤 [RESPONSE] sending 201 response after ${Date.now() - start}ms`);
     res.status(201).json({
       token: generateToken(user),
       user: sanitizeUser(user),
     });
   } catch (error) {
-    console.error(`❌ [ERROR] register failed: ${error.message} after ${Date.now() - start}ms`);
     res.status(500).json({ message: error.message });
   }
 };
@@ -295,8 +287,6 @@ exports.register = async (req, res) => {
 const EmailVerification = require('../models/EmailVerification');
 // SEND VERIFICATION CODE
 exports.sendVerificationCode = async (req, res) => {
-  const start = Date.now();
-  console.log(`🚀 [START] sendVerificationCode called at ${new Date().toISOString()}`);
   try {
     const { email } = req.body;
     if (!email) {
@@ -308,34 +298,25 @@ exports.sendVerificationCode = async (req, res) => {
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
 
     // Upsert the verification code
-    console.log(`🔍 [DB QUERY] upserting verification code for email: ${email}`);
-    const upsertStart = Date.now();
     await EmailVerification.findOneAndUpdate(
       { email: email.toLowerCase().trim() },
       { code, expiresAt },
       { upsert: true, new: true }
     );
-    console.log(`✅ [DB RESULT] findOneAndUpdate completed in ${Date.now() - upsertStart}ms`);
 
     // Send the code via email
-    console.log(`🔍 [DB QUERY] sending verification code email to: ${email}`);
-    const emailStart = Date.now();
     await sendEmail({
       to: email,
       subject: 'Your Verification Code',
       text: `Your verification code is: ${code}`
     });
-    console.log(`✅ [DB RESULT] sendEmail completed in ${Date.now() - emailStart}ms`);
-    console.log(`📤 [RESPONSE] sending 200 response after ${Date.now() - start}ms`);
+
     return res.status(200).json({ message: 'Verification code sent.' });
   } catch (error) {
-    console.error(`❌ [ERROR] sendVerificationCode failed: ${error.message} after ${Date.now() - start}ms`);
     return res.status(500).json({ message: error.message });
   }
 };
 exports.verifyEmail = async (req, res) => {
-  const start = Date.now();
-  console.log(`🚀 [START] verifyEmail called at ${new Date().toISOString()}`);
   try {
     const { email, code } = req.body;
     if (!email || !code) {
@@ -344,10 +325,7 @@ exports.verifyEmail = async (req, res) => {
     }
 
     const lookupEmail = email.toLowerCase().trim();
-    console.log(`🔍 [DB QUERY] finding email verification record for: ${lookupEmail}`);
-    const queryStart = Date.now();
     const record = await EmailVerification.findOne({ email: lookupEmail });
-    console.log(`✅ [DB RESULT] findOne returned ${record ? 1 : 0} documents in ${Date.now() - queryStart}ms`);
     if (!record) {
       console.log('[verifyEmail] No record found for email', { lookupEmail });
       return res.status(400).json({ message: 'Invalid code or expired.' });
@@ -364,41 +342,28 @@ exports.verifyEmail = async (req, res) => {
     }
 
     // Only check OTP code and expiry. Do not require user to exist yet.
-    console.log(`🔍 [DB QUERY] deleting email verification record for: ${lookupEmail}`);
-    const deleteStart = Date.now();
     await EmailVerification.deleteOne({ email: lookupEmail });
-    console.log(`✅ [DB RESULT] deleteOne completed in ${Date.now() - deleteStart}ms`);
-    console.log(`📤 [RESPONSE] sending 200 response after ${Date.now() - start}ms`);
     return res.status(200).json({
       message: 'OTP verified successfully. Proceed to registration.'
     });
   } catch (error) {
-    console.error(`❌ [ERROR] verifyEmail failed: ${error.message} after ${Date.now() - start}ms`);
+    console.error('[verifyEmail] Exception', error);
     return res.status(500).json({ message: error.message });
   }
 };
 // GET PROFILE
 exports.getProfile = async (req, res) => {
-  const start = Date.now();
-  console.log(`🚀 [START] getProfile called at ${new Date().toISOString()}`);
   try {
-    console.log(`🔍 [DB QUERY] finding user with id: ${req.user.id}`);
-    const queryStart = Date.now();
     const user = await User.findById(req.user.id).select('-password');
-    console.log(`✅ [DB RESULT] findById returned ${user ? 1 : 0} documents in ${Date.now() - queryStart}ms`);
     if (!user) return res.status(404).json({ message: 'User not found' });
-    console.log(`📤 [RESPONSE] sending 200 response after ${Date.now() - start}ms`);
     res.json(user);
   } catch (error) {
-    console.error(`❌ [ERROR] getProfile failed: ${error.message} after ${Date.now() - start}ms`);
     res.status(500).json({ message: error.message });
   }
 };
 
 // UPDATE PROFILE
 exports.updateProfile = async (req, res) => {
-  const start = Date.now();
-  console.log(`🚀 [START] updateProfile called at ${new Date().toISOString()}`);
   try {
     const {
       name, phone, photo,
@@ -417,23 +382,16 @@ exports.updateProfile = async (req, res) => {
     if (profession    !== undefined) update.profession    = profession;
     if (germanLevel   !== undefined) update.germanLevel   = germanLevel;
     if (passport      !== undefined) update.passport      = passport;
-    console.log(`🔍 [DB QUERY] updating user with id: ${req.user.id}`);
-    const updateStart = Date.now();
     const user = await User.findByIdAndUpdate(req.user.id, update, { new: true }).select('-password');
-    console.log(`✅ [DB RESULT] findByIdAndUpdate completed in ${Date.now() - updateStart}ms`);
     if (!user) return res.status(404).json({ message: 'User not found' });
-    console.log(`📤 [RESPONSE] sending 200 response after ${Date.now() - start}ms`);
     res.json(user);
   } catch (error) {
-    console.error(`❌ [ERROR] updateProfile failed: ${error.message} after ${Date.now() - start}ms`);
     res.status(500).json({ message: error.message });
   }
 };
 
 // LOGIN
 exports.login = async (req, res) => {
-  const start = Date.now();
-  console.log(`🚀 [START] login called at ${new Date().toISOString()}`);
   try {
     const identifierRaw = String(
       req.body.identifier ?? req.body.email ?? req.body.phone ?? ""
@@ -459,10 +417,7 @@ exports.login = async (req, res) => {
           ],
         };
 
-    console.log(`🔍 [DB QUERY] finding user with identifier: ${identifierRaw}`);
-    const queryStart = Date.now();
     const user = await User.findOne(query);
-    console.log(`✅ [DB RESULT] findOne returned ${user ? 1 : 0} documents in ${Date.now() - queryStart}ms`);
     if (!user)
       return res.status(400).json({ message: "Invalid credentials" });
 
@@ -484,11 +439,8 @@ exports.login = async (req, res) => {
     const now = new Date();
     if (!user.firstLoginAt) user.firstLoginAt = now;
     user.lastLoginAt = now;
-    console.log(`🔍 [DB QUERY] saving user login timestamps for userId: ${user._id}`);
-    const saveStart = Date.now();
     try {
       await user.save();
-      console.log(`✅ [DB RESULT] user.save() completed in ${Date.now() - saveStart}ms`);
       console.log('[LOGIN] Updated user login times:', {
         userId: user._id,
         firstLoginAt: user.firstLoginAt,
@@ -498,7 +450,6 @@ exports.login = async (req, res) => {
       console.error('[LOGIN] Error saving user login times:', err);
     }
 
-    console.log(`📤 [RESPONSE] sending 200 response with token after ${Date.now() - start}ms`);
     res.json({
       token: generateToken(user),
       user: sanitizeUser(user),
@@ -508,7 +459,6 @@ exports.login = async (req, res) => {
       }
     });
   } catch (error) {
-    console.error(`❌ [ERROR] login failed: ${error.message} after ${Date.now() - start}ms`);
     res.status(500).json({ message: error.message });
   }
 };
@@ -519,14 +469,10 @@ exports.login = async (req, res) => {
 // { provider: 'facebook', accessToken: '...' }
 // { provider: 'apple', identityToken: '...' }
 exports.socialLogin = async (req, res) => {
-  const start = Date.now();
-  console.log(`🚀 [START] socialLogin called at ${new Date().toISOString()}`);
   try {
     const provider = String(req.body.provider || "").trim().toLowerCase();
     if (!provider) return res.status(400).json({ message: "provider is required" });
 
-    console.log(`🔍 [DB QUERY] verifying ${provider} tokens`);
-    const verifyStart = Date.now();
     let verified;
     if (provider === "google") {
       verified = await verifyGoogle({
@@ -540,10 +486,7 @@ exports.socialLogin = async (req, res) => {
     } else {
       return res.status(400).json({ message: "Unsupported provider" });
     }
-    console.log(`✅ [DB RESULT] ${provider} verification completed in ${Date.now() - verifyStart}ms`);
 
-    console.log(`🔍 [DB QUERY] getting or creating social user for ${provider}`);
-    const userStart = Date.now();
     const user = await getOrCreateSocialUser({
       provider,
       providerUserId: verified.providerUserId,
@@ -551,17 +494,13 @@ exports.socialLogin = async (req, res) => {
       name: verified.name,
       photo: verified.photo,
     });
-    console.log(`✅ [DB RESULT] user obtained/created in ${Date.now() - userStart}ms`);
 
     // Track first/last login timestamps
     const now = new Date();
     if (!user.firstLoginAt) user.firstLoginAt = now;
     user.lastLoginAt = now;
-    console.log(`🔍 [DB QUERY] saving social user login timestamps for userId: ${user._id}`);
-    const saveStart = Date.now();
     try {
       await user.save();
-      console.log(`✅ [DB RESULT] user.save() completed in ${Date.now() - saveStart}ms`);
       console.log('[SOCIAL LOGIN] Updated user login times:', {
         userId: user._id,
         firstLoginAt: user.firstLoginAt,
@@ -571,7 +510,6 @@ exports.socialLogin = async (req, res) => {
       console.error('[SOCIAL LOGIN] Error saving user login times:', err);
     }
 
-    console.log(`📤 [RESPONSE] sending 200 response with token after ${Date.now() - start}ms`);
     return res.status(200).json({
       token: generateToken(user),
       user: sanitizeUser(user),
@@ -582,15 +520,12 @@ exports.socialLogin = async (req, res) => {
     });
   } catch (error) {
     const status = error && error.statusCode ? Number(error.statusCode) : 500;
-    console.error(`❌ [ERROR] socialLogin failed: ${error.message} after ${Date.now() - start}ms`);
     return res.status(status).json({ message: error.message || "Social login failed" });
   }
 };
 
 // CHANGE PASSWORD
 exports.changePassword = async (req, res) => {
-  const start = Date.now();
-  console.log(`🚀 [START] changePassword called at ${new Date().toISOString()}`);
   try {
     const { currentPassword, newPassword } = req.body;
 
@@ -608,10 +543,7 @@ exports.changePassword = async (req, res) => {
     }
 
     // protect middleware attaches user without password; fetch full user
-    console.log(`🔍 [DB QUERY] finding user with id: ${req.user.id}`);
-    const queryStart = Date.now();
     const user = await User.findById(req.user.id);
-    console.log(`✅ [DB RESULT] findById returned ${user ? 1 : 0} documents in ${Date.now() - queryStart}ms`);
     if (!user) return res.status(404).json({ message: "User not found" });
 
     if (!user.password) {
@@ -626,32 +558,23 @@ exports.changePassword = async (req, res) => {
     }
 
     user.password = await bcrypt.hash(trimmedNew, 10);
-    console.log(`🔍 [DB QUERY] saving user with new password for id: ${req.user.id}`);
-    const saveStart = Date.now();
     await user.save();
-    console.log(`✅ [DB RESULT] user.save() completed in ${Date.now() - saveStart}ms`);
-    console.log(`📤 [RESPONSE] sending 200 response after ${Date.now() - start}ms`);
+
     return res.status(200).json({ message: "Password updated successfully" });
   } catch (error) {
-    console.error(`❌ [ERROR] changePassword failed: ${error.message} after ${Date.now() - start}ms`);
     return res.status(500).json({ message: error.message });
   }
 };
 
 // FORGOT PASSWORD (send reset link)
 exports.forgotPassword = async (req, res) => {
-  const start = Date.now();
-  console.log(`🚀 [START] forgotPassword called at ${new Date().toISOString()}`);
   try {
     const emailRaw = String(req.body.email || "").trim().toLowerCase();
     if (!emailRaw) return res.status(400).json({ message: "Email is required" });
 
     // Log email received from frontend for debugging
     console.log("Email from frontend:", emailRaw);
-    console.log(`🔍 [DB QUERY] finding user with email: ${emailRaw}`);
-    const queryStart = Date.now();
     const user = await User.findOne({ email: emailRaw });
-    console.log(`✅ [DB RESULT] findOne returned ${user ? 1 : 0} documents in ${Date.now() - queryStart}ms`);
 
     // Always respond success to avoid leaking which emails exist.
     if (!user || user.isActive === false) {
@@ -663,10 +586,7 @@ exports.forgotPassword = async (req, res) => {
     const resetToken = crypto.randomBytes(32).toString("hex");
     user.resetPasswordToken = sha256(resetToken);
     user.resetPasswordExpires = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
-    console.log(`🔍 [DB QUERY] saving reset password token for userId: ${user._id}`);
-    const saveStart = Date.now();
     await user.save();
-    console.log(`✅ [DB RESULT] user.save() completed in ${Date.now() - saveStart}ms`);
 
     const baseUrl = getAppBaseUrl(req);
     const resetUrl = `${baseUrl}/reset-password?token=${resetToken}`;
@@ -714,18 +634,14 @@ exports.forgotPassword = async (req, res) => {
       });
     }
 
-    console.log(`📤 [RESPONSE] sending 200 response after ${Date.now() - start}ms`);
     return res.status(200).json({ message: "If the email exists, a reset link was sent." });
   } catch (error) {
-    console.error(`❌ [ERROR] forgotPassword failed: ${error.message} after ${Date.now() - start}ms`);
     return res.status(500).json({ message: error.message });
   }
 };
 
 // RESET PASSWORD (use token + new password)
 exports.resetPassword = async (req, res) => {
-  const start = Date.now();
-  console.log(`🚀 [START] resetPassword called at ${new Date().toISOString()}`);
   try {
     const token = String(req.body.token || "").trim();
     const newPassword = String(req.body.newPassword || "").trim();
@@ -740,27 +656,20 @@ exports.resetPassword = async (req, res) => {
         .json({ message: "New password must be at least 6 characters" });
     }
 
-    console.log(`🔍 [DB QUERY] finding user with valid reset token`);
-    const queryStart = Date.now();
     const user = await User.findOne({
       resetPasswordToken: sha256(token),
       resetPasswordExpires: { $gt: new Date() },
     });
-    console.log(`✅ [DB RESULT] findOne returned ${user ? 1 : 0} documents in ${Date.now() - queryStart}ms`);
 
     if (!user) return res.status(400).json({ message: "Invalid or expired token" });
 
     user.password = await bcrypt.hash(newPassword, 10);
     user.resetPasswordToken = null;
     user.resetPasswordExpires = null;
-    console.log(`🔍 [DB QUERY] saving password reset for userId: ${user._id}`);
-    const saveStart = Date.now();
     await user.save();
-    console.log(`✅ [DB RESULT] user.save() completed in ${Date.now() - saveStart}ms`);
-    console.log(`📤 [RESPONSE] sending 200 response after ${Date.now() - start}ms`);
+
     return res.status(200).json({ message: "Password reset successful" });
   } catch (error) {
-    console.error(`❌ [ERROR] resetPassword failed: ${error.message} after ${Date.now() - start}ms`);
     return res.status(500).json({ message: error.message });
   }
 };

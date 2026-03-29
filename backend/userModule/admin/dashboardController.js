@@ -7,12 +7,8 @@ const GenericListing = require("../../categoryModule/GenericListing");
 
 // Get dashboard statistics
 exports.getDashboardStats = async (req, res) => {
-  const start = Date.now();
-  console.log(`🚀 [START] getDashboardStats called at ${new Date().toISOString()}`);
   try {
     // Count total listings from all categories
-    console.log(`🔍 [DB QUERY] counting documents from all collections`);
-    const countStart = Date.now();
     const [accommodationCount, foodCount, jobCount, serviceCount, userCount] = await Promise.all([
       Accommodation.countDocuments(),
       FoodGrocery.countDocuments(),
@@ -20,7 +16,6 @@ exports.getDashboardStats = async (req, res) => {
       Service.countDocuments(),
       User.countDocuments({ role: "user" })
     ]);
-    console.log(`✅ [DB RESULT] counted all documents in ${Date.now() - countStart}ms: accommodation=${accommodationCount}, food=${foodCount}, job=${jobCount}, service=${serviceCount}, users=${userCount}`);
 
     const totalListings = accommodationCount + foodCount + jobCount + serviceCount;
     const totalCategories = 4; // Accommodation, Food, Services, Jobs
@@ -29,8 +24,6 @@ exports.getDashboardStats = async (req, res) => {
         // Be more inclusive: match any status containing "pending" (case-insensitive),
         // and also treat documents with missing/null status as pending (data-cleanup safe-guard).
         const pendingFilter = { $or: [ { status: { $regex: /pending/i } }, { status: { $exists: false } }, { status: null } ] };
-        console.log(`🔍 [DB QUERY] counting pending documents from all collections`);
-        const pendingStart = Date.now();
         const pendingReviews = await Promise.all([
       Accommodation.countDocuments(pendingFilter),
       FoodGrocery.countDocuments(pendingFilter),
@@ -38,21 +31,16 @@ exports.getDashboardStats = async (req, res) => {
       Service.countDocuments(pendingFilter),
       GenericListing.countDocuments(pendingFilter)
         ]);
-    console.log(`✅ [DB RESULT] counted pending documents in ${Date.now() - pendingStart}ms, total pending: ${pendingReviews.reduce((sum, count) => sum + count, 0)}`);
     const totalPending = pendingReviews.reduce((sum, count) => sum + count, 0);
 
     // Get recent listings (last 6 from all categories)
-    // Use field projection to fetch only needed fields for massive performance boost
-    console.log(`🔍 [DB QUERY] fetching recent listings from all collections with field projection`);
-    const recentStart = Date.now();
     const [recentAccommodations, recentFood, recentJobs, recentServices, recentCustomListings] = await Promise.all([
-      Accommodation.find().sort({ createdAt: -1 }).limit(2).select('title status createdAt').lean(),
-      FoodGrocery.find().sort({ createdAt: -1 }).limit(2).select('title status createdAt').lean(),
-      Job.find().sort({ createdAt: -1 }).limit(2).select('title status createdAt').lean(),
-      Service.find().sort({ createdAt: -1 }).limit(2).select('title status createdAt').lean(),
-      GenericListing.find().sort({ createdAt: -1 }).limit(4).select('title categoryName category status createdAt').lean()
+      Accommodation.find().sort({ createdAt: -1 }).limit(2).lean(),
+      FoodGrocery.find().sort({ createdAt: -1 }).limit(2).lean(),
+      Job.find().sort({ createdAt: -1 }).limit(2).lean(),
+      Service.find().sort({ createdAt: -1 }).limit(2).lean(),
+      GenericListing.find().sort({ createdAt: -1 }).limit(4).lean()
     ]);
-    console.log(`✅ [DB RESULT] fetched recent listings in ${Date.now() - recentStart}ms with field projection reducing data transfer`);
 
     // Format recent listings
     const recentListings = [
@@ -94,7 +82,6 @@ exports.getDashboardStats = async (req, res) => {
     recentListings.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
     const topRecentListings = recentListings.slice(0, 6);
 
-    console.log(`📤 [RESPONSE] sending 200 response with dashboard stats after ${Date.now() - start}ms`);
     res.json({
       stats: {
         totalListings,
@@ -111,7 +98,6 @@ exports.getDashboardStats = async (req, res) => {
       recentListings: topRecentListings
     });
   } catch (err) {
-    console.error(`❌ [ERROR] getDashboardStats failed: ${err.message} after ${Date.now() - start}ms`);
     console.error('Dashboard stats error:', err);
     res.status(500).json({ message: err.message });
   }
@@ -121,29 +107,17 @@ exports.getDashboardStats = async (req, res) => {
 exports.getAllListings = async (req, res) => {
   try {
     console.log('getAllListings called with query:', req.query);
-    const { category, status, search, sort = 'newest', page = 1, limit = 50 } = req.query;
-    const skip = (Math.max(1, parseInt(page)) - 1) * Math.min(200, parseInt(limit) || 50);
+    const { category, status, search, sort = 'newest' } = req.query;
 
-    // Build filters for database level filtering
-    const statusFilter = status && status !== 'All Listings' ? { status: status === 'inactive' ? 'disabled' : status } : {};
-    const searchFilter = search ? { title: { $regex: search, $options: 'i' } } : {};
-
-    // Fetch from all collections with field projection and server-side filtering/sorting
-    const sortObj = sort === 'newest' ? { createdAt: -1 } : sort === 'oldest' ? { createdAt: 1 } : { title: 1 };
-    const fieldProjection = '_id title city status createdAt location address';
-    
+    // Fetch from all collections
     let [accommodations, foods, jobs, services] = await Promise.all([
-      category && category !== 'All Listings' && category.toLowerCase() !== 'accommodation' ? Promise.resolve([]) : 
-        Accommodation.find(searchFilter).where({ ...statusFilter }).sort(sortObj).select(fieldProjection).lean(),
-      category && category !== 'All Listings' && category.toLowerCase() !== 'food' ? Promise.resolve([]) : 
-        FoodGrocery.find(searchFilter).where({ ...statusFilter }).sort(sortObj).select(fieldProjection).lean(),
-      category && category !== 'All Listings' && category.toLowerCase() !== 'job' ? Promise.resolve([]) : 
-        Job.find(searchFilter).where({ ...statusFilter }).sort(sortObj).select(fieldProjection).lean(),
-      category && category !== 'All Listings' && category.toLowerCase() !== 'services' ? Promise.resolve([]) : 
-        Service.find(searchFilter).where({ ...statusFilter }).sort(sortObj).select(fieldProjection).lean()
+      Accommodation.find().lean(),
+      FoodGrocery.find().lean(),
+      Job.find().lean(),
+      Service.find().lean()
     ]);
 
-    console.log('Data fetched from DB with field projection:');
+    console.log('Data fetched from DB:');
     console.log('- Accommodations:', accommodations.length);
     console.log('- Foods:', foods.length);
     console.log('- Jobs:', jobs.length);
@@ -190,12 +164,43 @@ exports.getAllListings = async (req, res) => {
     ];
 
     console.log('Total listings combined:', allListings.length);
+    console.log('Sample items by category:');
+    console.log('- Food items:', allListings.filter(i => i.category === 'Food').length);
+    console.log('- Accommodation items:', allListings.filter(i => i.category === 'Accommodation').length);
 
-    // Apply pagination to combined results
-    const paginatedListings = allListings.slice(skip, skip + Math.min(200, parseInt(limit) || 50));
+    // Filter by category if specified
+    let filtered = allListings;
+    if (category && category !== 'All Listings') {
+      console.log('Filtering by category:', category);
+      filtered = filtered.filter(item => item.category.toLowerCase() === category.toLowerCase());
+    }
 
-    console.log('Returning', paginatedListings.length, 'listings after pagination (page', page, ')');
-    res.json({ data: paginatedListings, total: allListings.length });
+    // Filter by status if specified
+    if (status && status !== 'All Listings') {
+      filtered = filtered.filter(item => item.status.toLowerCase() === status.toLowerCase());
+    }
+
+    // Search filter
+    if (search) {
+      const searchLower = search.toLowerCase();
+      filtered = filtered.filter(item => 
+        item.title.toLowerCase().includes(searchLower) ||
+        item.location?.toLowerCase().includes(searchLower)
+      );
+    }
+
+    // Sort
+    if (sort === 'newest') {
+      filtered.sort((a, b) => new Date(b.created) - new Date(a.created));
+    } else if (sort === 'oldest') {
+      filtered.sort((a, b) => new Date(a.created) - new Date(b.created));
+    } else if (sort === 'a-z') {
+      filtered.sort((a, b) => a.title.localeCompare(b.title));
+    }
+
+    console.log('Returning', filtered.length, 'listings after filters');
+    console.log('Sample listing:', filtered[0]);
+    res.json(filtered);
   } catch (err) {
     console.error('Get all listings error:', err);
     res.status(500).json({ message: err.message });

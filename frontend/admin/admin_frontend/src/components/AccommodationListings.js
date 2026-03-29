@@ -34,12 +34,7 @@ const AccommodationListings = () => {
     setLoading(true);
     try {
       const token = localStorage.getItem('adminToken');
-      // Pass status filter to API for server-side filtering instead of fetching all and filtering client-side
-      const queryParams = new URLSearchParams({ page: p, limit });
-      if (statusFilter !== 'all') {
-        queryParams.append('status', statusFilter === 'inactive' ? 'disabled' : statusFilter);
-      }
-      const response = await fetch(`${API}?${queryParams.toString()}`, {
+      const response = await fetch(`${API}?page=${p}&limit=${limit}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (response.ok) {
@@ -56,7 +51,7 @@ const AccommodationListings = () => {
     } finally {
       setLoading(false);
     }
-  }, [limit, statusFilter]);
+  }, [limit]);
 
   useEffect(() => { fetchAccommodations(page); }, [page, fetchAccommodations]);
 
