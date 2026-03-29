@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { AlertCircle } from 'lucide-react';
-import SkeletonLoader from './SkeletonLoader';
 import API_URL from '../config';
 
 const mapReports = (payload) => {
@@ -79,7 +78,7 @@ const ReportedProblems = () => {
 
       <div className="dashboard-section">
         {loading ? (
-          <SkeletonLoader rows={3} columns={4} type="list" />
+          <div style={{ padding: '1rem', color: '#6b7280' }}>Loading reports…</div>
         ) : reports.length === 0 ? (
           <div style={{ padding: '1rem', color: '#6b7280' }}>No reported problems.</div>
         ) : (

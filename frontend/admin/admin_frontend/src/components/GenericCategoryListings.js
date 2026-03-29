@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Plus, Trash2, Edit, Eye, ArrowLeft } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import SkeletonLoader from './SkeletonLoader';
 import AddListingModal from './AddListingModal';
 
 const Badge = ({ label, active }) => (
@@ -496,7 +495,7 @@ const GenericCategoryListings = ({ category, apiBase, icon, viewFields }) => {
       </div>
 
       {loading ? (
-        <SkeletonLoader rows={5} columns={7} type="table" />
+        <div style={{ textAlign: 'center', padding: 40 }}>Loading…</div>
       ) : displayItems.length === 0 ? (
         <div style={{ textAlign: 'center', padding: 40 }}>No {category.toLowerCase()} listings found.</div>
       ) : (

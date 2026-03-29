@@ -1,7 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Eye, Check, X } from 'lucide-react';
 import ReviewListingModal from './ReviewListingModal';
-import SkeletonLoader from './SkeletonLoader';
 import API_URL from '../config';
 
 const ContentModeration = () => {
@@ -132,7 +131,7 @@ const ContentModeration = () => {
 
       <div className="pending-listings">
         {loading ? (
-          <SkeletonLoader rows={3} columns={5} type="list" />
+          <div style={{ padding: 30, textAlign: 'center' }}>Loading…</div>
         ) : pendingListings.length === 0 ? (
           <div style={{ padding: 30, textAlign: 'center' }}>No pending listings.</div>
         ) : pendingListings.map((listing) => (

@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Trash2 } from 'lucide-react';
-import SkeletonLoader from './SkeletonLoader';
 import AddListingModal from './AddListingModal';
 import API_URL from '../config';
 
@@ -165,7 +164,7 @@ const Listings = () => {
 
       <div className="listings-table">
         {loading ? (
-          <SkeletonLoader rows={5} columns={6} type="table" />
+          <div style={{ textAlign:'center', padding:'40px' }}>Loading...</div>
         ) : filtered.length === 0 ? (
           <div style={{ textAlign:'center', padding:'40px' }}>No listings found.</div>
         ) : (

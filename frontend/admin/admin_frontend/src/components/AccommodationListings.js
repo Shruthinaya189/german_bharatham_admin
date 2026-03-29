@@ -4,7 +4,6 @@ import { useNavigate } from 'react-router-dom';
 import AddAccommodationModal from './AddAccommodationModal';
 import ViewAccommodationModal from './ViewAccommodationModal';
 import EditAccommodationModal from './EditAccommodationModal';
-import SkeletonLoader from './SkeletonLoader';
 import API_URL from '../config';
 
 const API = `${API_URL}/api/accommodation/admin`;
@@ -176,7 +175,7 @@ const AccommodationListings = () => {
       </div>
 
       {loading ? (
-        <SkeletonLoader rows={5} columns={8} type="table" />
+        <div style={{ textAlign:'center', padding:'40px' }}>Loading...</div>
       ) : filtered.length === 0 ? (
         <div style={{ textAlign:'center', padding:'40px' }}>
           <p>No accommodations found.</p>

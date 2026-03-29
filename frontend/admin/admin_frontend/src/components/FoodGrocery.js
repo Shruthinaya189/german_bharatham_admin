@@ -3,7 +3,6 @@ import { Plus, Edit, Trash2, ChevronLeft, ChevronRight, Search, Eye } from 'luci
 import AddFoodGroceryModal from './AddFoodGroceryModal';
 import EditFoodGroceryModal from './EditFoodGroceryModal';
 import ViewFoodGroceryModal from './ViewFoodGroceryModal';
-import SkeletonLoader from './SkeletonLoader';
 import API_URL from '../config';
 
 const FoodGrocery = () => {
@@ -271,7 +270,7 @@ const FoodGrocery = () => {
       {/* Loading/Error States */}
       {loading && (
         <div className="loading-state">
-          <SkeletonLoader rows={5} columns={8} type="table" />
+          <p>Loading listings...</p>
         </div>
       )}
 

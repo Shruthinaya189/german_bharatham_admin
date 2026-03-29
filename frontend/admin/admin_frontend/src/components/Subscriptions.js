@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from 'react';
-import SkeletonLoader from './SkeletonLoader';
 import API_URL from '../config';
 
 const Subscriptions = () => {
