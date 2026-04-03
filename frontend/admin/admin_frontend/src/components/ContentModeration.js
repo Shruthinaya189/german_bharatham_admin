@@ -1,8 +1,22 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Eye, Check, X } from 'lucide-react';
 import ReviewListingModal from './ReviewListingModal';
 import SkeletonLoader from './SkeletonLoader';
 import API_URL from '../config';
+
+const PATCH_URLS = {
+  Accommodation: (id) => `${API_URL}/api/accommodation/admin/${id}/status`,
+  Food:          (id) => `${API_URL}/api/admin/foodgrocery/${id}/status`,
+  Jobs:          (id) => `${API_URL}/api/jobs/admin/${id}/status`,
+  Services:      (id) => `${API_URL}/api/services/admin/${id}/status`,
+};
+
+const DELETE_URLS = {
+  Accommodation: (id) => `${API_URL}/api/accommodation/admin/${id}`,
+  Food:          (id) => `${API_URL}/api/admin/foodgrocery/${id}`,
+  Jobs:          (id) => `${API_URL}/api/jobs/admin/${id}`,
+  Services:      (id) => `${API_URL}/api/services/admin/${id}`,
+};
 
 const ContentModeration = () => {
   const [showReviewModal, setShowReviewModal] = useState(false);
@@ -10,86 +24,60 @@ const ContentModeration = () => {
   const [pendingListings, setPendingListings] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  const ENDPOINTS = useMemo(() => ([
-    { category: 'Accommodation', apiBase: `${API_URL}/api/accommodation/admin` },
-    { category: 'Food', apiBase: `${API_URL}/api/admin/foodgrocery` },
-    { category: 'Jobs', apiBase: `${API_URL}/api/jobs/admin` },
-    { category: 'Services', apiBase: `${API_URL}/api/services/admin` },
-  ]), []);
+  const authHeaders = () => ({
+    'Authorization': `Bearer ${localStorage.getItem('adminToken')}`,
+    'Content-Type': 'application/json',
+  });
 
-  const authHeaders = () => {
-    const token = localStorage.getItem('adminToken');
-    return { 'Authorization': `Bearer ${token}` };
-  };
+  const mapListing = (category, raw) => ({
+    id: raw._id,
+    title: raw.title || raw.serviceName || raw.name || 'Untitled',
+    category,
+    location: raw.location || raw.city || raw.address || '',
+    contact: raw.contactPhone || raw.phone || raw.email || '—',
+    image: raw.companyLogo || raw.media?.images?.[0] || raw.images?.[0] || raw.image || null,
+    images: raw.media?.images || raw.images || (raw.image ? [raw.image] : []),
+    description: raw.description || '',
+    amenities: Array.isArray(raw.amenities) ? raw.amenities : [],
+    raw,
+  });
 
-  const computeImage = (category, raw) => {
-    const img = raw.companyLogo || raw.media?.images?.[0] || raw.images?.[0] || raw.image || null;
-    if (img) return img;
-    if (category === 'Services') return '/service-default.jpg';
-    return null;
-  };
-
-  const mapListing = (category, apiBase, raw) => {
-    const title = raw.title || raw.serviceName || raw.name || raw.jobTitle || 'Untitled';
-    const location = raw.location || raw.city || raw.address || raw.zipCode || '';
-    const contact = raw.contact || raw.phone || raw.contactPhone || raw.email || '—';
-    const images = raw.media?.images || raw.images || (raw.image ? [raw.image] : []);
-    const image = computeImage(category, raw);
-    const amenities = raw.amenities || [];
-    const description = raw.description || '';
-
-    return {
-      id: raw._id,
-      apiBase,
-      raw,
-      title,
-      category,
-      location,
-      contact,
-      images,
-      image,
-      description,
-      amenities: Array.isArray(amenities) ? amenities : [],
-    };
-  };
-
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const fetchPending = async () => {
     setLoading(true);
     try {
-      const headers = authHeaders();
-      const results = await Promise.all(
-        ENDPOINTS.map(async ({ category, apiBase }) => {
-          // Fetch all and filter client-side so we don't miss older records with different status casing.
-          const res = await fetch(apiBase, { headers });
-          if (!res.ok) return [];
-          const json = await res.json();
-          const data = Array.isArray(json) ? json : (json.data || []);
-          const pending = data.filter(x => String(x.status || '').toLowerCase() === 'pending');
-          return pending.map(raw => mapListing(category, apiBase, raw));
-        })
-      );
-      setPendingListings(results.flat());
+      const res = await fetch(`${API_URL}/api/admin/pending-listings`, {
+        headers: authHeaders()
+      });
+      if (!res.ok) throw new Error(`Failed to fetch: ${res.status}`);
+      const data = await res.json();
+      console.log('✅ Fetched pending listings:', data);
+
+      const all = [
+        ...(data.Accommodation || []).map(r => mapListing('Accommodation', r)),
+        ...(data.Food          || []).map(r => mapListing('Food', r)),
+        ...(data.Jobs          || []).map(r => mapListing('Jobs', r)),
+        ...(data.Services      || []).map(r => mapListing('Services', r)),
+      ];
+      console.log('📋 Total pending listings:', all.length);
+      setPendingListings(all);
     } catch (e) {
-      console.error(e);
+      console.error('❌ Error fetching pending listings:', e);
+      alert('Error loading pending listings: ' + e.message);
       setPendingListings([]);
     } finally {
       setLoading(false);
     }
   };
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { fetchPending(); }, []);
-
-  const handleView = (listing) => {
-    setSelectedListing(listing);
-    setShowReviewModal(true);
-  };
 
   const updateStatus = async (listing, status) => {
     try {
-      const token = localStorage.getItem('adminToken');
-      const res = await fetch(`${listing.apiBase}/${listing.id}/status`, {
+      const res = await fetch(PATCH_URLS[listing.category](listing.id), {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        headers: authHeaders(),
         body: JSON.stringify({ status }),
       });
       if (!res.ok) {
@@ -97,28 +85,23 @@ const ContentModeration = () => {
         throw new Error(e2.message || 'Failed to update status');
       }
       await fetchPending();
-    } catch (e) {
-      alert(e.message);
-    }
+    } catch (e) { alert(e.message); }
   };
 
   const handleApprove = (listing) => updateStatus(listing, 'active');
 
   const handleReject = async (listing) => {
     try {
-      const token = localStorage.getItem('adminToken');
-      const res = await fetch(`${listing.apiBase}/${listing.id}`, {
+      const res = await fetch(DELETE_URLS[listing.category](listing.id), {
         method: 'DELETE',
-        headers: { 'Authorization': `Bearer ${token}` },
+        headers: authHeaders(),
       });
       if (!res.ok) {
         const e2 = await res.json().catch(() => ({}));
-        throw new Error(e2.message || 'Failed to delete listing');
+        throw new Error(e2.message || 'Failed to delete');
       }
       await fetchPending();
-    } catch (e) {
-      alert(e.message);
-    }
+    } catch (e) { alert(e.message); }
   };
 
   return (
@@ -161,26 +144,14 @@ const ContentModeration = () => {
               </div>
             </div>
             <div className="listing-actions-vertical">
-              <button 
-                className="action-btn view-btn"
-                onClick={() => handleView(listing)}
-              >
-                <Eye size={16} />
-                View
+              <button className="action-btn view-btn" onClick={() => { setSelectedListing(listing); setShowReviewModal(true); }}>
+                <Eye size={16} /> View
               </button>
-              <button 
-                className="action-btn approve-btn"
-                onClick={() => handleApprove(listing)}
-              >
-                <Check size={16} />
-                Approve
+              <button className="action-btn approve-btn" onClick={() => handleApprove(listing)}>
+                <Check size={16} /> Approve
               </button>
-              <button 
-                className="action-btn reject-btn"
-                onClick={() => handleReject(listing)}
-              >
-                <X size={16} />
-                Reject
+              <button className="action-btn reject-btn" onClick={() => handleReject(listing)}>
+                <X size={16} /> Reject
               </button>
             </div>
           </div>
@@ -188,17 +159,11 @@ const ContentModeration = () => {
       </div>
 
       {showReviewModal && selectedListing && (
-        <ReviewListingModal 
+        <ReviewListingModal
           listing={selectedListing}
           onClose={() => setShowReviewModal(false)}
-          onApprove={() => {
-            handleApprove(selectedListing);
-            setShowReviewModal(false);
-          }}
-          onReject={() => {
-            handleReject(selectedListing);
-            setShowReviewModal(false);
-          }}
+          onApprove={() => { handleApprove(selectedListing); setShowReviewModal(false); }}
+          onReject={() => { handleReject(selectedListing); setShowReviewModal(false); }}
         />
       )}
     </div>

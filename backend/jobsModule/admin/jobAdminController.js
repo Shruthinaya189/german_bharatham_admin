@@ -48,9 +48,38 @@ exports.createJob = async (req, res) => {
 // GET ALL JOBS (Admin)
 exports.getAllJobs = async (req, res) => {
   try {
-    const jobs = await Job.find().sort({ createdAt: -1 });
-    res.json(jobs);
+    const start = Date.now();
+    console.log(`🚀 [START] getAllJobs called at ${new Date().toISOString()}`);
+    
+    const { status } = req.query;
+    const filter = status ? { status } : {};
+    const page = Math.max(1, parseInt(req.query.page) || 1);
+    const limit = Math.min(200, parseInt(req.query.limit) || 50);
+    const skip = (page - 1) * limit;
+
+    console.log(`📋 [PAGINATION] page=${page}, limit=${limit}, skip=${skip}`);
+    console.log(`🔍 [DB QUERY] Fetching Jobs with field projection - limit=${limit}, skip=${skip}`);
+    
+    const queryStart = Date.now();
+    // Use field projection and .lean() for performance: only fetch needed fields
+    const jobs = await Job.find(filter)
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit)
+      .select('title companyName jobType city status createdAt contact salary')
+      .lean();
+    
+    console.log(`✅ [DB RESULT] Find returned ${(jobs || []).length} documents in ${Date.now() - queryStart}ms`);
+    
+    // Also get total count for pagination info
+    const countStart = Date.now();
+    const totalCount = await Job.countDocuments(filter);
+    console.log(`✅ [DB RESULT] Count completed in ${Date.now() - countStart}ms`);
+    
+    console.log(`📤 [RESPONSE] Sending 200 with ${(jobs || []).length} items after ${Date.now() - start}ms`);
+    res.json({ data: jobs, count: (jobs || []).length, totalCount: totalCount || 0, page, limit });
   } catch (error) {
+    console.error(`❌ [ERROR] getAllJobs failed after ${Date.now() - start}ms: ${error.message}`);
     res.status(500).json({ message: error.message });
   }
 };
