@@ -22,7 +22,7 @@ router.get('/', adminCheck, async (req, res) => {
     const { status } = req.query;
     const filter = status ? { status: normalizeStatus(status, String(status)) } : {};
     const page = Math.max(1, parseInt(req.query.page) || 1);
-    const limit = Math.min(200, parseInt(req.query.limit) || 20);
+    const limit = Math.min(200, parseInt(req.query.limit) || 1);
     const skip = (page - 1) * limit;
 
     const totalCount = await Job.countDocuments(filter);
