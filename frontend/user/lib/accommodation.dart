@@ -3,6 +3,7 @@ import 'accommodation_details.dart';
 import 'filter_page.dart';
 import 'saved_manager.dart';
 import 'services/api_config.dart';
+import 'services/cache_service.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'dart:typed_data';
@@ -278,6 +279,9 @@ class _AccommodationPageState extends State<AccommodationPage> {
     super.initState();
     SavedManager.instance.initialize().then((_) {
       if (mounted) {
+        // Cache-first: Load from cache immediately if available
+        _loadFromCache();
+        // Then fetch fresh data in background
         fetchAccommodations();
       }
     });
@@ -289,8 +293,50 @@ class _AccommodationPageState extends State<AccommodationPage> {
     super.dispose();
   }
 
+  /// Load accommodations from cache (instant, ~0ms)
+  Future<void> _loadFromCache() async {
+    try {
+      final cached = await CacheService.get('accommodations_page_1');
+      if (cached == null || !mounted) return;
+
+      final decoded = json.decode(cached);
+      final List<dynamic> data = decoded is Map
+          ? (decoded['data'] ?? []) as List
+          : (decoded is List ? decoded : []);
+
+      final loaded = data
+          .map((j) {
+            try {
+              return Accommodation.fromJson(j as Map<String, dynamic>);
+            } catch (_) {
+              return null;
+            }
+          })
+          .where((item) => item != null)
+          .cast<Accommodation>()
+          .toList();
+
+      if (!mounted) return;
+      for (final acc in loaded) {
+        acc.isSaved = SavedManager.instance.isSaved(acc.id);
+      }
+
+      setState(() {
+        accommodations = loaded;
+        _filterBase = accommodations;
+        filteredAccommodations = _applySearchOnBase(_filterBase, searchQuery);
+        isLoading = false;
+      });
+    } catch (e) {
+      debugPrint('Cache load error: $e');
+    }
+  }
+
   Future<void> fetchAccommodations() async {
-    setState(() => isLoading = true);
+    // Only show loading spinner if data wasn't cached
+    if (accommodations.isEmpty) {
+      setState(() => isLoading = true);
+    }
 
     try {
       final response = await http.get(
@@ -299,6 +345,9 @@ class _AccommodationPageState extends State<AccommodationPage> {
       );
 
       if (response.statusCode == 200) {
+        // Cache the response for next time
+        await CacheService.set('accommodations_page_1', response.body);
+
         final decoded = json.decode(response.body);
         // Support both plain array and wrapped { data: [...] } responses
         final List<dynamic> data = decoded is List

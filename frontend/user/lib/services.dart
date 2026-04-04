@@ -6,6 +6,7 @@ import 'saved_service_manager.dart';
 import 'service_details.dart';
 import 'service_filter_page.dart';
 import 'services/api_service.dart';
+import 'services/cache_service.dart';
 
 class ServicesPage extends StatefulWidget {
   const ServicesPage({super.key});
@@ -44,18 +45,51 @@ class _ServicesPageState extends State<ServicesPage> {
   void initState() {
     super.initState();
     SavedServiceManager.instance.initialize();
+    // Cache-first: Load from cache immediately
+    _loadServicesFromCache();
+    // Then fetch fresh data in background
     _loadServices();
+  }
+
+  /// Load services from cache (instant)
+  Future<void> _loadServicesFromCache() async {
+    try {
+      final cached = await CacheService.get('services_page_1');
+      if (cached == null || !mounted) return;
+
+      final items = await ApiService.parseServicesJson(cached);
+      if (!mounted) return;
+
+      setState(() {
+        allItems = items.where((item) => item.status == 'Active').toList();
+        _filterOverrideItems = null;
+        _rebuildTypeChips();
+        _selectedTypeIndex = 0;
+        _applyLocalFilters();
+        isLoading = false;
+      });
+    } catch (e) {
+      debugPrint('Services cache load error: $e');
+    }
   }
 
   Future<void> _loadServices() async {
     try {
       if (!mounted) return;
-      setState(() {
-        isLoading = true;
-        errorMessage = null;
-      });
+      if (allItems.isEmpty) {
+        setState(() {
+          isLoading = true;
+          errorMessage = null;
+        });
+      }
 
       final items = await ApiService.getServicesListings();
+
+      // Cache the response
+      await CacheService.set(
+        'services_page_1',
+        ApiService.servicesToJson(items),
+      );
 
       if (!mounted) return;
       setState(() {

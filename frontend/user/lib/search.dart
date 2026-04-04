@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
@@ -16,6 +17,8 @@ import 'saved.dart';
 import 'saved_manager.dart';
 import 'services.dart';
 import 'services/api_config.dart';
+import 'services/api_service.dart';
+import 'services/cache_service.dart';
 import 'saved_food_manager.dart';
 import 'saved_job_manager.dart';
 import 'saved_service_manager.dart';
@@ -36,11 +39,14 @@ class _SearchPageState extends State<SearchPage> {
   String? errorMessage;
 
   String searchQuery = '';
+  Timer? _searchDebounce;
 
   List<Accommodation> _allAccommodations = [];
   List<Job> _allJobs = [];
   List<FoodGrocery> _allFood = [];
   List<Service> _allServices = [];
+  bool _fullDataLoaded = false;
+  bool _fullDataLoading = false;
 
   final tabs = [
     "All",
@@ -69,31 +75,30 @@ class _SearchPageState extends State<SearchPage> {
   void initState() {
     super.initState();
     _initSaved();
-    _loadAll();
+    _loadQuickThenLazyRefresh();
+  }
+
+  @override
+  void dispose() {
+    _searchDebounce?.cancel();
+    super.dispose();
   }
 
   Future<void> _initSaved() async {
-    await SavedJobManager.instance.initialize();
-    await SavedFoodManager.instance.initialize();
-    await SavedServiceManager.instance.initialize();
+    await Future.wait([
+      SavedJobManager.instance.initialize(),
+      SavedFoodManager.instance.initialize(),
+      SavedServiceManager.instance.initialize(),
+    ]);
   }
 
-  Future<void> _loadAll() async {
+  Future<void> _loadQuickThenLazyRefresh() async {
     setState(() {
       isLoading = true;
       errorMessage = null;
     });
 
-    try {
-      await Future.wait([
-        _loadAccommodations(),
-        _loadJobs(),
-        _loadFood(),
-        _loadServices(),
-      ]);
-    } catch (e) {
-      errorMessage = 'Failed to load data';
-    }
+    await _loadFromCache(limitPerModule: 3);
 
     if (!mounted) return;
     setState(() {
@@ -101,57 +106,248 @@ class _SearchPageState extends State<SearchPage> {
     });
   }
 
-  Future<void> _loadAccommodations() async {
-    final response = await http.get(Uri.parse(ApiConfig.accommodationEndpoint));
-    if (response.statusCode != 200) return;
-    final decoded = jsonDecode(response.body);
-    final List<dynamic> list = decoded is List ? decoded : (decoded['data'] ?? []) as List;
-    final items = list
-        .whereType<Map<String, dynamic>>()
-        .map(Accommodation.fromJson)
-        .toList();
+  Future<void> _loadAll() async {
+    await _refreshAll(showLoaderIfEmpty: true);
+  }
 
-    for (final item in items) {
-      item.isSaved = SavedManager.instance.isSaved(item.id);
+  Future<void> _loadFromCache({int? limitPerModule}) async {
+    bool hasAnyData = false;
+
+    try {
+      final cached = await Future.wait<String?>([
+        CacheService.get('search_accommodations'),
+        CacheService.get('search_jobs'),
+        CacheService.get('search_food'),
+        CacheService.get('search_services'),
+      ]);
+
+      final acc = _parseAccommodations(cached[0], maxItems: limitPerModule);
+      final jobs = _parseJobs(cached[1], maxItems: limitPerModule);
+      final food = _parseFood(cached[2], maxItems: limitPerModule);
+      final services = await _parseServicesFromCache(cached[3], maxItems: limitPerModule);
+
+      hasAnyData =
+          acc.isNotEmpty || jobs.isNotEmpty || food.isNotEmpty || services.isNotEmpty;
+
+      if (!mounted) return;
+      if (hasAnyData) {
+        setState(() {
+          _allAccommodations = acc;
+          _allJobs = jobs;
+          _allFood = food;
+          _allServices = services;
+          isLoading = false;
+          errorMessage = null;
+        });
+      }
+    } catch (_) {}
+
+    if (!mounted) return;
+    if (!hasAnyData) {
+      setState(() {
+        isLoading = true;
+      });
+    }
+  }
+
+  Future<void> _refreshAll({required bool showLoaderIfEmpty}) async {
+    if (_fullDataLoading) return;
+    _fullDataLoading = true;
+
+    if (showLoaderIfEmpty && mounted) {
+      setState(() {
+        isLoading = true;
+        errorMessage = null;
+      });
     }
 
-    _allAccommodations = items;
+    Future<List<T>?> safeFetch<T>(Future<List<T>> future) async {
+      try {
+        return await future;
+      } catch (_) {
+        return null;
+      }
+    }
+
+    final results = await Future.wait<dynamic>([
+      safeFetch<Accommodation>(_fetchAccommodations()),
+      safeFetch<Job>(_fetchJobs()),
+      safeFetch<FoodGrocery>(_fetchFood()),
+      safeFetch<Service>(_fetchServices()),
+    ]);
+
+    if (!mounted) {
+      _fullDataLoading = false;
+      return;
+    }
+
+    final accResult = results[0] as List<Accommodation>?;
+    final jobsResult = results[1] as List<Job>?;
+    final foodResult = results[2] as List<FoodGrocery>?;
+    final servicesResult = results[3] as List<Service>?;
+
+    final anySuccess =
+        accResult != null || jobsResult != null || foodResult != null || servicesResult != null;
+
+    setState(() {
+      if (accResult != null) _allAccommodations = accResult;
+      if (jobsResult != null) _allJobs = jobsResult;
+      if (foodResult != null) _allFood = foodResult;
+      if (servicesResult != null) _allServices = servicesResult;
+
+      final hasVisibleData = _allAccommodations.isNotEmpty ||
+          _allJobs.isNotEmpty ||
+          _allFood.isNotEmpty ||
+          _allServices.isNotEmpty;
+
+      errorMessage = (!anySuccess && !hasVisibleData) ? 'Failed to load data' : null;
+      isLoading = false;
+    });
+
+    _fullDataLoaded = anySuccess;
+    _fullDataLoading = false;
   }
 
-  Future<void> _loadJobs() async {
-    final response = await http.get(Uri.parse('${ApiConfig.baseUrl}/api/jobs/user'));
-    if (response.statusCode != 200) return;
-    final decoded = jsonDecode(response.body);
-    final List<dynamic> list = decoded is List ? decoded : (decoded['data'] ?? []) as List;
-    _allJobs = list
-        .whereType<Map<String, dynamic>>()
-        .map(Job.fromJson)
-        .where((j) => j.status.toLowerCase() == 'active')
-        .toList();
+  void _ensureFullDataLoaded() {
+    if (_fullDataLoaded || _fullDataLoading) return;
+    unawaited(_refreshAll(showLoaderIfEmpty: false));
   }
 
-  Future<void> _loadFood() async {
-    final response = await http.get(Uri.parse(ApiConfig.foodEndpoint));
-    if (response.statusCode != 200) return;
-    final decoded = jsonDecode(response.body);
-    final List<dynamic> list = decoded is List ? decoded : (decoded['data'] ?? []) as List;
-    _allFood = list
-        .whereType<Map<String, dynamic>>()
-        .map(FoodGrocery.fromJson)
-        .where((f) => f.status == 'Active')
-        .toList();
+  List<dynamic> _parseListBody(String body) {
+    final decoded = jsonDecode(body);
+    if (decoded is List) return decoded;
+    if (decoded is Map<String, dynamic> && decoded['data'] is List) {
+      return decoded['data'] as List;
+    }
+    return const [];
   }
 
-  Future<void> _loadServices() async {
-    final response = await http.get(Uri.parse('${ApiConfig.baseUrl}/api/services/user'));
-    if (response.statusCode != 200) return;
-    final decoded = jsonDecode(response.body);
-    final List<dynamic> list = decoded is List ? decoded : (decoded['data'] ?? []) as List;
-    _allServices = list
-        .whereType<Map<String, dynamic>>()
-        .map(Service.fromJson)
-        .where((s) => s.status == 'Active')
-        .toList();
+  List<Accommodation> _parseAccommodations(String? raw, {int? maxItems}) {
+    if (raw == null || raw.isEmpty) return const [];
+    try {
+      final list = _parseListBody(raw);
+      final items = list
+          .whereType<Map<String, dynamic>>()
+          .map(Accommodation.fromJson)
+          .toList();
+      for (final item in items) {
+        item.isSaved = SavedManager.instance.isSaved(item.id);
+      }
+      if (maxItems != null && maxItems > 0 && items.length > maxItems) {
+        return items.take(maxItems).toList();
+      }
+      return items;
+    } catch (_) {
+      return const [];
+    }
+  }
+
+  List<Job> _parseJobs(String? raw, {int? maxItems}) {
+    if (raw == null || raw.isEmpty) return const [];
+    try {
+      final list = _parseListBody(raw);
+      final items = list
+          .whereType<Map<String, dynamic>>()
+          .map(Job.fromJson)
+          .where((j) => j.status.toLowerCase() == 'active')
+          .toList();
+      if (maxItems != null && maxItems > 0 && items.length > maxItems) {
+        return items.take(maxItems).toList();
+      }
+      return items;
+    } catch (_) {
+      return const [];
+    }
+  }
+
+  List<FoodGrocery> _parseFood(String? raw, {int? maxItems}) {
+    if (raw == null || raw.isEmpty) return const [];
+    try {
+      final list = _parseListBody(raw);
+      final items = list
+          .whereType<Map<String, dynamic>>()
+          .map(FoodGrocery.fromJson)
+          .where((f) => f.status.toLowerCase() == 'active')
+          .toList();
+      if (maxItems != null && maxItems > 0 && items.length > maxItems) {
+        return items.take(maxItems).toList();
+      }
+      return items;
+    } catch (_) {
+      return const [];
+    }
+  }
+
+  List<Service> _parseServices(String? raw, {int? maxItems}) {
+    if (raw == null || raw.isEmpty) return const [];
+    try {
+      final list = _parseListBody(raw);
+      final items = <Service>[];
+      for (final e in list.whereType<Map<String, dynamic>>()) {
+        try {
+          final parsed = Service.fromJson(e);
+          if (parsed.status.toLowerCase() == 'active') {
+            items.add(parsed);
+          }
+        } catch (_) {
+          // Skip malformed listing but keep rendering the rest.
+        }
+      }
+      if (maxItems != null && maxItems > 0 && items.length > maxItems) {
+        return items.take(maxItems).toList();
+      }
+      return items;
+    } catch (_) {
+      return const [];
+    }
+  }
+
+  Future<List<Service>> _parseServicesFromCache(String? raw, {int? maxItems}) async {
+    if (raw == null || raw.isEmpty) return const [];
+    try {
+      final parsed = await ApiService.parseServicesJson(raw);
+      final items = parsed.where((s) => s.status.toLowerCase() == 'active').toList();
+      if (maxItems != null && maxItems > 0 && items.length > maxItems) {
+        return items.take(maxItems).toList();
+      }
+      return items;
+    } catch (_) {
+      // Backward compatibility for older cached payload shapes.
+      return _parseServices(raw, maxItems: maxItems);
+    }
+  }
+
+  Future<List<Accommodation>> _fetchAccommodations() async {
+    final response = await http
+        .get(Uri.parse(ApiConfig.accommodationEndpoint))
+        .timeout(const Duration(seconds: 8));
+    if (response.statusCode != 200) return const [];
+    await CacheService.set('search_accommodations', response.body);
+    return _parseAccommodations(response.body);
+  }
+
+  Future<List<Job>> _fetchJobs() async {
+    final response = await http
+        .get(Uri.parse('${ApiConfig.baseUrl}/api/jobs/user'))
+        .timeout(const Duration(seconds: 8));
+    if (response.statusCode != 200) return const [];
+    await CacheService.set('search_jobs', response.body);
+    return _parseJobs(response.body);
+  }
+
+  Future<List<FoodGrocery>> _fetchFood() async {
+    final response = await http
+        .get(Uri.parse(ApiConfig.foodEndpoint))
+        .timeout(const Duration(seconds: 8));
+    if (response.statusCode != 200) return const [];
+    await CacheService.set('search_food', response.body);
+    return _parseFood(response.body);
+  }
+
+  Future<List<Service>> _fetchServices() async {
+    final items = await ApiService.getServicesListings();
+    await CacheService.set('search_services', ApiService.servicesToJson(items));
+    return items.where((s) => s.status.toLowerCase() == 'active').toList();
   }
 
   List<Accommodation> get _accommodationsFiltered {
@@ -258,8 +454,12 @@ class _SearchPageState extends State<SearchPage> {
   Widget _searchBar() {
     return TextField(
       onChanged: (value) {
-        setState(() {
-          searchQuery = value;
+        _searchDebounce?.cancel();
+        _searchDebounce = Timer(const Duration(milliseconds: 200), () {
+          if (!mounted) return;
+          setState(() {
+            searchQuery = value;
+          });
         });
       },
       decoration: InputDecoration(
@@ -336,6 +536,10 @@ class _SearchPageState extends State<SearchPage> {
   }
 
   Widget _resultsBody() {
+    if (selectedTab != 0) {
+      _ensureFullDataLoaded();
+    }
+
     if (selectedTab == 0) {
       return _allResults();
     }

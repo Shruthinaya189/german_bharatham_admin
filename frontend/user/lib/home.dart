@@ -19,6 +19,7 @@ import 'notification_manager.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 import 'services/api_config.dart';
+import 'services/prefetch_service.dart';
 import 'utils/open_subscriptions_page.dart';
 
 class HomePage extends StatefulWidget {
@@ -38,6 +39,10 @@ class _HomePageState extends State<HomePage> {
     super.initState();
     NotificationManager.instance.refresh();
     NotificationManager.instance.startPolling();
+
+    // Warm up Render backend and prefetch all module data in background
+    // Fire-and-forget — doesn't block UI
+    PrefetchService.warmUpAndPrefetch();
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _maybeShowSubscriptionPrompt();

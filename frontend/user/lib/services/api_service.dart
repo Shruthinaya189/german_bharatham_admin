@@ -8,9 +8,11 @@ import '../models/service_model.dart';
 import '../models/rating_model.dart';
 
 class ApiService {
-  static String get baseUrl => 'https://german-bharatham-backend.onrender.com';
+  static String get baseUrl => ApiConfig.baseUrl;
 
-  static const Duration _defaultTimeout = Duration(seconds: 60);
+  // Reduced from 60s to 15s — prevents UI hangs on slow networks
+  // Render backend wakes up in ~5-10s, so 15s is plenty
+  static const Duration _defaultTimeout = Duration(seconds: 15);
   static const int _defaultRetries = 1;
 
   static Future<http.Response> _getWithRetry(
@@ -244,5 +246,41 @@ class ApiService {
     // You can make this dynamic based on debug/release mode
     // or detect platform
     return ApiConfig.baseUrl;
+  }
+
+  /// Parse cached Food & Grocery JSON
+  static Future<List<FoodGrocery>> parseFoodGroceryJson(String jsonStr) async {
+    try {
+      final decoded = json.decode(jsonStr);
+      final List<dynamic> data = decoded is Map
+          ? (decoded['data'] ?? []) as List
+          : (decoded is List ? decoded : []);
+      return data.map((j) => FoodGrocery.fromJson(j)).toList();
+    } catch (e) {
+      throw Exception('Failed to parse food JSON: $e');
+    }
+  }
+
+  /// Serialize Food & Grocery models to JSON string
+  static String foodGroceryToJson(List<FoodGrocery> items) {
+    return json.encode(items.map((item) => item.toJson()).toList());
+  }
+
+  /// Parse cached Services JSON
+  static Future<List<Service>> parseServicesJson(String jsonStr) async {
+    try {
+      final decoded = json.decode(jsonStr);
+      final List<dynamic> data = decoded is Map
+          ? (decoded['data'] ?? []) as List
+          : (decoded is List ? decoded : []);
+      return data.map((j) => Service.fromJson(j)).toList();
+    } catch (e) {
+      throw Exception('Failed to parse services JSON: $e');
+    }
+  }
+
+  /// Serialize Services models to JSON string
+  static String servicesToJson(List<Service> items) {
+    return json.encode(items.map((item) => item.toJson()).toList());
   }
 }

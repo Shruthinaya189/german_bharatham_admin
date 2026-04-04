@@ -2,6 +2,7 @@
 import 'dart:convert';
 import 'dart:typed_data';
 import 'package:flutter_map/flutter_map.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:http/http.dart' as http;
 import 'package:latlong2/latlong.dart';
@@ -227,6 +228,38 @@ class _ServiceDetailsPageState extends State<ServiceDetailsPage> {
       const SnackBar(
         content: Text('Could not open website'),
         backgroundColor: Colors.red,
+      ),
+    );
+  }
+
+  Widget _infoIcon(String iconAsset, {required bool isLocationIcon}) {
+    if (iconAsset.contains('whatsapp')) {
+      return FaIcon(
+        FontAwesomeIcons.whatsapp,
+        size: 18,
+        color: isLocationIcon ? Colors.black87 : const Color(0xFF4E7F6D),
+      );
+    }
+
+    IconData fallbackIcon = Icons.info_outline;
+    if (iconAsset.contains('call')) fallbackIcon = Icons.call;
+    if (iconAsset.contains('msg')) fallbackIcon = Icons.mail_outline;
+    if (iconAsset.contains('link')) fallbackIcon = Icons.link;
+    if (iconAsset.contains('location')) fallbackIcon = Icons.location_on_outlined;
+    if (iconAsset.contains('profile')) fallbackIcon = Icons.person_outline;
+    if (iconAsset.contains('handshake')) fallbackIcon = Icons.handshake_outlined;
+
+    final iconColor = isLocationIcon ? Colors.black87 : const Color(0xFF4E7F6D);
+
+    return Image.asset(
+      iconAsset,
+      height: 18,
+      width: 18,
+      color: iconColor,
+      errorBuilder: (_, __, ___) => Icon(
+        fallbackIcon,
+        size: 18,
+        color: iconColor,
       ),
     );
   }
@@ -752,16 +785,10 @@ class _ServiceDetailsPageState extends State<ServiceDetailsPage> {
                               borderRadius: BorderRadius.circular(10),
                             ),
                           ),
-                          icon: Image.asset(
-                            'assets/images/whatsapp.png',
-                            height: 20,
-                            width: 20,
+                          icon: const FaIcon(
+                            FontAwesomeIcons.whatsapp,
                             color: Colors.white,
-                            errorBuilder: (_, __, ___) => const Icon(
-                              Icons.chat,
-                              color: Colors.white,
-                              size: 20,
-                            ),
+                            size: 20,
                           ),
                           label: const Text(
                             'Whatsapp',
@@ -836,11 +863,7 @@ class _ServiceDetailsPageState extends State<ServiceDetailsPage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           isLocationIcon
-              ? Image.asset(
-                  iconAsset,
-                  height: 18,
-                  width: 18,
-                )
+              ? _infoIcon(iconAsset, isLocationIcon: true)
               : Container(
                   width: 36,
                   height: 36,
@@ -849,12 +872,7 @@ class _ServiceDetailsPageState extends State<ServiceDetailsPage> {
                     borderRadius: BorderRadius.circular(18),
                   ),
                   child: Center(
-                    child: Image.asset(
-                      iconAsset,
-                      height: 18,
-                      width: 18,
-                      color: const Color(0xFF4E7F6D),
-                    ),
+                    child: _infoIcon(iconAsset, isLocationIcon: false),
                   ),
                 ),
           const SizedBox(width: 12),

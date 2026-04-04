@@ -24,6 +24,15 @@ class _CommunityPageState extends State<CommunityPage> {
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
 
+  List<Map<String, dynamic>> _extractMapItems(dynamic decoded) {
+    final list = decoded is List
+        ? decoded
+        : (decoded is Map<String, dynamic> && decoded['data'] is List)
+            ? decoded['data'] as List
+            : const [];
+    return list.whereType<Map<String, dynamic>>().toList();
+  }
+
   @override
   void initState() {
     super.initState();
@@ -87,7 +96,12 @@ class _CommunityPageState extends State<CommunityPage> {
 
     if (cached != null) {
       try {
-        final List list = json.decode(cached);
+        final decoded = json.decode(cached);
+        final List list = decoded is List
+            ? decoded
+            : (decoded is Map<String, dynamic> && decoded['data'] is List)
+                ? decoded['data'] as List
+                : const [];
 
         guides = list.map((e) => CommunityPost.fromJson(e)).toList();
         allGuides = guides;
@@ -106,36 +120,52 @@ class _CommunityPageState extends State<CommunityPage> {
 
   Future<void> fetchGuides() async {
     try {
-      final response = await http.get(
-        Uri.parse('${ApiConfig.baseUrl}/api/community'),
-      );
+      const int limit = 100;
+      int page = 1;
+      int totalPages = 1;
+      final List<Map<String, dynamic>> allItems = [];
 
-      if (response.statusCode == 200) {
+      while (page <= totalPages) {
+        final response = await http.get(
+          Uri.parse('${ApiConfig.baseUrl}/api/community?page=$page&limit=$limit'),
+        );
+
+        if (response.statusCode != 200) {
+          if (!mounted) return;
+          setState(() {
+            isLoading = false;
+            errorMessage = "Failed to load guides";
+          });
+          return;
+        }
+
         final decoded = json.decode(response.body);
-        final List jsonData = decoded is List ? decoded : (decoded['data'] ?? []) as List;
+        allItems.addAll(_extractMapItems(decoded));
 
-        final fetchedGuides =
-            jsonData.map((e) => CommunityPost.fromJson(e)).toList();
+        if (decoded is Map<String, dynamic> && decoded['totalPages'] != null) {
+          totalPages = (decoded['totalPages'] as num).toInt();
+        } else {
+          totalPages = 1;
+        }
 
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setString('cached_guides', response.body);
-
-        if (!mounted) return;
-
-        setState(() {
-          allGuides = fetchedGuides;
-          filterGuides = fetchedGuides;
-          _applySearch();
-          isLoading = false;
-          errorMessage = "";
-        });
-      } else {
-        if (!mounted) return;
-        setState(() {
-          isLoading = false;
-          errorMessage = "Failed to load guides";
-        });
+        page += 1;
       }
+
+      final fetchedGuides =
+          allItems.map((e) => CommunityPost.fromJson(e)).toList();
+
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('cached_guides', jsonEncode(allItems));
+
+      if (!mounted) return;
+
+      setState(() {
+        allGuides = fetchedGuides;
+        filterGuides = fetchedGuides;
+        _applySearch();
+        isLoading = false;
+        errorMessage = "";
+      });
     } catch (e) {
       if (!mounted) return;
       setState(() {

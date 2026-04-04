@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../services/api_config.dart';
 import '../user_session.dart';
@@ -83,6 +84,10 @@ class NotificationsPage extends StatefulWidget {
 }
 
 class _NotificationsPageState extends State<NotificationsPage> {
+  static const String _notifCacheKey = 'notifications_cache_v1';
+  static const String _notifCacheTimeKey = 'notifications_cache_time_v1';
+  static const Duration _notifCacheTtl = Duration(minutes: 2);
+
   bool _loading = true;
   String? _error;
   List<AppNotification> _items = [];
@@ -92,13 +97,50 @@ class _NotificationsPageState extends State<NotificationsPage> {
   @override
   void initState() {
     super.initState();
-    _load();
+    _loadCachedThenRefresh();
+  }
+
+  Future<void> _loadCachedThenRefresh() async {
+    await _loadCached();
+    await _load();
+  }
+
+  Future<void> _loadCached() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final cached = prefs.getString(_notifCacheKey);
+      final ts = prefs.getInt(_notifCacheTimeKey);
+      if (cached == null || ts == null) return;
+
+      final ageMs = DateTime.now().millisecondsSinceEpoch - ts;
+      if (ageMs > _notifCacheTtl.inMilliseconds) return;
+
+      final decoded = jsonDecode(cached);
+      final list = decoded is List
+          ? decoded
+          : (decoded is Map<String, dynamic> && decoded['data'] is List)
+              ? decoded['data'] as List
+              : const [];
+
+      final cachedItems = list
+          .whereType<Map<String, dynamic>>()
+          .map(AppNotification.fromJson)
+          .toList();
+
+      if (!mounted || cachedItems.isEmpty) return;
+      setState(() {
+        _items = cachedItems;
+        _loading = false;
+        _error = null;
+      });
+    } catch (_) {}
   }
 
   Future<void> _load() async {
     if (mounted) {
       setState(() {
-        _loading = true;
+        // Keep cached content visible while refreshing.
+        _loading = _items.isEmpty;
         _error = null;
       });
     }
@@ -112,11 +154,15 @@ class _NotificationsPageState extends State<NotificationsPage> {
       final response = await http.get(
         Uri.parse('${ApiConfig.baseUrl}/api/user/notifications'),
         headers: {'Authorization': 'Bearer $token'},
-      );
+      ).timeout(const Duration(seconds: 8));
 
       if (response.statusCode >= 200 && response.statusCode < 300) {
         final decoded = jsonDecode(response.body);
         final list = decoded is List ? decoded : (decoded['data'] ?? []) as List;
+
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString(_notifCacheKey, response.body);
+        await prefs.setInt(_notifCacheTimeKey, DateTime.now().millisecondsSinceEpoch);
 
         if (!mounted) return;
         setState(() {
@@ -140,7 +186,9 @@ class _NotificationsPageState extends State<NotificationsPage> {
       if (!mounted) return;
       setState(() {
         _loading = false;
-        _error = e.toString();
+        if (_items.isEmpty) {
+          _error = e.toString();
+        }
       });
     }
   }

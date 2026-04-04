@@ -5,6 +5,7 @@ import 'models/food_grocery_model.dart';
 import 'saved_food_manager.dart';
 import 'services/api_service.dart';
 import 'services/api_config.dart';
+import 'services/cache_service.dart';
 import 'widgets/star_rating_widget.dart';
 
 class FoodGroceryPage extends StatefulWidget {
@@ -25,19 +26,49 @@ class _FoodGroceryPageState extends State<FoodGroceryPage> {
   @override
   void initState() {
     super.initState();
-    _loadFoodItems();
     SavedFoodManager.instance.initialize();
+    // Cache-first: Load from cache immediately
+    _loadFoodItemsFromCache();
+    // Then fetch fresh data in background
+    _loadFoodItems();
+  }
+
+  /// Load food items from cache (instant)
+  Future<void> _loadFoodItemsFromCache() async {
+    try {
+      final cached = await CacheService.get('food_page_1');
+      if (cached == null || !mounted) return;
+
+      final items = await ApiService.parseFoodGroceryJson(cached);
+      if (!mounted) return;
+
+      setState(() {
+        allItems = items.where((item) => item.status == 'Active').toList();
+        filteredItems = allItems;
+        isLoading = false;
+      });
+    } catch (e) {
+      debugPrint('Food cache load error: $e');
+    }
   }
 
   Future<void> _loadFoodItems() async {
     try {
       if (!mounted) return;
-      setState(() {
-        isLoading = true;
-        errorMessage = null;
-      });
+      if (allItems.isEmpty) {
+        setState(() {
+          isLoading = true;
+          errorMessage = null;
+        });
+      }
 
       final items = await ApiService.getFoodGroceryListings();
+
+      // Cache the response
+      await CacheService.set(
+        'food_page_1',
+        ApiService.foodGroceryToJson(items),
+      );
 
       if (!mounted) return;
       setState(() {

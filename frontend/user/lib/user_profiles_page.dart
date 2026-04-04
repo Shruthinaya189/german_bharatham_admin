@@ -8,6 +8,7 @@ import 'package:http/http.dart' as http;
 import 'home.dart';
 import 'liked_user_manager.dart';
 import 'services/api_config.dart';
+import 'services/cache_service.dart';
 import 'user_session.dart';
 
 class PublicUserProfile {
@@ -57,6 +58,7 @@ class UserProfilesPage extends StatefulWidget {
 class _UserProfilesPageState extends State<UserProfilesPage>
     with SingleTickerProviderStateMixin {
   static const Color primaryGreen = Color(0xFF4E7F6D);
+  static const String _usersCacheKey = 'public_users';
 
   late final AnimationController _bgController;
 
@@ -69,6 +71,15 @@ class _UserProfilesPageState extends State<UserProfilesPage>
   bool _isAnimatingCard = false;
   bool _isDismissingCard = false;
   bool _pulseNewTopCard = false;
+
+  List<Map<String, dynamic>> _extractMapItems(dynamic decoded) {
+    final list = decoded is List
+        ? decoded
+        : (decoded is Map<String, dynamic> && decoded['data'] is List)
+            ? decoded['data'] as List
+            : const [];
+    return list.whereType<Map<String, dynamic>>().toList();
+  }
 
   @override
   void initState() {
@@ -106,36 +117,90 @@ class _UserProfilesPageState extends State<UserProfilesPage>
       _pulseNewTopCard = false;
     });
 
+    await _loadUsersFromCache();
+    await _refreshUsersFromNetwork();
+  }
+
+  Future<void> _loadUsersFromCache() async {
     try {
-      final response = await http.get(
-        Uri.parse('https://german-bharatham-backend.onrender.com/api/user/public-users'),
-      );
+      final raw = await CacheService.get(_usersCacheKey);
+      if (raw == null || raw.isEmpty) return;
 
-      if (response.statusCode == 200) {
+      final decoded = jsonDecode(raw);
+      final list = decoded is List
+          ? decoded
+          : (decoded is Map<String, dynamic> && decoded['data'] is List)
+              ? decoded['data'] as List
+              : const [];
+
+      final currentUserId = UserSession.instance.userId;
+      final loaded = list
+          .whereType<Map<String, dynamic>>()
+          .map(PublicUserProfile.fromJson)
+          .where((u) => u.id.isNotEmpty)
+          .where((u) => currentUserId == null ? true : u.id != currentUserId)
+          .toList();
+
+      if (!mounted || loaded.isEmpty) return;
+      setState(() {
+        users = loaded;
+        currentIndex = 0;
+        isLoading = false;
+        errorMessage = null;
+      });
+    } catch (_) {}
+  }
+
+  Future<void> _refreshUsersFromNetwork() async {
+
+    try {
+      const int limit = 100;
+      int page = 1;
+      int totalPages = 1;
+      final List<Map<String, dynamic>> allItems = [];
+
+      while (page <= totalPages) {
+        final response = await http.get(
+          Uri.parse('https://german-bharatham-backend.onrender.com/api/user/public-users?page=$page&limit=$limit'),
+        );
+
+        if (response.statusCode != 200) {
+          if (!mounted) return;
+          setState(() {
+            isLoading = false;
+            errorMessage = 'Server error ${response.statusCode}';
+          });
+          return;
+        }
+
         final decoded = jsonDecode(response.body);
-        final list = decoded is List ? decoded : (decoded['data'] ?? []) as List;
+        allItems.addAll(_extractMapItems(decoded));
 
-        final currentUserId = UserSession.instance.userId;
-        final loaded = list
-            .whereType<Map<String, dynamic>>()
-            .map(PublicUserProfile.fromJson)
-            .where((u) => u.id.isNotEmpty)
-            .where((u) => currentUserId == null ? true : u.id != currentUserId)
-            .toList();
+        if (decoded is Map<String, dynamic> && decoded['totalPages'] != null) {
+          totalPages = (decoded['totalPages'] as num).toInt();
+        } else {
+          totalPages = 1;
+        }
 
-        if (!mounted) return;
-        setState(() {
-          users = loaded;
-          currentIndex = 0;
-          isLoading = false;
-        });
-      } else {
-        if (!mounted) return;
-        setState(() {
-          isLoading = false;
-          errorMessage = 'Server error ${response.statusCode}';
-        });
+        page += 1;
       }
+
+      final currentUserId = UserSession.instance.userId;
+      final loaded = allItems
+          .map(PublicUserProfile.fromJson)
+          .where((u) => u.id.isNotEmpty)
+          .where((u) => currentUserId == null ? true : u.id != currentUserId)
+          .toList();
+
+      await CacheService.set(_usersCacheKey, jsonEncode(allItems));
+
+      if (!mounted) return;
+      setState(() {
+        users = loaded;
+        currentIndex = 0;
+        isLoading = false;
+        errorMessage = null;
+      });
     } catch (e) {
       if (!mounted) return;
       setState(() {

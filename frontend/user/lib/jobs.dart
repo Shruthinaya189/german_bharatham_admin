@@ -6,6 +6,7 @@ import 'saved_job_manager.dart';
 import 'job_details.dart';
 import 'jobs_filter_page.dart';
 import 'services/api_config.dart';
+import 'services/cache_service.dart';
 
 class JobsPage extends StatefulWidget {
   const JobsPage({super.key});
@@ -25,11 +26,51 @@ class _JobsPageState extends State<JobsPage> {
   void initState() {
     super.initState();
     SavedJobManager.instance.initialize();
+    // Cache-first: Load from cache immediately
+    _loadJobsFromCache();
+    // Then fetch fresh data in background
     _loadJobs();
   }
 
+  /// Load jobs from cache (instant)
+  Future<void> _loadJobsFromCache() async {
+    try {
+      final cached = await CacheService.get('jobs_page_1');
+      if (cached == null || !mounted) return;
+
+      final data = jsonDecode(cached);
+      List<dynamic> itemsList;
+      if (data is Map && data.containsKey('data')) {
+        itemsList = data['data'];
+      } else if (data is List) {
+        itemsList = data;
+      } else {
+        itemsList = [];
+      }
+
+      final parsed = <Job>[];
+      for (final json in itemsList) {
+        try {
+          if (json is Map<String, dynamic>) parsed.add(Job.fromJson(json));
+        } catch (_) {}
+      }
+
+      if (!mounted) return;
+      setState(() {
+        allItems = parsed;
+        filterItems = allItems;
+        _applySearch();
+        isLoading = false;
+      });
+    } catch (e) {
+      debugPrint('Jobs cache load error: $e');
+    }
+  }
+
   Future<void> _loadJobs() async {
-    setState(() => isLoading = true);
+    if (allItems.isEmpty) {
+      setState(() => isLoading = true);
+    }
     
     try {
       final response = await http.get(
@@ -37,6 +78,9 @@ class _JobsPageState extends State<JobsPage> {
       );
 
       if (response.statusCode == 200) {
+        // Cache the response
+        await CacheService.set('jobs_page_1', response.body);
+
         final data = jsonDecode(response.body);
         
         List<dynamic> itemsList;
@@ -55,6 +99,7 @@ class _JobsPageState extends State<JobsPage> {
           } catch (_) {}
         }
 
+        if (!mounted) return;
         setState(() {
           allItems = parsed;
           filterItems = allItems;

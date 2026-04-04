@@ -187,11 +187,10 @@ class _FilterPageState extends State<FilterPage> {
               children: [
                 Row(
                   children: [
-                    Image.asset(
-                      'assets/images/rent.png',
-                      height: 16,
-                      width: 16,
-                      color: const Color(0xFF4F7F6C),
+                    const Icon(
+                      Icons.euro,
+                      size: 16,
+                      color: Color(0xFF4F7F6C),
                     ),
                     const SizedBox(width: 6),
                     const Text(
@@ -246,11 +245,10 @@ class _FilterPageState extends State<FilterPage> {
             /// ROOM TYPE
             Row(
               children: [
-                Image.asset(
-                  'assets/images/propertytype.png',
-                  height: 16,
-                  width: 16,
-                  color: const Color(0xFF4F7F6C),
+                const Icon(
+                  Icons.meeting_room_outlined,
+                  size: 16,
+                  color: Color(0xFF4F7F6C),
                 ),
                 const SizedBox(width: 6),
                 const Text(

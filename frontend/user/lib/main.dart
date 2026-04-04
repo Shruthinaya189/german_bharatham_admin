@@ -20,6 +20,7 @@ import 'home.dart';
 import 'user_profiles_page.dart';
 import 'forgot_password.dart';
 import 'services/api_config.dart';
+import 'services/prefetch_service.dart';
 import 'profile_pages/subscriptions.dart';
 import 'utils/subscription_utils.dart';
 
@@ -331,12 +332,14 @@ class _AuthPageState extends State<AuthPage> {
   OverlayEntry? _identifierOverlay;
   List<Map<String, String>> _savedCredentials = const [];
   String? _loginError;
+  bool _isBusy = false;
   bool _socialBusy = false;
 
   @override
   void initState() {
     super.initState();
     _loadRememberedCredentials();
+    PrefetchService.warmUpAndPrefetch();
 
     _identifierFocusNode.addListener(() {
       if (_identifierFocusNode.hasFocus) {
@@ -559,8 +562,10 @@ class _AuthPageState extends State<AuthPage> {
     super.dispose();
   }
   Future<void> loginUser() async {
+  if (_isBusy) return;
   setState(() {
     _loginError = null; // clear old error
+    _isBusy = true;
   });
 
   try {
@@ -579,29 +584,34 @@ class _AuthPageState extends State<AuthPage> {
         if (!isEmail) "phone": identifier,
         "password": _passwordController.text.trim(),
       }),
-    );
+    ).timeout(const Duration(seconds: 8));
 
     if (response.statusCode == 200) {
       final data = jsonDecode(response.body);
       final user = data['user'];
-      await UserSession.instance.save(
+      final token = data['token'].toString();
+      unawaited(UserSession.instance.save(
         userId: user['_id'].toString(),
-        token: data['token'].toString(),
+        token: token,
         name: user['name'].toString(),
         email: user['email'].toString(),
         phone: user['phone']?.toString(),
         photoBase64: user['photo']?.toString(),
-      );
-      await _persistCredentialsAfterLoginSuccess();
+      ));
+      unawaited(_persistCredentialsAfterLoginSuccess());
       TextInput.finishAutofillContext(shouldSave: true);
       final uid = user['_id'].toString();
       SavedManager.instance.switchUser(uid);
-      await Future.wait([
+      unawaited(Future.wait([
         SavedFoodManager.instance.switchUser(uid),
         SavedJobManager.instance.switchUser(uid),
         SavedServiceManager.instance.switchUser(uid),
         SavedGuidesManager.instance.switchUser(uid),
-      ]);
+      ]));
+
+      // Fire-and-forget to warm backend and seed caches before home usage.
+      PrefetchService.warmUpAndPrefetch(token: token);
+
       if (mounted) {
         Navigator.pushReplacement(
           context,
@@ -626,11 +636,21 @@ class _AuthPageState extends State<AuthPage> {
         _loginError = message;
       });
     }
+  } on TimeoutException {
+    setState(() {
+      _loginError = 'Server is waking up. Please try again in a few seconds.';
+    });
   } catch (e) {
     debugPrint('Login error: $e');
     setState(() {
       _loginError = "Network error. Please check your connection and try again.";
     });
+  } finally {
+    if (mounted) {
+      setState(() {
+        _isBusy = false;
+      });
+    }
   }
 }
 
@@ -638,22 +658,23 @@ class _AuthPageState extends State<AuthPage> {
     if (response.statusCode == 200) {
       final data = jsonDecode(response.body);
       final user = data['user'];
-      await UserSession.instance.save(
+      unawaited(UserSession.instance.save(
         userId: user['_id'].toString(),
         token: data['token'].toString(),
         name: user['name'].toString(),
         email: user['email'].toString(),
         phone: user['phone']?.toString(),
         photoBase64: user['photo']?.toString(),
-      );
+      ));
       final uid = user['_id'].toString();
       SavedManager.instance.switchUser(uid);
-      await Future.wait([
+      unawaited(Future.wait([
         SavedFoodManager.instance.switchUser(uid),
         SavedJobManager.instance.switchUser(uid),
         SavedServiceManager.instance.switchUser(uid),
         SavedGuidesManager.instance.switchUser(uid),
-      ]);
+      ]));
+      PrefetchService.warmUpAndPrefetch(token: data['token']?.toString());
       if (mounted) {
         Navigator.pushReplacement(
           context,
@@ -949,8 +970,10 @@ class _AuthPageState extends State<AuthPage> {
                 width: double.infinity,
                 height: 52,
                 child: ElevatedButton(
-                  onPressed: _isLogin
-                      ? loginUser
+                  onPressed: _isBusy
+                    ? null
+                    : _isLogin
+                    ? loginUser
                       : () {
                           final email = _emailController.text.trim();
                           sendVerificationCodeAndNavigate(context, email);
@@ -959,14 +982,23 @@ class _AuthPageState extends State<AuthPage> {
                     backgroundColor: primaryGreen,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                   ),
-                  child: Text(
-                    _isLogin ? 'Login' : 'Sign up',
-                    style: const TextStyle(
-                      fontSize: 16,
-                      color: Colors.white,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
+                  child: _isBusy && _isLogin
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2.2,
+                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                          ),
+                        )
+                      : Text(
+                          _isLogin ? 'Login' : 'Sign up',
+                          style: const TextStyle(
+                            fontSize: 16,
+                            color: Colors.white,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
                 ),
               ),
 

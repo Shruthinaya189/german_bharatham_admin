@@ -248,20 +248,10 @@ class _FoodDetailPageState extends State<FoodDetailPage> {
                         widget.item.priceRange!.isNotEmpty && 
                         widget.item.priceRange!.trim().isNotEmpty) ...[
                       const SizedBox(height: 14),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFFFF3E0),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Text(
-                          widget.item.priceRange!.replaceAll('\$', '').trim(),
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                            color: Color(0xFFE65100),
-                          ),
-                        ),
+                      _infoRow(
+                        iconAsset: 'assets/images/info.png',
+                        label: 'Price Range',
+                        value: widget.item.priceRange!.replaceAll('\$', '').trim(),
                       ),
                     ],
 
